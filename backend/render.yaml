@@ -1,0 +1,24 @@
+# ==============================================================================
+# WASEL NALUT - RENDER CLOUD BLUEPRINT (render.yaml)
+# Zero-downtime deployment for Express + Socket.io Server
+# ==============================================================================
+
+services:
+  - type: web
+    name: wasel-nalut-api
+    runtime: node
+    plan: free
+    region: frankfurt # Closest to Libya / North Africa
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_DEFAULT_PIN
+        value: 9832

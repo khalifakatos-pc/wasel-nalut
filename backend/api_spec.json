@@ -1,0 +1,1104 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Presto / Mataa Super-App Delivery & Wallet Engine API",
+    "description": "Production-grade backend API specification for the Presto/Mataa Super-App. Provides comprehensive capabilities for multi-vendor catalog discovery, order dispatching, PostGIS geospatial tracking, double-entry payment ledger, and real-time fleet operations.",
+    "version": "1.0.0",
+    "contact": {
+      "name": "Super-App Platform Engineering Team",
+      "email": "engineering@presto-mataa.app"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.presto-mataa.app/api/v1",
+      "description": "Production Server"
+    },
+    {
+      "url": "https://staging-api.presto-mataa.app/api/v1",
+      "description": "Staging Sandbox Server"
+    },
+    {
+      "url": "http://localhost:4000/api/v1",
+      "description": "Local Development Server"
+    }
+  ],
+  "tags": [
+    { "name": "Authentication", "description": "Identity, JWT token issuance, and OTP verification" },
+    { "name": "User & Addresses", "description": "Customer profile and PostGIS address book management" },
+    { "name": "Store & Catalog", "description": "Merchant listings, geolocated search, categories, and menus" },
+    { "name": "Orders", "description": "Order placement, escrow reservation, fulfillment lifecycle, and cancellation" },
+    { "name": "Live Tracking & Geofencing", "description": "GPS telemetry ingestion, real-time tracking, and zone validation" },
+    { "name": "Wallet & Ledger", "description": "Double-entry transaction ledger, balances, top-ups, and payouts" },
+    { "name": "Drivers & Fleet", "description": "Driver availability status, routing, and earnings" }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user (Customer, Merchant, or Driver)",
+        "operationId": "registerUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone", "full_name", "role"],
+                "properties": {
+                  "phone": { "type": "string", "example": "+9647701234567" },
+                  "email": { "type": "string", "format": "email", "example": "customer@presto.app" },
+                  "full_name": { "type": "string", "example": "Ali Hassan" },
+                  "password": { "type": "string", "format": "password", "minLength": 8 },
+                  "role": { "type": "string", "enum": ["customer", "driver", "merchant"], "default": "customer" },
+                  "locale": { "type": "string", "example": "ar-IQ" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Authenticate user and issue JWT tokens",
+        "operationId": "loginUser",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["phone", "password"],
+                "properties": {
+                  "phone": { "type": "string", "example": "+9647701234567" },
+                  "password": { "type": "string", "format": "password", "example": "SecurePassword123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentication successful",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/AuthResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Refresh expired JWT access token",
+        "operationId": "refreshToken",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["refresh_token"],
+                "properties": {
+                  "refresh_token": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "New access token issued",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/TokenRefreshResponse" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "tags": ["Authentication"],
+        "summary": "Get authenticated user profile and permissions",
+        "operationId": "getCurrentUser",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Current user profile",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/User" }
+              }
+            }
+          },
+          "401": { "$ref": "#/components/responses/Unauthorized" }
+        }
+      }
+    },
+    "/users/addresses": {
+      "get": {
+        "tags": ["User & Addresses"],
+        "summary": "List saved user delivery addresses",
+        "operationId": "listUserAddresses",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "List of user addresses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/UserAddress" }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["User & Addresses"],
+        "summary": "Create new delivery address with PostGIS coordinates",
+        "operationId": "createUserAddress",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateAddressRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Address created successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/UserAddress" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stores": {
+      "get": {
+        "tags": ["Store & Catalog"],
+        "summary": "List nearby stores with PostGIS distance calculation and filters",
+        "operationId": "listStores",
+        "parameters": [
+          { "name": "latitude", "in": "query", "required": false, "schema": { "type": "number", "format": "float", "example": 33.3152 } },
+          { "name": "longitude", "in": "query", "required": false, "schema": { "type": "number", "format": "float", "example": 44.3661 } },
+          { "name": "radius_meters", "in": "query", "required": false, "schema": { "type": "integer", "default": 10000 } },
+          { "name": "status", "in": "query", "required": false, "schema": { "type": "string", "enum": ["active", "busy", "closed"] } },
+          { "name": "search", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of stores",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Store" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/stores/{id}": {
+      "get": {
+        "tags": ["Store & Catalog"],
+        "summary": "Get store details and full category hierarchy",
+        "operationId": "getStoreById",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed store object",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/StoreDetail" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/stores/{id}/products": {
+      "get": {
+        "tags": ["Store & Catalog"],
+        "summary": "Get menu products with customizable add-ons",
+        "operationId": "getStoreProducts",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "category_id", "in": "query", "required": false, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of products",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/Product" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "List orders for the authenticated user/store/driver",
+        "operationId": "listOrders",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "status", "in": "query", "required": false, "schema": { "$ref": "#/components/schemas/OrderStatus" } },
+          { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of orders",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/Order" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Orders"],
+        "summary": "Place a new order with atomic wallet escrow reservation",
+        "operationId": "createOrder",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/CreateOrderRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Order created and escrow locked",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "402": { "description": "Insufficient wallet funds for escrow" }
+        }
+      }
+    },
+    "/orders/{id}": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get order details by ID",
+        "operationId": "getOrderById",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Order details",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" }
+              }
+            }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/orders/{id}/status": {
+      "patch": {
+        "tags": ["Orders"],
+        "summary": "Transition order status (Store prep, Driver pickup/dropoff, Admin override)",
+        "operationId": "updateOrderStatus",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "$ref": "#/components/schemas/OrderStatus" },
+                  "notes": { "type": "string" },
+                  "driver_id": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated successfully and settlement executed if delivered",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/orders/{id}/cancel": {
+      "post": {
+        "tags": ["Orders"],
+        "summary": "Cancel order and automatically refund held escrow funds",
+        "operationId": "cancelOrder",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["reason"],
+                "properties": {
+                  "reason": { "type": "string", "example": "Customer requested cancellation before prep" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Order cancelled and escrow refunded to wallet",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/Order" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/orders/{id}/status-history": {
+      "get": {
+        "tags": ["Orders"],
+        "summary": "Get complete audit timeline of order status transitions",
+        "operationId": "getOrderStatusHistory",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Audit history array",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": { "$ref": "#/components/schemas/OrderStatusLog" }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracking/orders/{id}/live": {
+      "get": {
+        "tags": ["Live Tracking & Geofencing"],
+        "summary": "Get real-time snapshot of active delivery driver telemetry and ETA",
+        "operationId": "getLiveOrderTracking",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Real-time telemetry payload",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/LiveTrackingSnapshot" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/tracking/driver/location": {
+      "post": {
+        "tags": ["Live Tracking & Geofencing"],
+        "summary": "HTTP fallback endpoint for driver GPS telemetry ping",
+        "operationId": "postDriverLocationPing",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/DriverLocationPing" }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Location recorded and broadcasted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": { "type": "boolean", "example": true },
+                    "recorded_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/geofences/check": {
+      "get": {
+        "tags": ["Live Tracking & Geofencing"],
+        "summary": "Check if GPS coordinates fall inside active delivery geofence",
+        "operationId": "checkGeofence",
+        "parameters": [
+          { "name": "latitude", "in": "query", "required": true, "schema": { "type": "number" } },
+          { "name": "longitude", "in": "query", "required": true, "schema": { "type": "number" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Geofence match result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "is_deliverable": { "type": "boolean", "example": true },
+                    "zone": { "$ref": "#/components/schemas/GeofenceZone" },
+                    "surge_multiplier": { "type": "number", "example": 1.25 }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/me": {
+      "get": {
+        "tags": ["Wallet & Ledger"],
+        "summary": "Get authenticated user's wallet balances and status",
+        "operationId": "getMyWallet",
+        "security": [{ "BearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Wallet summary",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletSummary" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/topup": {
+      "post": {
+        "tags": ["Wallet & Ledger"],
+        "summary": "Credit customer wallet via payment gateway callback / top-up card",
+        "operationId": "topupWallet",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "idempotency_key", "payment_source"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 1000, "example": 25000 },
+                  "currency": { "type": "string", "default": "IQD" },
+                  "idempotency_key": { "type": "string", "example": "topup_tx_99882211" },
+                  "payment_source": { "type": "string", "enum": ["zain_cash", "asia_hawala", "mastercard", "qi_card"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Wallet credited successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletTransaction" }
+              }
+            }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
+    "/wallets/transactions": {
+      "get": {
+        "tags": ["Wallet & Ledger"],
+        "summary": "List immutable double-entry ledger transactions for user wallet",
+        "operationId": "listWalletTransactions",
+        "security": [{ "BearerAuth": [] }],
+        "parameters": [
+          { "name": "type", "in": "query", "required": false, "schema": { "type": "string" } },
+          { "name": "page", "in": "query", "required": false, "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "required": false, "schema": { "type": "integer", "default": 20 } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated transaction list",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": { "type": "array", "items": { "$ref": "#/components/schemas/WalletTransaction" } },
+                    "meta": { "$ref": "#/components/schemas/PaginationMeta" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/wallets/payout": {
+      "post": {
+        "tags": ["Wallet & Ledger"],
+        "summary": "Request cashout / bank transfer for driver or merchant earnings",
+        "operationId": "requestPayout",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "destination_account", "idempotency_key"],
+                "properties": {
+                  "amount": { "type": "number", "minimum": 10000, "example": 50000 },
+                  "destination_account": { "type": "string", "example": "IQ00QI883920192831" },
+                  "idempotency_key": { "type": "string", "example": "payout_req_120938" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payout initiated and recorded in ledger",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/WalletTransaction" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/drivers/status": {
+      "patch": {
+        "tags": ["Drivers & Fleet"],
+        "summary": "Update driver availability status (online/offline/busy)",
+        "operationId": "updateDriverStatus",
+        "security": [{ "BearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["offline", "online_idle", "busy_delivery"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status updated successfully",
+            "content": {
+              "application/json": {
+                "schema": { "$ref": "#/components/schemas/DriverProfile" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "phone": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "full_name": { "type": "string" },
+          "role": { "type": "string", "enum": ["customer", "driver", "merchant", "admin", "dispatcher", "support"] },
+          "status": { "type": "string", "enum": ["active", "suspended", "pending_verification", "banned"] },
+          "avatar_url": { "type": "string" },
+          "locale": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "user": { "$ref": "#/components/schemas/User" },
+          "access_token": { "type": "string" },
+          "refresh_token": { "type": "string" },
+          "expires_in": { "type": "integer", "example": 86400 }
+        }
+      },
+      "TokenRefreshResponse": {
+        "type": "object",
+        "properties": {
+          "access_token": { "type": "string" },
+          "expires_in": { "type": "integer", "example": 86400 }
+        }
+      },
+      "UserAddress": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "label": { "type": "string", "example": "Home" },
+          "address_line1": { "type": "string", "example": "Karada District, Street 14" },
+          "address_line2": { "type": "string" },
+          "building_name": { "type": "string", "example": "Babylon Tower" },
+          "floor_number": { "type": "string", "example": "3" },
+          "apartment_number": { "type": "string", "example": "304" },
+          "city": { "type": "string", "example": "Baghdad" },
+          "latitude": { "type": "number", "format": "float", "example": 33.3128 },
+          "longitude": { "type": "number", "format": "float", "example": 44.3821 },
+          "is_default": { "type": "boolean", "default": false },
+          "delivery_notes": { "type": "string", "example": "Gate buzzer #304" }
+        }
+      },
+      "CreateAddressRequest": {
+        "type": "object",
+        "required": ["label", "address_line1", "latitude", "longitude"],
+        "properties": {
+          "label": { "type": "string", "example": "Office" },
+          "address_line1": { "type": "string", "example": "Mansour, 14th Ramadan St." },
+          "address_line2": { "type": "string" },
+          "building_name": { "type": "string" },
+          "floor_number": { "type": "string" },
+          "apartment_number": { "type": "string" },
+          "city": { "type": "string", "default": "Baghdad" },
+          "latitude": { "type": "number", "format": "float", "example": 33.3087 },
+          "longitude": { "type": "number", "format": "float", "example": 44.3512 },
+          "is_default": { "type": "boolean", "default": false },
+          "delivery_notes": { "type": "string" }
+        }
+      },
+      "Store": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Burger Makers Al-Mansour" },
+          "slug": { "type": "string", "example": "burger-makers-al-mansour" },
+          "description": { "type": "string", "example": "Gourmet Angus beef burgers and loaded fries" },
+          "logo_url": { "type": "string" },
+          "banner_url": { "type": "string" },
+          "phone": { "type": "string" },
+          "rating": { "type": "number", "example": 4.85 },
+          "total_ratings": { "type": "integer", "example": 340 },
+          "status": { "type": "string", "enum": ["active", "inactive", "busy", "closed"] },
+          "address": { "type": "string" },
+          "latitude": { "type": "number", "example": 33.309 },
+          "longitude": { "type": "number", "example": 44.355 },
+          "prep_time_minutes": { "type": "integer", "example": 25 },
+          "distance_meters": { "type": "number", "example": 1420.5 }
+        }
+      },
+      "StoreDetail": {
+        "allOf": [
+          { "$ref": "#/components/schemas/Store" },
+          {
+            "type": "object",
+            "properties": {
+              "categories": {
+                "type": "array",
+                "items": { "$ref": "#/components/schemas/StoreCategory" }
+              }
+            }
+          }
+        ]
+      },
+      "StoreCategory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Signature Burgers" },
+          "description": { "type": "string" },
+          "sort_order": { "type": "integer", "example": 1 },
+          "products": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Product" }
+          }
+        }
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "store_id": { "type": "string", "format": "uuid" },
+          "category_id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Double Truffle Burger" },
+          "description": { "type": "string", "example": "Two smash patties, black truffle mayo, swiss cheese" },
+          "image_url": { "type": "string" },
+          "base_price": { "type": "number", "example": 12500 },
+          "discounted_price": { "type": "number", "example": 10500 },
+          "status": { "type": "string", "enum": ["available", "out_of_stock", "archived"] },
+          "addons": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/ProductAddon" }
+          }
+        }
+      },
+      "ProductAddon": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "group_name": { "type": "string", "example": "Cheese Options" },
+          "name": { "type": "string", "example": "Extra Cheddar Slice" },
+          "price": { "type": "number", "example": 1500 },
+          "max_selectable": { "type": "integer", "example": 2 },
+          "is_required": { "type": "boolean", "example": false }
+        }
+      },
+      "OrderStatus": {
+        "type": "string",
+        "enum": [
+          "draft",
+          "placed",
+          "confirmed_by_store",
+          "preparing",
+          "ready_for_pickup",
+          "driver_assigned",
+          "driver_arrived_store",
+          "picked_up",
+          "out_for_delivery",
+          "driver_arrived_dropoff",
+          "delivered",
+          "cancelled",
+          "refunded"
+        ]
+      },
+      "CreateOrderRequest": {
+        "type": "object",
+        "required": ["store_id", "items", "delivery_address_id", "payment_method", "idempotency_key"],
+        "properties": {
+          "store_id": { "type": "string", "format": "uuid" },
+          "delivery_address_id": { "type": "string", "format": "uuid" },
+          "payment_method": { "type": "string", "enum": ["wallet", "cash_on_delivery", "card"] },
+          "idempotency_key": { "type": "string", "example": "ord_create_9843109" },
+          "special_instructions": { "type": "string", "example": "Please ring doorbell" },
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["product_id", "quantity"],
+              "properties": {
+                "product_id": { "type": "string", "format": "uuid" },
+                "quantity": { "type": "integer", "minimum": 1, "example": 2 },
+                "selected_addon_ids": { "type": "array", "items": { "type": "string", "format": "uuid" } },
+                "notes": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "Order": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "order_number": { "type": "string", "example": "ORD-2026-88492" },
+          "customer_id": { "type": "string", "format": "uuid" },
+          "store_id": { "type": "string", "format": "uuid" },
+          "driver_id": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "payment_method": { "type": "string" },
+          "payment_status": { "type": "string" },
+          "subtotal": { "type": "number", "example": 25000 },
+          "delivery_fee": { "type": "number", "example": 3500 },
+          "platform_fee": { "type": "number", "example": 500 },
+          "discount_amount": { "type": "number", "example": 0 },
+          "tip_amount": { "type": "number", "example": 1000 },
+          "total_amount": { "type": "number", "example": 30000 },
+          "currency": { "type": "string", "example": "IQD" },
+          "delivery_address": { "type": "object" },
+          "estimated_delivery_time": { "type": "string", "format": "date-time" },
+          "items": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/OrderItem" }
+          },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "OrderItem": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "product_id": { "type": "string", "format": "uuid" },
+          "product_name": { "type": "string" },
+          "unit_price": { "type": "number" },
+          "quantity": { "type": "integer" },
+          "total_price": { "type": "number" },
+          "selected_addons": { "type": "array", "items": { "type": "object" } }
+        }
+      },
+      "OrderStatusLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "order_id": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "changed_by_user_id": { "type": "string", "format": "uuid" },
+          "notes": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DriverLocationPing": {
+        "type": "object",
+        "required": ["latitude", "longitude"],
+        "properties": {
+          "order_id": { "type": "string", "format": "uuid" },
+          "latitude": { "type": "number", "format": "float", "example": 33.3101 },
+          "longitude": { "type": "number", "format": "float", "example": 44.3622 },
+          "heading": { "type": "number", "example": 180.5 },
+          "speed_kmh": { "type": "number", "example": 38.4 },
+          "accuracy_meters": { "type": "number", "example": 4.5 },
+          "battery_level": { "type": "integer", "example": 82 }
+        }
+      },
+      "LiveTrackingSnapshot": {
+        "type": "object",
+        "properties": {
+          "order_id": { "type": "string", "format": "uuid" },
+          "status": { "$ref": "#/components/schemas/OrderStatus" },
+          "driver": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string", "format": "uuid" },
+              "full_name": { "type": "string", "example": "Mustafa Kareem" },
+              "phone": { "type": "string", "example": "+9647809988776" },
+              "vehicle_type": { "type": "string", "example": "motorcycle" },
+              "license_plate": { "type": "string", "example": "Baghdad 84920 B" },
+              "rating": { "type": "number", "example": 4.92 },
+              "current_latitude": { "type": "number", "example": 33.3101 },
+              "current_longitude": { "type": "number", "example": 44.3622 },
+              "heading": { "type": "number", "example": 180.5 },
+              "speed_kmh": { "type": "number", "example": 38.4 }
+            }
+          },
+          "origin": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "latitude": { "type": "number" },
+              "longitude": { "type": "number" }
+            }
+          },
+          "destination": {
+            "type": "object",
+            "properties": {
+              "address": { "type": "string" },
+              "latitude": { "type": "number" },
+              "longitude": { "type": "number" }
+            }
+          },
+          "eta_minutes": { "type": "integer", "example": 12 },
+          "remaining_distance_meters": { "type": "number", "example": 2850 }
+        }
+      },
+      "GeofenceZone": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string", "example": "Baghdad Central Commercial Zone" },
+          "code": { "type": "string", "example": "BG-CENTRAL" },
+          "zone_type": { "type": "string", "enum": ["delivery_zone", "high_surge", "restricted", "hub"] },
+          "base_delivery_fee": { "type": "number", "example": 3000 },
+          "surge_multiplier": { "type": "number", "example": 1.0 },
+          "min_order_amount": { "type": "number", "example": 5000 }
+        }
+      },
+      "WalletSummary": {
+        "type": "object",
+        "properties": {
+          "wallet_id": { "type": "string", "format": "uuid" },
+          "currency": { "type": "string", "example": "IQD" },
+          "balance": { "type": "number", "example": 75000 },
+          "locked_balance": { "type": "number", "example": 30000 },
+          "available_balance": { "type": "number", "example": 45000 },
+          "status": { "type": "string", "example": "active" }
+        }
+      },
+      "WalletTransaction": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "idempotency_key": { "type": "string" },
+          "wallet_id": { "type": "string", "format": "uuid" },
+          "counterparty_wallet_id": { "type": "string", "format": "uuid" },
+          "order_id": { "type": "string", "format": "uuid" },
+          "transaction_type": {
+            "type": "string",
+            "enum": [
+              "topup",
+              "order_hold_escrow",
+              "escrow_capture",
+              "escrow_refund",
+              "merchant_payout",
+              "driver_payout",
+              "platform_fee",
+              "tip",
+              "adjustment"
+            ]
+          },
+          "amount": { "type": "number", "example": 30000 },
+          "fee_amount": { "type": "number", "example": 0 },
+          "net_amount": { "type": "number", "example": 30000 },
+          "balance_before": { "type": "number", "example": 75000 },
+          "balance_after": { "type": "number", "example": 45000 },
+          "currency": { "type": "string", "example": "IQD" },
+          "status": { "type": "string", "enum": ["pending", "completed", "failed", "reversed"] },
+          "narration": { "type": "string", "example": "Hold escrow for order #ORD-2026-88492" },
+          "created_at": { "type": "string", "format": "date-time" }
+        }
+      },
+      "DriverProfile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "user_id": { "type": "string", "format": "uuid" },
+          "vehicle_type": { "type": "string", "example": "motorcycle" },
+          "license_plate": { "type": "string", "example": "Baghdad 84920 B" },
+          "status": { "type": "string", "enum": ["offline", "online_idle", "busy_delivery", "suspended"] },
+          "rating": { "type": "number", "example": 4.9 },
+          "total_deliveries": { "type": "integer", "example": 412 },
+          "battery_level": { "type": "integer", "example": 90 }
+        }
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "total": { "type": "integer", "example": 150 },
+          "page": { "type": "integer", "example": 1 },
+          "limit": { "type": "integer", "example": 20 },
+          "total_pages": { "type": "integer", "example": 8 }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "statusCode": { "type": "integer", "example": 400 },
+          "error": { "type": "string", "example": "Bad Request" },
+          "message": { "type": "string", "example": "Invalid payload parameters" },
+          "code": { "type": "string", "example": "VALIDATION_FAILED" }
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Bad Request or validation failure",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Unauthorized access token missing or expired",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "Requested resource not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "Conflict or duplicate record exists",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "#/components/schemas/ErrorResponse" }
+          }
+        }
+      }
+    }
+  }
+}

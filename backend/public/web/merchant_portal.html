@@ -1,0 +1,2496 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merchant Portal & KDS | Super App Logistics</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#fff7ed',
+              100: '#ffedd5',
+              400: '#fb923c',
+              500: '#f97316',
+              600: '#ea580c',
+              700: '#c2410c',
+            },
+            dark: {
+              900: '#0f172a',
+              800: '#1e293b',
+              700: '#334155',
+              600: '#475569',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'Segoe UI', 'Cairo', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
+    
+    body {
+      font-family: 'Inter', 'Cairo', sans-serif;
+    }
+    
+    [dir="rtl"] {
+      font-family: 'Cairo', 'Inter', sans-serif;
+    }
+
+    /* Custom scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    .dark ::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(156, 163, 175, 0.5);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(156, 163, 175, 0.8);
+    }
+
+    /* Pulse animation for new incoming orders */
+    @keyframes orderPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7); }
+      50% { transform: scale(1.01); box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); }
+    }
+    .new-order-card {
+      animation: orderPulse 2.5s infinite;
+    }
+
+    /* Thermal receipt printer preview font */
+    .receipt-font {
+      font-family: 'Courier New', Courier, monospace;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 dark:bg-dark-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col transition-colors duration-200">
+
+  <!-- ================= TOP NAVIGATION BAR ================= -->
+  <header class="sticky top-0 z-40 bg-white/90 dark:bg-dark-800/90 backdrop-blur border-b border-slate-200 dark:border-dark-700 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16">
+        
+        <!-- Left: Logo & Store Switcher -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-amber-400 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+            <i data-lucide="utensils-crossed" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-bold text-base tracking-tight" id="lbl-store-name">مطعم ومقهى رانشيلو - نالوت (Ranchello)</span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5 rtl:ml-1.5 rtl:mr-0"></span>
+                <span id="lbl-store-status">LIVE STORE</span>
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 dark:text-slate-400" id="lbl-store-branch">شارع أفريقيا • نالوت، ليبيا • Africa St, Nalut</p>
+          </div>
+        </div>
+
+        <!-- Center: Nav Tabs -->
+        <nav class="hidden md:flex items-center space-x-1 rtl:space-x-reverse bg-slate-100 dark:bg-dark-900/60 p-1 rounded-xl border border-slate-200 dark:border-dark-700">
+          <button onclick="switchTab('kds')" id="tab-btn-kds" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white dark:bg-dark-700 text-brand-600 dark:text-brand-400 shadow-sm flex items-center gap-2">
+            <i data-lucide="layout-grid" class="w-4 h-4"></i>
+            <span data-i18n="kds_view">Kitchen KDS</span>
+            <span id="kds-badge" class="bg-brand-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">5</span>
+          </button>
+          <button onclick="switchTab('catalog')" id="tab-btn-catalog" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-2">
+            <i data-lucide="menu-square" class="w-4 h-4"></i>
+            <span data-i18n="menu_catalog">Menu Catalog</span>
+          </button>
+          <button onclick="switchTab('analytics')" id="tab-btn-analytics" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition-all text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-2">
+            <i data-lucide="bar-chart-3" class="w-4 h-4"></i>
+            <span data-i18n="sales_metrics">Sales & Metrics</span>
+          </button>
+        </nav>
+
+        <!-- Right: Action Controls -->
+        <div class="flex items-center gap-2 sm:gap-3">
+          
+          <!-- Simulate New Incoming Order Button -->
+          <button onclick="simulateNewOrder()" class="flex items-center gap-1.5 bg-gradient-to-r from-brand-500 to-amber-500 hover:from-brand-600 hover:to-amber-600 text-white text-xs font-semibold px-3 py-2 rounded-lg shadow-sm shadow-brand-500/20 active:scale-95 transition-transform" title="Simulate incoming real-time customer order with chime sound">
+            <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            <span class="hidden sm:inline" data-i18n="sim_order">+ Sim Order</span>
+          </button>
+
+          <!-- Audio Test Chime -->
+          <button onclick="testChimeSound()" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-700 rounded-lg transition" title="Test Web Audio KDS Alert Chime">
+            <i data-lucide="volume-2" class="w-5 h-5 text-amber-500"></i>
+          </button>
+
+          <!-- Language Switcher (EN / AR) -->
+          <button onclick="toggleLanguage()" class="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-600 text-xs font-bold hover:bg-slate-100 dark:hover:bg-dark-700 transition flex items-center gap-1">
+            <i data-lucide="languages" class="w-3.5 h-3.5"></i>
+            <span id="lang-indicator">العربية</span>
+          </button>
+
+          <!-- Dark / Light Mode Toggle -->
+          <button onclick="toggleDarkMode()" class="p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-dark-700 rounded-lg transition" title="Toggle Dark/Light Mode">
+            <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+            <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-slate-700"></i>
+          </button>
+
+          <!-- Store Status Toggle (Open / Rush / Closed) -->
+          <!-- Store Switch / Logout Button -->
+          <button onclick="logoutMerchant()" class="px-2.5 py-1.5 rounded-lg border border-red-200 dark:border-red-900/60 bg-red-50/50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 text-xs font-bold transition flex items-center gap-1" title="تبديل المتجر أو تسجيل الخروج">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+            <span class="hidden sm:inline">تبديل المتجر</span>
+          </button>
+
+          <div class="relative">
+            <select id="select-store-status" onchange="updateStoreStatus(this.value)" class="text-xs font-semibold bg-slate-100 dark:bg-dark-700 border border-slate-300 dark:border-dark-600 rounded-lg px-2.5 py-1.5 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand-500">
+              <option value="open">🟢 Accepting Orders</option>
+              <option value="rush">🟠 Rush Surge (+15m)</option>
+              <option value="paused">🔴 Kitchen Paused</option>
+            </select>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Mobile Nav Bar -->
+    <div class="md:hidden flex items-center justify-around border-t border-slate-200 dark:border-dark-700 bg-slate-50 dark:bg-dark-900 p-1.5 text-xs font-medium">
+      <button onclick="switchTab('kds')" class="mobile-tab-btn active px-3 py-1.5 rounded-lg flex items-center gap-1 text-brand-600 font-bold">
+        <i data-lucide="layout-grid" class="w-4 h-4"></i> KDS
+      </button>
+      <button onclick="switchTab('catalog')" class="mobile-tab-btn px-3 py-1.5 rounded-lg flex items-center gap-1 text-slate-600 dark:text-slate-300">
+        <i data-lucide="menu-square" class="w-4 h-4"></i> Catalog
+      </button>
+      <button onclick="switchTab('analytics')" class="mobile-tab-btn px-3 py-1.5 rounded-lg flex items-center gap-1 text-slate-600 dark:text-slate-300">
+        <i data-lucide="bar-chart-3" class="w-4 h-4"></i> Sales
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= MAIN APP CONTAINER ================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+    <!-- ================= TAB 1: KITCHEN DISPLAY SYSTEM (KDS) ================= -->
+    <section id="tab-kds" class="space-y-6">
+      
+      <!-- Top KDS Banner / Live Stats Strip -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+        <div class="bg-white dark:bg-dark-800 p-4 rounded-xl border border-slate-200 dark:border-dark-700 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="stat_active_orders">Active In Kitchen</p>
+            <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1" id="kds-stat-active">5</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-950/50 text-orange-600 dark:text-orange-400 flex items-center justify-center">
+            <i data-lucide="flame" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-dark-800 p-4 rounded-xl border border-slate-200 dark:border-dark-700 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="stat_avg_prep">Avg Prep Speed</p>
+            <h3 class="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">14.5 <span class="text-xs text-slate-400 font-normal">min</span></h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center">
+            <i data-lucide="timer" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-dark-800 p-4 rounded-xl border border-slate-200 dark:border-dark-700 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="stat_today_sales">Today's Revenue</p>
+            <h3 class="text-2xl font-bold text-brand-600 dark:text-brand-400 mt-1">420 د.ل</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-amber-100 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+            <i data-lucide="banknote" class="w-5 h-5"></i>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-dark-800 p-4 rounded-xl border border-slate-200 dark:border-dark-700 shadow-sm flex items-center justify-between">
+          <div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="stat_completed">Completed Today</p>
+            <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1" id="kds-stat-completed">42</h3>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+            <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- KDS Search & Filter Toolbar -->
+      <div class="bg-white dark:bg-dark-800 p-3 rounded-xl border border-slate-200 dark:border-dark-700 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+          <div class="relative w-full max-w-sm">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3 rtl:right-3 rtl:left-auto top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="kds-search" oninput="filterKdsOrders()" placeholder="Search order #, customer, item..." class="w-full pl-9 pr-3 rtl:pr-9 rtl:pl-3 py-1.5 text-xs bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-800 dark:text-slate-100" />
+          </div>
+          <select id="kds-type-filter" onchange="filterKdsOrders()" class="text-xs bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg px-2.5 py-1.5 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-brand-500">
+            <option value="all">All Types (Delivery / Pickup)</option>
+            <option value="delivery">🚗 Delivery Orders</option>
+            <option value="pickup">🛍️ Customer Pickup</option>
+            <option value="dinein">🍽️ Dine-in Express</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="autoFillMockBatch()" class="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-brand-500 dark:hover:text-brand-400 flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-dark-700 hover:bg-slate-50 dark:hover:bg-dark-700 transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span data-i18n="reset_mock">Reset Demo Orders</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KDS 3-COLUMN BOARD -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+        <!-- Column 1: NEW ORDERS (Incoming) -->
+        <div class="flex flex-col bg-slate-100/70 dark:bg-dark-800/60 rounded-2xl p-4 border border-amber-300/60 dark:border-amber-900/40 shadow-inner">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-200 dark:border-amber-900/40">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-amber-500 animate-ping"></span>
+              <h2 class="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span data-i18n="col_new_orders">New Orders</span>
+              </h2>
+            </div>
+            <span id="badge-new-count" class="bg-amber-500 text-white font-bold text-xs px-2.5 py-0.5 rounded-full shadow-sm">2</span>
+          </div>
+
+          <div id="kds-col-new" class="space-y-4 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
+            <!-- Dynamic New Order Cards Inserted Here -->
+          </div>
+        </div>
+
+        <!-- Column 2: PREPARING (In Kitchen) -->
+        <div class="flex flex-col bg-slate-100/70 dark:bg-dark-800/60 rounded-2xl p-4 border border-blue-300/60 dark:border-blue-900/40 shadow-inner">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-blue-200 dark:border-blue-900/40">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+              <h2 class="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span data-i18n="col_preparing">Preparing (Cooking)</span>
+              </h2>
+            </div>
+            <span id="badge-prep-count" class="bg-blue-500 text-white font-bold text-xs px-2.5 py-0.5 rounded-full shadow-sm">2</span>
+          </div>
+
+          <div id="kds-col-prep" class="space-y-4 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
+            <!-- Dynamic Preparing Order Cards Inserted Here -->
+          </div>
+        </div>
+
+        <!-- Column 3: READY FOR PICKUP (Awaiting Courier / Handover) -->
+        <div class="flex flex-col bg-slate-100/70 dark:bg-dark-800/60 rounded-2xl p-4 border border-emerald-300/60 dark:border-emerald-900/40 shadow-inner">
+          <div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-200 dark:border-emerald-900/40">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-emerald-500"></span>
+              <h2 class="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <span data-i18n="col_ready">Ready for Pickup</span>
+              </h2>
+            </div>
+            <span id="badge-ready-count" class="bg-emerald-500 text-white font-bold text-xs px-2.5 py-0.5 rounded-full shadow-sm">1</span>
+          </div>
+
+          <div id="kds-col-ready" class="space-y-4 flex-1 overflow-y-auto max-h-[calc(100vh-280px)] pr-1">
+            <!-- Dynamic Ready Order Cards Inserted Here -->
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ================= TAB 2: MENU & CATALOG MANAGEMENT ================= -->
+    <section id="tab-catalog" class="hidden space-y-6">
+      
+      <!-- Catalog Header & Controls -->
+      <div class="bg-white dark:bg-dark-800 p-5 rounded-2xl border border-slate-200 dark:border-dark-700 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+            <i data-lucide="utensils" class="w-5 h-5 text-brand-500"></i>
+            <span data-i18n="cat_title">Menu & Inventory Manager</span>
+          </h2>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5" data-i18n="cat_subtitle">Toggle live item availability, update prices instantly, or add new dishes to online catalog.</p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <button onclick="openAiScanModal()" class="w-full sm:w-auto bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center justify-center gap-2 shadow-md transition">
+            <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+            <span>🤖 مسح المنيو / الفاتورة بالذكاء الاصطناعي (Gemini 3.7)</span>
+          </button>
+          <button onclick="openAddItemModal()" class="w-full sm:w-auto bg-brand-500 hover:bg-brand-600 text-white text-xs font-semibold px-4 py-2 rounded-xl flex items-center justify-center gap-2 shadow-sm transition">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span data-i18n="btn_add_item">Add New Item</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Categories Filter Tabs -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+        <button onclick="filterCatalogCategory('all')" class="cat-pill active px-4 py-2 rounded-xl text-xs font-semibold bg-brand-500 text-white shadow-sm transition" data-cat="all">All Items (<span id="cat-count-all">10</span>)</button>
+        <button onclick="filterCatalogCategory('Burgers')" class="cat-pill px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand-500 transition" data-cat="Burgers">🍔 Burgers</button>
+        <button onclick="filterCatalogCategory('Shawarma')" class="cat-pill px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand-500 transition" data-cat="Shawarma">🌯 Shawarma & Grills</button>
+        <button onclick="filterCatalogCategory('Sides')" class="cat-pill px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand-500 transition" data-cat="Sides">🍟 Sides & Appetizers</button>
+        <button onclick="filterCatalogCategory('Beverages')" class="cat-pill px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand-500 transition" data-cat="Beverages">🥤 Beverages & Juices</button>
+        <button onclick="filterCatalogCategory('Desserts')" class="cat-pill px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand-500 transition" data-cat="Desserts">🍰 Desserts</button>
+      </div>
+
+      <!-- Catalog Grid of Cards -->
+      <div id="catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <!-- Rendered Catalog Items -->
+      </div>
+    </section>
+
+
+    <!-- ================= TAB 3: REAL-TIME SALES & ANALYTICS ================= -->
+    <section id="tab-analytics" class="hidden space-y-6">
+      
+      <!-- Sales Hero Banner -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <div class="bg-gradient-to-br from-brand-500 to-amber-600 text-white p-6 rounded-2xl shadow-lg relative overflow-hidden">
+          <div class="relative z-10">
+              <p class="text-xs uppercase tracking-wider text-brand-100 font-bold" data-i18n="an_gross_sales">Gross Sales (Today)</p>
+            <h2 id="an-gross-sales-val" class="text-3xl font-extrabold mt-1">580.00 د.ل</h2>
+            <div class="mt-4 flex items-center gap-2 text-xs font-medium bg-black/15 w-fit px-2.5 py-1 rounded-full">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5 text-emerald-300"></i>
+              <span>+18.4% vs last Monday</span>
+            </div>
+          </div>
+          <i data-lucide="circle-dollar-sign" class="w-32 h-32 absolute -right-6 -bottom-6 text-white/10"></i>
+        </div>
+
+        <div class="bg-white dark:bg-dark-800 p-6 rounded-2xl border border-slate-200 dark:border-dark-700 shadow-sm flex flex-col justify-between">
+          <div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider" data-i18n="an_orders_count">Total Orders</p>
+            <h3 id="an-orders-count-val" class="text-3xl font-bold text-slate-900 dark:text-white mt-1">54</h3>
+            <p class="text-xs text-emerald-500 mt-1 font-medium">98.2% Acceptance Rate</p>
+          </div>
+          <div class="pt-4 border-t border-slate-100 dark:border-dark-700 flex justify-between text-xs text-slate-500">
+            <span>Avg Ticket: <strong class="text-slate-800 dark:text-slate-200">24.50 د.ل</strong></span>
+            <span>Cancelled: <strong class="text-red-500">1 (1.8%)</strong></span>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-dark-800 p-6 rounded-2xl border border-slate-200 dark:border-dark-700 shadow-sm flex flex-col justify-between">
+          <div>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider" data-i18n="an_net_payout">Net Settled Payout</p>
+            <h3 id="an-net-payout-val" class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">522.00 د.ل</h3>
+            <p id="an-commission-lbl" class="text-xs text-slate-400 mt-1">عمولة المنصة 10% (صافي أرباح المتجر 90%) • 10% platform fee</p>
+          </div>
+          <div class="pt-4 border-t border-slate-100 dark:border-dark-700 flex items-center justify-between text-xs">
+            <span class="text-slate-500">Auto Payout: Daily (02:00 AM)</span>
+            <span class="text-brand-500 font-semibold cursor-pointer hover:underline">View IBAN</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- Hourly Sales Graph (Chart.js) -->
+        <div class="lg:col-span-2 bg-white dark:bg-dark-800 p-5 rounded-2xl border border-slate-200 dark:border-dark-700 shadow-sm">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h3 class="font-bold text-slate-900 dark:text-white text-sm" data-i18n="chart_hourly_title">Hourly Sales & Order Volume (Today)</h3>
+              <p class="text-xs text-slate-400">Peak rush hours detected between 1:00 PM and 9:00 PM</p>
+            </div>
+            <div class="flex items-center gap-1 bg-slate-100 dark:bg-dark-900 p-1 rounded-lg text-xs">
+              <button class="px-2.5 py-1 rounded bg-white dark:bg-dark-700 font-semibold text-slate-800 dark:text-slate-100 shadow-xs">Today</button>
+              <button class="px-2.5 py-1 rounded text-slate-500 hover:text-slate-900 dark:hover:text-white">Week</button>
+            </div>
+          </div>
+          <div class="h-64">
+            <canvas id="hourlySalesChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Top Selling Items -->
+        <div class="bg-white dark:bg-dark-800 p-5 rounded-2xl border border-slate-200 dark:border-dark-700 shadow-sm flex flex-col justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm mb-3" data-i18n="top_items_title">🔥 Best Sellers (Today)</h3>
+            <div class="space-y-3.5">
+              
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-slate-800 dark:text-slate-200">شاورما رانشيلو بالجبنة</span>
+                  <span class="font-bold text-brand-500">28 طلب (308 د.ل)</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 dark:bg-dark-700 rounded-full overflow-hidden">
+                  <div class="h-full bg-brand-500 rounded-full" style="width: 85%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-slate-800 dark:text-slate-200">صحن كباب لحم على الفحم</span>
+                  <span class="font-bold text-amber-500">22 طلب (396 د.ل)</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 dark:bg-dark-700 rounded-full overflow-hidden">
+                  <div class="h-full bg-amber-500 rounded-full" style="width: 68%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-slate-800 dark:text-slate-200">ديوان رانشيلو متبل</span>
+                  <span class="font-bold text-emerald-500">19 طلب (209 د.ل)</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 dark:bg-dark-700 rounded-full overflow-hidden">
+                  <div class="h-full bg-emerald-500 rounded-full" style="width: 58%"></div>
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-semibold text-slate-800 dark:text-slate-200">همبورغر عادية</span>
+                  <span class="font-bold text-blue-500">15 طلب (135 د.ل)</span>
+                </div>
+                <div class="w-full h-2 bg-slate-100 dark:bg-dark-700 rounded-full overflow-hidden">
+                  <div class="h-full bg-blue-500 rounded-full" style="width: 45%"></div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-100 dark:border-dark-700">
+            <p class="text-xs text-slate-400 text-center">Data automatically synced with central dispatch mesh</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Store Financial Ledger & Settlement Table (90% Net Share) -->
+      <div class="bg-white dark:bg-dark-800 p-6 rounded-2xl border border-slate-200 dark:border-dark-700 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 class="font-bold text-slate-900 dark:text-white text-base flex items-center gap-2">
+              <i data-lucide="receipt" class="w-5 h-5 text-emerald-500"></i>
+              <span>محضر مستحقات المتجر وسجل الطلبات (صافي 90%)</span>
+            </h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400">حصة المتجر المعتمدة 90% من قيمة الوجبات بعد خصم 10% رسوم تشغيل المنصة</p>
+          </div>
+          <span class="text-xs font-bold px-3 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-full border border-emerald-300 dark:border-emerald-800">
+            مستحقات معتمدة 90%
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-right">
+            <thead>
+              <tr class="border-b border-slate-200 dark:border-dark-700 text-slate-400 font-semibold">
+                <th class="py-2.5 px-3">رقم الطلب</th>
+                <th class="py-2.5 px-3">الزبون</th>
+                <th class="py-2.5 px-3">طريقة الدفع</th>
+                <th class="py-2.5 px-3">الحالة</th>
+                <th class="py-2.5 px-3">إجمالي الطلب</th>
+                <th class="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-bold">صافي المتجر (90%)</th>
+              </tr>
+            </thead>
+            <tbody id="an-ledger-tbody" class="divide-y divide-slate-100 dark:divide-dark-700/60 font-medium">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ================= MODALS ================= -->
+
+  <!-- Thermal Receipt Print Modal -->
+  <div id="receipt-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white text-slate-900 rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4 transform transition-all">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+        <h4 class="font-bold text-sm flex items-center gap-1.5 text-slate-800">
+          <i data-lucide="printer" class="w-4 h-4 text-brand-500"></i>
+          Kitchen Ticket #<span id="rcpt-order-id">ORD-8821</span>
+        </h4>
+        <button onclick="closeReceiptModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Thermal Ticket Box -->
+      <div id="receipt-body" class="receipt-font bg-amber-50/50 p-4 border border-dashed border-slate-300 rounded-lg text-xs leading-relaxed text-slate-800 space-y-2">
+        <!-- Rendered in JS -->
+      </div>
+
+      <div class="flex items-center gap-2 pt-2">
+        <button onclick="window.print()" class="flex-1 bg-slate-900 hover:bg-black text-white text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-sm">
+          <i data-lucide="printer" class="w-4 h-4"></i> Print POS Slip
+        </button>
+        <button onclick="closeReceiptModal()" class="px-4 py-2.5 border border-slate-200 text-xs font-medium rounded-xl hover:bg-slate-50">
+          Close
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add New Item Modal -->
+  <div id="add-item-modal" class="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-dark-800 text-slate-900 dark:text-slate-100 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-dark-700">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i data-lucide="plus-circle" class="w-5 h-5 text-brand-500"></i>
+          <span data-i18n="modal_add_title">Add New Dish to Menu</span>
+        </h3>
+        <button onclick="closeAddItemModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="add-item-form" onsubmit="handleAddNewItem(event)" class="space-y-3.5 text-xs">
+        <div>
+          <label class="block font-semibold mb-1">Item Title (English)</label>
+          <input type="text" id="new-item-title" required placeholder="e.g. Gourmet Truffle Fries" class="w-full px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg focus:ring-2 focus:ring-brand-500" />
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Item Title (Arabic)</label>
+          <input type="text" id="new-item-title-ar" required placeholder="مثال: بطاطس الكمأة الفاخرة" dir="rtl" class="w-full px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg focus:ring-2 focus:ring-brand-500" />
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold mb-1">Category</label>
+            <select id="new-item-cat" class="w-full px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg focus:ring-2 focus:ring-brand-500">
+              <option value="Burgers">Burgers</option>
+              <option value="Shawarma">Shawarma</option>
+              <option value="Sides">Sides</option>
+              <option value="Beverages">Beverages</option>
+              <option value="Desserts">Desserts</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold mb-1">السعر (د.ل)</label>
+            <input type="number" step="0.5" id="new-item-price" required placeholder="24.00" class="w-full px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg focus:ring-2 focus:ring-brand-500" />
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold mb-1">Description</label>
+          <textarea id="new-item-desc" rows="2" placeholder="Ingredients, taste notes, prep details..." class="w-full px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg focus:ring-2 focus:ring-brand-500"></textarea>
+        </div>
+
+        <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-200 dark:border-dark-700">
+          <button type="button" onclick="closeAddItemModal()" class="px-4 py-2 rounded-lg border border-slate-200 dark:border-dark-700 font-medium hover:bg-slate-100 dark:hover:bg-dark-700">Cancel</button>
+          <button type="submit" class="px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600 text-white font-semibold shadow-sm">Save & Publish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- AI Menu & Invoice Scanner Modal -->
+  <div id="ai-scan-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 hidden">
+    <div class="bg-white dark:bg-dark-800 text-slate-900 dark:text-slate-100 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-dark-700">
+        <h3 class="font-bold text-base flex items-center gap-2">
+          <i data-lucide="sparkles" class="w-5 h-5 text-purple-500"></i>
+          <span>الماسح الذكي لقوائم الطعام وفواتير السوبرماركت (Gemini 3.7 Flash) 🧠</span>
+        </h3>
+        <button onclick="closeAiScanModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto space-y-4 flex-1 pr-1 text-xs">
+        <p class="text-slate-500 dark:text-slate-400">
+          التقط صورة لمنيو المطعم أو فاتورة مشتريات السوبرماركت أو الصق النص، وسيقوم الذكاء الاصطناعي باستخراج الأصناف وتصنيفها وتحديد أسعارها بالدينار الليبي فوريًا!
+        </p>
+
+        <!-- Input Type Switcher -->
+        <div class="grid grid-cols-2 gap-2 bg-slate-100 dark:bg-dark-900 p-1 rounded-xl">
+          <button type="button" id="ai-tab-btn-text" onclick="switchAiTab('text')" class="py-2 text-xs font-bold rounded-lg bg-white dark:bg-dark-700 text-purple-600 dark:text-purple-400 shadow-xs transition">
+            📝 لصق نص المنيو / الفاتورة
+          </button>
+          <button type="button" id="ai-tab-btn-image" onclick="switchAiTab('image')" class="py-2 text-xs font-bold rounded-lg text-slate-500 dark:text-slate-400 transition">
+            📸 رفع صورة المنيو / الفاتورة
+          </button>
+        </div>
+
+        <!-- Text Input Section -->
+        <div id="ai-section-text" class="space-y-2">
+          <label class="block font-semibold">نص قائمة الطعام أو الفاتورة:</label>
+          <textarea id="ai-input-text" rows="5" placeholder="الصق هنا أسماء الوجبات أو الفاتورة، مثال:&#10;مطعم قصر نالوت&#10;صحن كباب لحم خروف بلدي 28 د.ل&#10;بيتزا القلعة حجم عائلي 20 دينار&#10;سلطة مشوية بزيت زيتون الجبل 8 د.ل..." class="w-full px-3 py-2 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-xl font-mono text-xs focus:ring-2 focus:ring-purple-500"></textarea>
+        </div>
+
+        <!-- Image Upload Section -->
+        <div id="ai-section-image" class="hidden space-y-2">
+          <label class="block font-semibold">اختر أو اسحب صورة المنيو / الفاتورة:</label>
+          <div class="border-2 border-dashed border-slate-300 dark:border-dark-600 rounded-xl p-6 text-center hover:border-purple-500 transition cursor-pointer" onclick="document.getElementById('ai-file-input').click()">
+            <i data-lucide="image-up" class="w-10 h-10 text-purple-500 mx-auto mb-2"></i>
+            <p class="font-bold text-slate-700 dark:text-slate-200">اضغط لرفع صورة المنيو أو الفاتورة</p>
+            <p class="text-[11px] text-slate-400">PNG, JPG, JPEG حتى 10 ميجابايت</p>
+            <input type="file" id="ai-file-input" accept="image/*" class="hidden" onchange="handleAiImageSelect(event)" />
+          </div>
+          <div id="ai-image-preview-box" class="hidden flex items-center gap-3 p-2 bg-slate-100 dark:bg-dark-900 rounded-xl">
+            <img id="ai-image-preview" class="w-16 h-16 object-cover rounded-lg border border-slate-300 dark:border-dark-700" />
+            <div class="flex-1">
+              <p id="ai-image-name" class="font-bold text-xs truncate text-slate-800 dark:text-white"></p>
+              <p class="text-[10px] text-emerald-500 font-bold">جاهز للتحليل بالذكاء الاصطناعي 🟢</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Store Type Selection -->
+        <div class="flex items-center gap-3">
+          <label class="font-semibold">نوع النشاط:</label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="ai-store-type" value="restaurant" checked class="text-purple-600" />
+            <span>مطعم ومأكولات 🥩</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer">
+            <input type="radio" name="ai-store-type" value="grocery" class="text-purple-600" />
+            <span>سوبرماركت وبقالة 🛒</span>
+          </label>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="ai-loading-box" class="hidden p-4 rounded-xl bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800 text-center space-y-2">
+          <div class="animate-spin w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full mx-auto"></div>
+          <p class="font-bold text-purple-700 dark:text-purple-300">جاري قراءة المنيو وتحليله عبر Gemini 3.7 Flash...</p>
+        </div>
+
+        <!-- Extracted Items Table Preview -->
+        <div id="ai-results-box" class="hidden space-y-3">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-slate-800 dark:text-white flex items-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+              <span>الأصناف المستخرجة (<span id="ai-extracted-count">0</span> صنف)</span>
+            </h4>
+            <span class="text-[11px] text-slate-400">راجع الأسعار قبل الحفظ</span>
+          </div>
+
+          <div class="max-h-60 overflow-y-auto border border-slate-200 dark:border-dark-700 rounded-xl">
+            <table class="w-full text-right text-xs">
+              <thead class="bg-slate-100 dark:bg-dark-900 sticky top-0">
+                <tr>
+                  <th class="p-2 w-8"><input type="checkbox" id="ai-select-all" checked onchange="toggleAiSelectAll(this)" /></th>
+                  <th class="p-2">الصنف</th>
+                  <th class="p-2">القسم</th>
+                  <th class="p-2">السعر (د.ل)</th>
+                </tr>
+              </thead>
+              <tbody id="ai-items-tbody" class="divide-y divide-slate-100 dark:divide-dark-700">
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-dark-700">
+        <button type="button" onclick="closeAiScanModal()" class="px-4 py-2 rounded-xl border border-slate-200 dark:border-dark-700 font-medium hover:bg-slate-100 dark:hover:bg-dark-700 text-xs">إلغاء</button>
+        <div class="flex items-center gap-2">
+          <button type="button" id="btn-run-ai-scan" onclick="runAiMenuScan()" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>تحليل بالذكاء الاصطناعي 🧠</span>
+          </button>
+          <button type="button" id="btn-save-ai-items" onclick="saveExtractedAiItems()" class="hidden px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 transition">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>إضافة الكل للمطعم 🚀</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <!-- ================= LOGIC & JAVASCRIPT ================= -->
+  <script>
+    // ================= 1. STATE & DATA STORE =================
+    let currentLang = 'ar';
+    let isDarkMode = true;
+    let currentStore = null;
+
+    // Multi-Tenant Store Directory in Nalut
+    const storeMap = {
+      'store_nalut_ranchello': {
+        id: 'store_nalut_ranchello',
+        name: 'مطعم ومقهى رانشيلو - نالوت',
+        district: 'شارع أفريقيا، نالوت',
+        address: 'شارع أفريقيا',
+        city: 'نالوت، ليبيا',
+        type: 'restaurant'
+      },
+      'store_nalut_akakus': {
+        id: 'store_nalut_akakus',
+        name: 'بيتزا ومعجنات أكاكوس',
+        district: 'شارع تونس، نالوت',
+        address: 'شارع تونس',
+        city: 'نالوت، ليبيا',
+        type: 'pizza'
+      },
+      'store_nalut_rixos': {
+        id: 'store_nalut_rixos',
+        name: 'ريكسوس للتسوق والمواد الغذائية',
+        district: 'المدخل الرئيسي، نالوت',
+        address: 'المدخل الرئيسي',
+        city: 'نالوت، ليبيا',
+        type: 'grocery'
+      },
+      'store_nalut_alhanaa': {
+        id: 'store_nalut_alhanaa',
+        name: 'صيدلية الهناء المركزية',
+        district: 'مقابل جزيرة مصرف الجمهورية، نالوت',
+        address: 'طريق المستشفى - جزيرة المصرف',
+        city: 'نالوت، ليبيا',
+        type: 'pharmacy'
+      }
+    };
+
+    function getStoreOrders(storeId) {
+      if (storeId === 'store_nalut_akakus') {
+        return [
+          {
+            id: "WSL-9501",
+            customer: "معاذ عسكر",
+            phone: "+218 91 333 7788",
+            type: "delivery",
+            status: "new",
+            timeReceived: Date.now() - (2 * 60 * 1000),
+            prepTimeSelected: 25,
+            total: 54.00,
+            notes: "عجينة رقيقة وجبنة زيادة",
+            items: [
+              { name: "بيتزا أكاكوس الخاصة (حجم كبير)", qty: 1, price: 30.00, notes: "صلصة حارة خفيفة" },
+              { name: "بيتزا مارغريتا كلاسيك", qty: 1, price: 20.00 },
+              { name: "مشروب غازي كوكاكولا", qty: 1, price: 4.00 }
+            ]
+          },
+          {
+            id: "WSL-9504",
+            customer: "عصام الباروني",
+            phone: "+218 92 444 1122",
+            type: "delivery",
+            status: "prep",
+            timeReceived: Date.now() - (8 * 60 * 1000),
+            prepTimeSelected: 25,
+            total: 38.00,
+            notes: "كالزوني مخبوز جيداً",
+            items: [
+              { name: "كالزوني إيطالي محشي لحم وجبن", qty: 1, price: 18.00 },
+              { name: "أصابع جبنة الموزاريلا المقلية (5 قطع)", qty: 1, price: 12.00 },
+              { name: "مشروب فانتا برتقال", qty: 2, price: 4.00 }
+            ]
+          },
+          {
+            id: "WSL-9490",
+            customer: "هيثم التائب",
+            phone: "+218 94 555 9900",
+            type: "delivery",
+            status: "ready",
+            timeReceived: Date.now() - (22 * 60 * 1000),
+            prepTimeSelected: 25,
+            total: 50.00,
+            courier: {
+              name: "كابتن طارق النالوتي",
+              vehicle: "هيونداي فيرنا (نالوت)",
+              eta: "أمام المحل مباشرة"
+            },
+            items: [
+              { name: "بيتزا تونة ليبية بالزيتون الأسود", qty: 1, price: 24.00 },
+              { name: "بيتزا باربيكيو تشيكن", qty: 1, price: 26.00 }
+            ]
+          }
+        ];
+      } else if (storeId === 'store_nalut_rixos') {
+        return [
+          {
+            id: "WSL-88021",
+            customer: "د. مسعود قاسم",
+            phone: "+218 91 665 4411",
+            type: "delivery",
+            status: "prep",
+            timeReceived: Date.now() - (6 * 60 * 1000),
+            prepTimeSelected: 15,
+            total: 64.50,
+            notes: "التأكد من تاريخ صلاحية الحليب",
+            items: [
+              { name: "زيت زيتون نالوتي بكر عصرة أولى 1 لتر", qty: 1, price: 22.00 },
+              { name: "حليب البقرة الحلوب كامل الدسم 1 لتر", qty: 3, price: 4.50 },
+              { name: "مياه نالوت المعدنية شد 6 قارورات", qty: 2, price: 4.00 },
+              { name: "تونة الطاهي قطع فاخرة بزيت دوار الشمس", qty: 4, price: 3.50 }
+            ]
+          },
+          {
+            id: "WSL-88026",
+            customer: "فاطمة التائب",
+            phone: "+218 92 332 1199",
+            type: "delivery",
+            status: "new",
+            timeReceived: Date.now() - (2 * 60 * 1000),
+            prepTimeSelected: 15,
+            total: 41.00,
+            notes: "الاتصال عند الوصول للباب",
+            items: [
+              { name: "أرز بسمتي الشعلان عنبر 5 كجم", qty: 1, price: 24.00 },
+              { name: "مكرونة سباغيتي إيطالية 500 جم", qty: 3, price: 3.00 },
+              { name: "صلصة طماطم الليبية معجون مركز 400 جم", qty: 2, price: 4.00 }
+            ]
+          }
+        ];
+      } else if (storeId === 'store_nalut_alhanaa') {
+        return [
+          {
+            id: "WSL-88030",
+            customer: "أ. سالم يوسف",
+            phone: "+218 94 888 2233",
+            type: "delivery",
+            status: "ready",
+            timeReceived: Date.now() - (12 * 60 * 1000),
+            prepTimeSelected: 15,
+            total: 38.00,
+            courier: {
+              name: "كابتن وسيم النالوتي",
+              vehicle: "تويوتا بريفيا",
+              eta: "بانتظار الاستلام"
+            },
+            items: [
+              { name: "بانادول إكسترا أحمر أقراص 500 ملغ (24 قرص)", qty: 2, price: 8.50 },
+              { name: "فيتامين سي فوار 1000 ملغ بطعم البرتقال", qty: 1, price: 11.00 },
+              { name: "محلول تعقيم وغسيل عدسات 360 مل", qty: 1, price: 10.00 }
+            ]
+          }
+        ];
+      }
+
+      // Default: Ranchello
+      return [
+        {
+          id: "WSL-9402",
+          customer: "محمد سالم الورفلي",
+          phone: "+218 91 123 4567",
+          type: "delivery",
+          status: "new",
+          timeReceived: Date.now() - (2 * 60 * 1000),
+          prepTimeSelected: 15,
+          total: 48.00,
+          notes: "سلطة مشوية إضافية وخبز تنور ساخن",
+          items: [
+            { name: "صحن مشويات مشكل قصر نالوت", qty: 1, price: 28.00, notes: "مشويات جبلية على الفحم" },
+            { name: "بيتزا القلعة سوبريم حجم كبير", qty: 1, price: 20.00, notes: "جبنة موزاريلا إضافية" }
+          ]
+        },
+        {
+          id: "WSL-9405",
+          customer: "أحمد بن عثمان النالوتي",
+          phone: "+218 92 876 5432",
+          type: "delivery",
+          status: "new",
+          timeReceived: Date.now() - (1 * 60 * 1000),
+          prepTimeSelected: 25,
+          total: 55.00,
+          notes: "التوصيل لحي الشهداء قرب المسجد",
+          items: [
+            { name: "وجبة شاورما عربي دبل", qty: 2, price: 18.00, notes: "صلصة ثوم زيادة" },
+            { name: "بطاطس مقلية مقرمشة", qty: 1, price: 8.00 },
+            { name: "عصير ليمون ونعناع طبيعي", qty: 2, price: 5.50 }
+          ]
+        },
+        {
+          id: "WSL-9398",
+          customer: "طارق العكرمي",
+          phone: "+218 94 333 2211",
+          type: "delivery",
+          status: "prep",
+          timeReceived: Date.now() - (10 * 60 * 1000),
+          prepTimeSelected: 15,
+          total: 36.00,
+          notes: "جاري الشواء على الفحم",
+          items: [
+            { name: "كباب لحم وطني نالوتي", qty: 1, price: 26.00 },
+            { name: "سلطة عربية طازجة", qty: 1, price: 10.00 }
+          ]
+        },
+        {
+          id: "WSL-9388",
+          customer: "إبراهيم الجبالي",
+          phone: "+218 91 444 5566",
+          type: "delivery",
+          status: "ready",
+          timeReceived: Date.now() - (20 * 60 * 1000),
+          prepTimeSelected: 15,
+          total: 62.00,
+          courier: {
+            name: "كابتن وسيم النالوتي",
+            vehicle: "كيا سيراتو (نالوت 4-11204)",
+            eta: "دقيقتان للوصول"
+          },
+          items: [
+            { name: "مشويات عائلية مشكلة", qty: 1, price: 55.00 },
+            { name: "خبز تنور نالوتي", qty: 2, price: 3.50 }
+          ]
+        }
+      ];
+    }
+
+    function getStoreCatalog(storeId) {
+      if (storeId === 'store_nalut_akakus') {
+        return [
+          {
+            id: "prod_akakus_01",
+            name: "Akakus Special Pizza Large",
+            nameAr: "بيتزا أكاكوس الخاصة (حجم كبير)",
+            category: "بيتزا ومعجنات",
+            price: 30.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80",
+            desc: "صلصة إيطالية خاصة، دجاج، لحم مفروم، فطر، زيتون، وجبنة موزاريلا غنية"
+          },
+          {
+            id: "prod_akakus_02",
+            name: "Libyan Tuna Pizza",
+            nameAr: "بيتزا تونة ليبية بالزيتون الأسود",
+            category: "بيتزا ومعجنات",
+            price: 24.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=400&q=80",
+            desc: "تونة فاخرة، بصل مكرمل، فلفل أخضر، زيتون أسود، وجبنة موزاريلا"
+          },
+          {
+            id: "prod_akakus_03",
+            name: "BBQ Chicken Pizza",
+            nameAr: "بيتزا باربيكيو تشيكن",
+            category: "بيتزا ومعجنات",
+            price: 26.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=400&q=80",
+            desc: "قطع صدر دجاج متبلة بصوص الباربيكيو المدخن مع الموزاريلا"
+          },
+          {
+            id: "prod_akakus_04",
+            name: "Classic Margherita",
+            nameAr: "بيتزا مارغريتا كلاسيك",
+            category: "بيتزا ومعجنات",
+            price: 20.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=400&q=80",
+            desc: "صلصة الطماطم الإيطالية، ريحان طازج، وجبنة موزاريلا أصيلة"
+          },
+          {
+            id: "prod_akakus_05",
+            name: "Fried Mozzarella Sticks",
+            nameAr: "أصابع جبنة الموزاريلا المقلية (5 قطع)",
+            category: "المقبلات والمشروبات",
+            price: 12.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1531749668029-2db88e4276c7?auto=format&fit=crop&w=400&q=80",
+            desc: "أصابع موزاريلا مقرمشة وذابحة مع صلصة المارينارا الإيطالية"
+          },
+          {
+            id: "prod_akakus_06",
+            name: "Italian Meat Calzone",
+            nameAr: "كالزوني إيطالي محشي لحم وجبن",
+            category: "بيتزا ومعجنات",
+            price: 18.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1541745537411-b8046dc6d66c?auto=format&fit=crop&w=400&q=80",
+            desc: "فطيرة كالزوني مخبوزة على الحجر محشية لحم مفروم وجبنة موزاريلا وصلصة"
+          }
+        ];
+      } else if (storeId === 'store_nalut_rixos') {
+        return [
+          {
+            id: "prod_rixos_01",
+            name: "Virgin Olive Oil Nalut 1L",
+            nameAr: "زيت زيتون نالوتي بكر عصرة أولى 1 لتر",
+            category: "زيوت ومواد تموينية",
+            price: 22.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=400&q=80",
+            desc: "زيت زيتون جبلي أصيل من معاصر نالوت العريقة"
+          },
+          {
+            id: "prod_rixos_02",
+            name: "Basmati Rice 5kg",
+            nameAr: "أرز بسمتي الشعلان عنبر 5 كجم",
+            category: "حبوب وأرز",
+            price: 24.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=400&q=80",
+            desc: "أرز بسمتي طويل الحبة ممتاز للكبسة والطبخ اليومي"
+          },
+          {
+            id: "prod_rixos_03",
+            name: "Full Cream Milk 1L",
+            nameAr: "حليب البقرة الحلوب كامل الدسم 1 لتر",
+            category: "ألبان وأجبان",
+            price: 4.50,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1550583724-b2692b85b150?auto=format&fit=crop&w=400&q=80",
+            desc: "حليب طازج معقم كامل الدسم غني بالكالسيوم"
+          }
+        ];
+      } else if (storeId === 'store_nalut_alhanaa') {
+        return [
+          {
+            id: "prod_alhanaa_01",
+            name: "Panadol Extra 500mg (24 Tab)",
+            nameAr: "بانادول إكسترا أحمر أقراص 500 ملغ (24 قرص)",
+            category: "مسكنات وأدوية عامة",
+            price: 8.50,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=400&q=80",
+            desc: "مسكن فعال للصداع والآلام وخافض للحرارة"
+          },
+          {
+            id: "prod_alhanaa_02",
+            name: "Effervescent Vitamin C 1000mg",
+            nameAr: "فيتامين سي فوار 1000 ملغ بطعم البرتقال",
+            category: "فيتامينات ومكملات",
+            price: 11.00,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1577401239170-897942555fb3?auto=format&fit=crop&w=400&q=80",
+            desc: "أقراص فوارة سريعة الامتصاص لتعزيز المناعة"
+          }
+        ];
+      }
+
+      // Default: Ranchello
+      return [
+        {
+          id: "prod_ranchello_shawarma_cheese",
+          name: "Shawarma with Melted Cheese",
+          nameAr: "شاورما بالجبنة الذائبة",
+          category: "السندوتشات والفطائر",
+          price: 11.00,
+          inStock: true,
+          img: "https://images.unsplash.com/photo-1529006557810-274b9b2fc783?auto=format&fit=crop&w=400&q=80",
+          desc: "سندوتش شاورما دجاج متبل مع جبنة ذائبة وثومية وبطاطا"
+        },
+        {
+          id: "prod_ranchello_diwan_regular",
+          name: "Ranchello Spiced Diwan",
+          nameAr: "ديوان رانشيلو عادي",
+          category: "السندوتشات والفطائر",
+          price: 11.00,
+          inStock: true,
+          img: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=400&q=80",
+          desc: "سندوتش ديوان رانشيلو المتبل الشهير بنكهة الجبل"
+        },
+        {
+          id: "prod_ranchello_burger_regular",
+          name: "Classic Beef Burger",
+          nameAr: "همبورغر لحم كلاسيك",
+          category: "السندوتشات والفطائر",
+          price: 9.00,
+          inStock: true,
+          img: "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=400&q=80",
+          desc: "همبورغر لحم فردي كلاسيكي مع الطماطم والخس وصلصة رانشيلو"
+        },
+        {
+          id: "prod_ranchello_plate_kebab",
+          name: "Charcoal Kebab Plate",
+          nameAr: "صحن كباب لحم وطني",
+          category: "الصحون والمقبلات",
+          price: 18.00,
+          inStock: true,
+          img: "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=400&q=80",
+          desc: "صحن كباب مشوي على الفحم مع طماطم وفلفل مشوي وخبز تنور"
+        },
+        {
+          id: "prod_ranchello_shish_rice",
+          name: "Shish Tawook with Rice",
+          nameAr: "شيش طاووق مع أرز بسمتي",
+          category: "الصحون والمقبلات",
+          price: 17.00,
+          inStock: true,
+          img: "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=400&q=80",
+          desc: "قطع شيش طاووق متبلة فوق طبق الأرز البسمتي المفلفل"
+        },
+        {
+          id: "prod_ranchello_lentil_soup",
+          name: "Mountain Lentil Soup",
+          nameAr: "شوربة عدس جبلية دافئة",
+          category: "الصحون والمقبلات",
+          price: 5.00,
+          inStock: true,
+          img: "https://images.unsplash.com/photo-1547592166-23ac45744acd?auto=format&fit=crop&w=400&q=80",
+          desc: "شوربة عدس دافئة ومغذية مع الخبز المحمص والليمون"
+        }
+      ];
+    }
+
+    // Active in-memory collections
+    let orders = getStoreOrders('store_nalut_ranchello');
+    let catalog = getStoreCatalog('store_nalut_ranchello');
+
+    // Socket.io Connection
+    let socket = null;
+    try {
+      if (typeof io !== 'undefined') {
+        socket = io();
+        socket.on('connect', () => {
+          console.log('✅ Merchant Portal connected to Wasel Backend:', socket.id);
+          const activeSubId = currentStore ? currentStore.id : 'store_nalut_ranchello';
+          socket.emit('store:subscribe', { store_id: activeSubId });
+          if (typeof showToast === 'function') showToast('متصل بخادم واصل نالوت لحظياً 🟢', 'success');
+        });
+
+        socket.on('merchant:new_order', (order) => {
+          // Multi-tenant store isolation: strictly ignore orders for other stores
+          if (order && currentStore && order.store_id && order.store_id !== currentStore.id) {
+            return;
+          }
+          console.log('🔔 New incoming order received in kitchen:', order);
+          playOrderChime();
+          if (typeof showToast === 'function') {
+            showToast(`🔔 طلب جديد وارد للمطبخ #${order.order_number || order.id}!`, 'warning');
+          }
+          
+          if (order && !orders.some(o => o.id === order.id || o.id === order.order_number)) {
+            orders.unshift({
+              id: order.order_number || `#WSL-${order.id.substring(0, 5)}`,
+              customer: order.customer_name || 'زبون واصل (نالوت)',
+              phone: order.customer_phone || '+218 91 234 5678',
+              type: 'delivery',
+              status: 'new',
+              timeReceived: Date.now(),
+              prepTimeSelected: 15,
+              total: order.total_amount_lyd || 35.0,
+              notes: order.notes || 'طلب من تطبيق واصل نالوت',
+              items: (order.items && order.items.length) ? order.items.map(i => ({
+                name: i.name,
+                qty: i.quantity || 1,
+                price: i.unit_price_lyd || 15.0,
+                notes: i.options || ''
+              })) : [
+                { name: 'صحن مشويات مشكل قصر نالوت', qty: 1, price: 28.0, notes: 'خبز تنور إضافي' }
+              ]
+            });
+            renderKDS();
+            renderAnalytics();
+          }
+        });
+      }
+    } catch(err) {
+      console.warn('Socket initialization info:', err);
+    }
+    // Translations Dictionary
+    const i18n = {
+      en: {
+        kds_view: "Kitchen KDS",
+        menu_catalog: "Menu Catalog",
+        sales_metrics: "Sales & Metrics",
+        sim_order: "+ Sim Order",
+        stat_active_orders: "Active In Kitchen",
+        stat_avg_prep: "Avg Prep Speed",
+        stat_today_sales: "Today's Revenue",
+        stat_completed: "Completed Today",
+        reset_mock: "Reset Demo Orders",
+        col_new_orders: "New Orders",
+        col_preparing: "Preparing (Cooking)",
+        col_ready: "Ready for Pickup",
+        cat_title: "Menu & Inventory Manager",
+        cat_subtitle: "Toggle live item availability, update prices instantly, or add new dishes to online catalog.",
+        btn_add_item: "Add New Item",
+        an_gross_sales: "Gross Sales (Today)",
+        an_orders_count: "Total Orders",
+        an_net_payout: "Net Settled Payout",
+        chart_hourly_title: "Hourly Sales & Order Volume (Today)",
+        top_items_title: "🔥 Best Sellers (Today)",
+        modal_add_title: "Add New Dish to Menu"
+      },
+      ar: {
+        kds_view: "شاشة المطبخ KDS",
+        menu_catalog: "قائمة الأصناف",
+        sales_metrics: "المبيعات والتقارير",
+        sim_order: "+ طلب تجريبي",
+        stat_active_orders: "الطلبات الحالية",
+        stat_avg_prep: "متوسط وقت التحضير",
+        stat_today_sales: "إيرادات اليوم",
+        stat_completed: "المكتمل اليوم",
+        reset_mock: "إعادة ضبط الطلبات",
+        col_new_orders: "طلبات جديدة",
+        col_preparing: "قيد التحضير (المطبخ)",
+        col_ready: "جاهز للاستلام والتوصيل",
+        cat_title: "إدارة القائمة والمخزون المباشر",
+        cat_subtitle: "تحكم بتوفر الأصناف فوريًا، عدّل الأسعار بضغطة زر، أو أضف وجبات جديدة للقائمة.",
+        btn_add_item: "إضافة صنف جديد",
+        an_gross_sales: "إجمالي المبيعات (اليوم)",
+        an_orders_count: "عدد الطلبات",
+        an_net_payout: "صافي المستحقات",
+        chart_hourly_title: "مبيعات الساعات وحجم الطلبات (اليوم)",
+        top_items_title: "🔥 الأصناف الأكثر مبيعاً (اليوم)",
+        modal_add_title: "إضافة طبق جديد للقائمة"
+      }
+    };
+
+    // ================= 2. WEB AUDIO API SOUND GENERATOR =================
+    function playOrderChime() {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        const ctx = new AudioContext();
+        
+        // Resume if suspended by autoplay policy
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+
+        const now = ctx.currentTime;
+        // 3-note melodic chime (G5: 783.99Hz, C6: 1046.50Hz, E6: 1318.51Hz)
+        const notes = [783.99, 1046.50, 1318.51];
+        notes.forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+          
+          gain.gain.setValueAtTime(0, now + idx * 0.14);
+          gain.gain.linearRampToValueAtTime(0.35, now + idx * 0.14 + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.14 + 0.7);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          
+          osc.start(now + idx * 0.14);
+          osc.stop(now + idx * 0.14 + 0.75);
+        });
+      } catch (err) {
+        console.warn("Audio chime error:", err);
+      }
+    }
+
+    function testChimeSound() {
+      playOrderChime();
+      showToast("🔔 Order Alert Chime Played!", "info");
+    }
+
+    // ================= 3. RENDER KDS TICKETS =================
+    function renderKDS() {
+      const colNew = document.getElementById('kds-col-new');
+      const colPrep = document.getElementById('kds-col-prep');
+      const colReady = document.getElementById('kds-col-ready');
+
+      const searchQuery = (document.getElementById('kds-search')?.value || '').toLowerCase();
+      const typeFilter = document.getElementById('kds-type-filter')?.value || 'all';
+
+      colNew.innerHTML = '';
+      colPrep.innerHTML = '';
+      colReady.innerHTML = '';
+
+      let newCount = 0;
+      let prepCount = 0;
+      let readyCount = 0;
+
+      orders.forEach(order => {
+        // Search & Type filter check
+        if (typeFilter !== 'all' && order.type !== typeFilter) return;
+        if (searchQuery) {
+          const matchId = order.id.toLowerCase().includes(searchQuery);
+          const matchCust = order.customer.toLowerCase().includes(searchQuery);
+          const matchItems = order.items.some(i => i.name.toLowerCase().includes(searchQuery));
+          if (!matchId && !matchCust && !matchItems) return;
+        }
+
+        const elapsedMins = Math.floor((Date.now() - order.timeReceived) / 60000);
+        
+        if (order.status === 'new') {
+          newCount++;
+          colNew.appendChild(createNewOrderCard(order, elapsedMins));
+        } else if (order.status === 'prep') {
+          prepCount++;
+          colPrep.appendChild(createPrepOrderCard(order, elapsedMins));
+        } else if (order.status === 'ready') {
+          readyCount++;
+          colReady.appendChild(createReadyOrderCard(order, elapsedMins));
+        }
+      });
+
+      // Update badge counters
+      document.getElementById('badge-new-count').textContent = newCount;
+      document.getElementById('badge-prep-count').textContent = prepCount;
+      document.getElementById('badge-ready-count').textContent = readyCount;
+      document.getElementById('kds-stat-active').textContent = newCount + prepCount + readyCount;
+      document.getElementById('kds-badge').textContent = newCount + prepCount;
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Helper: Build Item List HTML
+    function buildItemsHtml(items) {
+      return items.map(item => `
+        <div class="flex items-start justify-between py-1 border-b border-slate-100 dark:border-dark-700/60 last:border-none text-xs">
+          <div>
+            <span class="font-bold text-brand-600 dark:text-brand-400 mr-1.5 rtl:ml-1.5 rtl:mr-0">${item.qty}x</span>
+            <span class="font-medium text-slate-800 dark:text-slate-200">${item.name}</span>
+            ${item.notes ? `<div class="text-[11px] text-amber-600 dark:text-amber-400 font-normal mt-0.5">↳ ${item.notes}</div>` : ''}
+          </div>
+          <span class="text-slate-400 font-medium">${(item.price * item.qty).toFixed(2)} د.ل</span>
+        </div>
+      `).join('');
+    }
+
+    // Card 1: New Order
+    function createNewOrderCard(order, elapsedMins) {
+      const card = document.createElement('div');
+      card.className = "new-order-card bg-white dark:bg-dark-800 rounded-2xl p-4 border-2 border-amber-400 dark:border-amber-500 shadow-md space-y-3 relative";
+      
+      const isUrgent = elapsedMins >= 5;
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-black text-base text-slate-900 dark:text-white">${order.id}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${order.type === 'delivery' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'} uppercase tracking-wide">
+              ${order.type === 'delivery' ? '🚗 Delivery' : '🛍️ Pickup'}
+            </span>
+          </div>
+          <span class="text-xs font-bold px-2 py-0.5 rounded-md ${isUrgent ? 'bg-red-500 text-white animate-bounce' : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300'}">
+            ⏱️ ${elapsedMins}m ago
+          </span>
+        </div>
+
+        <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+          <span class="font-semibold text-slate-800 dark:text-slate-200">${order.customer}</span>
+          <span>${order.total.toFixed(2)} د.ل</span>
+        </div>
+
+        ${order.notes ? `
+          <div class="p-2 bg-amber-50 dark:bg-amber-950/30 border-l-2 rtl:border-r-2 rtl:border-l-0 border-amber-500 rounded text-xs text-amber-800 dark:text-amber-200 font-medium">
+            ⚠️ ${order.notes}
+          </div>
+        ` : ''}
+
+        <!-- Items -->
+        <div class="bg-slate-50 dark:bg-dark-900/70 p-2.5 rounded-xl space-y-1">
+          ${buildItemsHtml(order.items)}
+        </div>
+
+        <!-- Prep Time Adjuster -->
+        <div class="space-y-1.5 pt-1">
+          <label class="text-[11px] font-bold text-slate-500 dark:text-slate-400 block">وقت التحضير المقدر (دقيقة):</label>
+          <div class="grid grid-cols-3 gap-1.5">
+            <button onclick="setOrderPrepTime('${order.id}', 15, this)" class="prep-btn py-1.5 rounded-lg text-xs font-bold border ${order.prepTimeSelected === 15 ? 'bg-brand-500 text-white border-brand-500' : 'bg-slate-100 dark:bg-dark-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-dark-600'}">15 دقيقة</button>
+            <button onclick="setOrderPrepTime('${order.id}', 25, this)" class="prep-btn py-1.5 rounded-lg text-xs font-bold border ${order.prepTimeSelected === 25 ? 'bg-brand-500 text-white border-brand-500' : 'bg-slate-100 dark:bg-dark-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-dark-600'}">25 دقيقة</button>
+            <button onclick="setOrderPrepTime('${order.id}', 35, this)" class="prep-btn py-1.5 rounded-lg text-xs font-bold border ${order.prepTimeSelected === 35 ? 'bg-brand-500 text-white border-brand-500' : 'bg-slate-100 dark:bg-dark-700 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-dark-600'}">35 دقيقة</button>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-100 dark:border-dark-700">
+          <button onclick="rejectOrder('${order.id}')" class="py-2 px-3 rounded-xl border border-red-200 dark:border-red-900/60 text-red-600 dark:text-red-400 text-xs font-bold hover:bg-red-50 dark:hover:bg-red-950/30 transition">
+            اعتذار (Reject)
+          </button>
+          <button onclick="acceptOrder('${order.id}')" class="py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-500/20 active:scale-95 transition flex items-center justify-center gap-1">
+            <i data-lucide="chef-hat" class="w-3.5 h-3.5"></i> قبول وبدء التحضير
+          </button>
+        </div>
+
+        <button onclick="showReceiptModal('${order.id}')" class="w-full text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-center flex items-center justify-center gap-1">
+          <i data-lucide="printer" class="w-3 h-3"></i> View & Print Ticket
+        </button>
+      `;
+      return card;
+    }
+
+    // Card 2: Preparing Order
+    function createPrepOrderCard(order, elapsedMins) {
+      const card = document.createElement('div');
+      card.className = "bg-white dark:bg-dark-800 rounded-2xl p-4 border border-blue-200 dark:border-blue-900/60 shadow-sm space-y-3";
+      
+      const targetPrep = order.prepTimeSelected || 25;
+      const targetTime = order.timeReceived + (targetPrep * 60 * 1000);
+      const remainingMs = targetTime - Date.now();
+      const isOverdue = remainingMs < 0;
+      const absRemainingSec = Math.floor(Math.abs(remainingMs) / 1000);
+      const remMins = Math.floor(absRemainingSec / 60);
+      const remSecs = absRemainingSec % 60;
+      const timeFormatted = `${String(remMins).padStart(2, '0')}:${String(remSecs).padStart(2, '0')}`;
+      const totalPrepSeconds = targetPrep * 60;
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - order.timeReceived) / 1000));
+      const progressPercent = Math.min(100, Math.round((elapsedSeconds / totalPrepSeconds) * 100));
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-black text-base text-slate-900 dark:text-white">${order.id}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${order.type === 'delivery' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300'} uppercase">
+              ${order.type === 'delivery' ? '🚗 توصيل' : '🛍️ استلام'}
+            </span>
+          </div>
+          <span class="text-xs font-bold px-2.5 py-1 rounded-md ${isOverdue ? 'bg-red-500 text-white animate-pulse' : 'bg-blue-100 dark:bg-blue-950/60 text-blue-800 dark:text-blue-300'}">
+            ${isOverdue ? '⚠️ متأخر +' + timeFormatted : '⏱️ باقي ' + timeFormatted}
+          </span>
+        </div>
+
+        <div class="text-xs text-slate-500 dark:text-slate-400 flex justify-between">
+          <span class="font-medium text-slate-800 dark:text-slate-200">${order.customer}</span>
+          <span class="font-bold">${order.total.toFixed(2)} د.ل</span>
+        </div>
+
+        <!-- Live Countdown Timer & Progress Bar -->
+        <div class="p-2.5 rounded-xl border ${isOverdue ? 'bg-red-50 dark:bg-red-950/30 border-red-300 dark:border-red-900/60' : 'bg-blue-50/60 dark:bg-blue-950/30 border-blue-200 dark:border-blue-900/40'} space-y-1.5">
+          <div class="flex items-center justify-between text-xs font-bold">
+            <span class="flex items-center gap-1.5 ${isOverdue ? 'text-red-600 dark:text-red-400' : 'text-blue-600 dark:text-blue-400'}">
+              <i data-lucide="${isOverdue ? 'alert-triangle' : 'timer'}" class="w-4 h-4"></i>
+              <span>${isOverdue ? '⚠️ متأخر عن وقت التحضير:' : '⏳ العد التنازلي للتحضير:'}</span>
+            </span>
+            <span class="font-mono text-sm font-black ${isOverdue ? 'text-red-600 dark:text-red-400 animate-pulse' : 'text-brand-600 dark:text-brand-400'}">
+              ${isOverdue ? '+' + timeFormatted + ' د' : timeFormatted + ' د'}
+            </span>
+          </div>
+          <div class="w-full bg-slate-200 dark:bg-dark-900 rounded-full h-2 overflow-hidden">
+            <div class="h-full rounded-full transition-all duration-300 ${isOverdue ? 'bg-red-500' : 'bg-blue-500'}" style="width: ${progressPercent}%"></div>
+          </div>
+        </div>
+
+        <!-- Items -->
+        <div class="bg-slate-50 dark:bg-dark-900/70 p-2.5 rounded-xl space-y-1">
+          ${buildItemsHtml(order.items)}
+        </div>
+
+        <!-- Mark as Ready Button -->
+        <button onclick="markOrderReady('${order.id}')" class="w-full py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold shadow-md shadow-emerald-500/20 active:scale-95 transition flex items-center justify-center gap-1.5">
+          <i data-lucide="check-check" class="w-4 h-4"></i> الوجبة جاهزة للاستلام 🍳 (Mark Ready)
+        </button>
+
+        <button onclick="showReceiptModal('${order.id}')" class="w-full text-[11px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-center flex items-center justify-center gap-1">
+          <i data-lucide="printer" class="w-3 h-3"></i> طباعة إيصال المطبخ
+        </button>
+      `;
+      return card;
+    }
+
+    // Card 3: Ready for Pickup
+    function createReadyOrderCard(order, elapsedMins) {
+      const card = document.createElement('div');
+      card.className = "bg-white dark:bg-dark-800 rounded-2xl p-4 border border-emerald-200 dark:border-emerald-900/60 shadow-sm space-y-3";
+      
+      const courierInfo = order.courier || {
+        name: "Searching Nearest Driver...",
+        vehicle: "Dispatch in progress",
+        eta: "Matching"
+      };
+
+      card.innerHTML = `
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="font-black text-base text-emerald-600 dark:text-emerald-400">${order.id}</span>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300">
+              READY ✅
+            </span>
+          </div>
+          <span class="text-xs text-slate-400">${order.customer}</span>
+        </div>
+
+        <!-- Assigned Courier Widget -->
+        <div class="p-3 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 rounded-xl space-y-1 text-xs">
+          <div class="flex items-center justify-between font-bold text-emerald-900 dark:text-emerald-200">
+            <span class="flex items-center gap-1">
+              <i data-lucide="bike" class="w-3.5 h-3.5"></i> ${courierInfo.name}
+            </span>
+            <span class="text-[10px] bg-emerald-200 dark:bg-emerald-800 text-emerald-900 dark:text-emerald-100 px-1.5 py-0.5 rounded">${courierInfo.eta}</span>
+          </div>
+          <p class="text-slate-500 dark:text-slate-400 text-[11px]">${courierInfo.vehicle}</p>
+        </div>
+
+        <!-- Items Summary -->
+        <div class="bg-slate-50 dark:bg-dark-900/70 p-2.5 rounded-xl space-y-1">
+          ${buildItemsHtml(order.items)}
+        </div>
+
+        <!-- Handover Complete Button -->
+        <button onclick="completeHandover('${order.id}')" class="w-full py-2.5 rounded-xl bg-slate-900 dark:bg-slate-100 hover:bg-black dark:hover:bg-white text-white dark:text-slate-900 text-xs font-bold shadow-md transition flex items-center justify-center gap-1.5">
+          <i data-lucide="package-check" class="w-4 h-4"></i> Handover to Courier (Done)
+        </button>
+      `;
+      return card;
+    }
+
+    // Order Actions
+    function setOrderPrepTime(orderId, mins, btnEl) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        order.prepTimeSelected = mins;
+        renderKDS();
+      }
+    }
+
+    // Fetch live orders from backend API
+    async function fetchLiveOrders() {
+      try {
+        const activeStoreId = currentStore ? currentStore.id : 'store_nalut_ranchello';
+        const res = await fetch('/api/v1/orders?store_id=' + activeStoreId);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data) && json.data.length > 0) {
+          const apiOrders = json.data.map(o => ({
+            id: o.order_number || ('WSL-' + (o.id || '').substring(0, 5)),
+            originalId: o.id,
+            customer: o.customer_name || 'زبون واصل نالوت',
+            phone: o.customer_phone || '+218 91 000 0000',
+            type: 'delivery',
+            status: (o.status === 'placed' || o.status === 'pending') ? 'new'
+                  : (o.status === 'accepted' || o.status === 'preparing') ? 'prep'
+                  : (o.status === 'ready_for_pickup') ? 'ready' : 'delivered',
+            timeReceived: new Date(o.created_at || Date.now()).getTime(),
+            prepTimeSelected: 20,
+            total: o.total_amount_lyd || o.subtotal_lyd || 30.0,
+            notes: o.notes || '',
+            courier: o.assigned_driver ? {
+              name: o.assigned_driver.name || o.assigned_driver.full_name || 'كابتن معتمد',
+              vehicle: o.assigned_driver.vehicle || o.assigned_driver.vehicle_model || 'مركبة واصل',
+              eta: 'في الطريق'
+            } : null,
+            items: (o.items || []).map(it => ({
+              name: it.name_ar || it.name || 'وجبة رانشيلو',
+              qty: it.quantity || 1,
+              price: it.price_lyd || it.unit_price_lyd || 12.0,
+              notes: it.options || ''
+            }))
+          })).filter(o => o.status !== 'delivered');
+
+          if (apiOrders.length > 0) {
+            orders = apiOrders;
+            renderKDS();
+          }
+        }
+      } catch (err) {
+        console.warn('Could not fetch live orders:', err);
+      }
+    }
+
+    // Call on load
+    setTimeout(fetchLiveOrders, 1000);
+
+    function acceptOrder(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        order.status = 'prep';
+        showToast(`تم قبول الطلب ${orderId}! جاري التجهيز في المطبخ 🍳`, 'success');
+        renderKDS();
+
+        // Send to backend API
+        const targetId = order.originalId || orderId;
+        fetch(`/api/v1/orders/${targetId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'preparing' })
+        }).catch(err => console.warn('Status update error:', err));
+
+        if (socket) {
+          socket.emit('order:status_update', { order_id: targetId, status: 'preparing' });
+        }
+      }
+    }
+
+    function rejectOrder(orderId) {
+      const reason = prompt("أدخل سبب الاعتذار عن الطلب (مثلاً: نفاد الكمية / ضغط العمل):", "ضغط طلبات حالي");
+      if (reason !== null) {
+        const order = orders.find(o => o.id === orderId);
+        orders = orders.filter(o => o.id !== orderId);
+        showToast(`تم رفض الطلب ${orderId}: ${reason}`, 'warning');
+        renderKDS();
+
+        const targetId = order ? (order.originalId || orderId) : orderId;
+        fetch(`/api/v1/orders/${targetId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'cancelled', notes: reason })
+        }).catch(err => console.warn('Cancel error:', err));
+      }
+    }
+
+    function markOrderReady(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        order.status = 'ready';
+        if (!order.courier) {
+          order.courier = {
+            name: "كابتن طارق العكرمي",
+            vehicle: "تويوتا هايلوكس (نالوت 2-88421)",
+            eta: "أمام المحل مباشرة"
+          };
+        }
+        showToast(`الطلب ${orderId} جاهز للتسليم! تم إشعار السائق 🚀`, 'success');
+        renderKDS();
+
+        const targetId = order.originalId || orderId;
+        fetch(`/api/v1/orders/${targetId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'ready_for_pickup' })
+        }).catch(err => console.warn('Ready status error:', err));
+
+        if (socket) {
+          socket.emit('order:status_update', { order_id: targetId, status: 'ready_for_pickup' });
+        }
+      }
+    }
+
+    function completeHandover(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        orders = orders.filter(o => o.id !== orderId);
+        const compElem = document.getElementById('kds-stat-completed');
+        if (compElem) {
+          compElem.textContent = parseInt(compElem.textContent || 42) + 1;
+        }
+        showToast(`تم تسليم الطلب ${orderId} للكابتن بنجاح! 🚗`, 'success');
+        renderKDS();
+
+        const targetId = order.originalId || orderId;
+        fetch(`/api/v1/orders/${targetId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'out_for_delivery' })
+        }).catch(err => console.warn('Handover status error:', err));
+
+        if (socket) {
+          socket.emit('order:status_update', { order_id: targetId, status: 'out_for_delivery' });
+        }
+      }
+    }
+
+    // Simulate Incoming Order with Real API Checkout Execution
+    async function simulateNewOrder() {
+      const mockNames = ["معاذ النالوتي", "عمر الباروني", "فرج عسكر", "سالم يحيى", "طارق العكرمي"];
+      const randomName = mockNames[Math.floor(Math.random() * mockNames.length)];
+      const randomPhone = "+218 9" + (Math.random() > 0.5 ? "1" : "2") + " " + Math.floor(1000000 + Math.random() * 9000000);
+
+      showToast("جاري إرسال طلب حقيقي إلى الخادم وتوجيه الكابتن...", "info");
+
+      try {
+        const res = await fetch('/api/v1/orders/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            store_id: (currentStore ? currentStore.id : 'store_nalut_ranchello'),
+            customer_name: randomName,
+            customer_phone: randomPhone,
+            items: [
+              { product_id: 'prod_ranchello_shawarma_cheese', quantity: 2 },
+              { product_id: 'prod_ranchello_burger_regular', quantity: 1 }
+            ],
+            delivery_address: 'شارع النور، حي الشهداء، نالوت',
+            delivery_latitude: 31.8740,
+            delivery_longitude: 10.9790,
+            payment_method: 'cash_on_delivery'
+          })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+          playOrderChime();
+          const ord = data.data.order || data.data;
+          showToast(`✅ تم إنشاء طلب حقيقي بنجاح #${ord.order_number || ord.id}! السائق: ${data.data.assigned_driver ? data.data.assigned_driver.name : 'جاري البحث'}`, 'success');
+          fetchLiveOrders();
+          return;
+        }
+      } catch (e) {
+        console.warn('Online checkout simulation fallback:', e);
+      }
+
+      // Offline fallback
+      playOrderChime();
+      const randId = "WSL-" + Math.floor(1000 + Math.random() * 9000);
+      orders.unshift({
+        id: randId,
+        customer: randomName,
+        phone: randomPhone,
+        type: "delivery",
+        status: "new",
+        timeReceived: Date.now(),
+        prepTimeSelected: 20,
+        total: 31.00,
+        notes: "طلب مباشر من تطبيق واصل نالوت",
+        items: [
+          { name: "شاورما بالجبنة الذائبة", qty: 2, price: 11.00, notes: "ثومية زيادة" },
+          { name: "همبورغر لحم كلاسيك", qty: 1, price: 9.00 }
+        ]
+      });
+      renderKDS();
+    }
+
+    function autoFillMockBatch() {
+      location.reload();
+    }
+
+    function filterKdsOrders() {
+      renderKDS();
+    }
+
+    // ================= 4. MENU & CATALOG MANAGEMENT =================
+    function renderCatalog(filterCat = 'all') {
+      const grid = document.getElementById('catalog-grid');
+      grid.innerHTML = '';
+
+      const filtered = filterCat === 'all' 
+        ? catalog 
+        : catalog.filter(item => item.category === filterCat);
+
+      filtered.forEach(item => {
+        const card = document.createElement('div');
+        card.className = "bg-white dark:bg-dark-800 rounded-2xl border border-slate-200 dark:border-dark-700 overflow-hidden shadow-sm hover:shadow-md transition group flex flex-col justify-between";
+        
+        card.innerHTML = `
+          <div>
+            <div class="relative h-44 w-full overflow-hidden bg-slate-100 dark:bg-dark-900">
+              <img src="${item.img}" alt="${item.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80'" />
+              
+              <!-- Stock Badge Overlay -->
+              <div class="absolute top-3 right-3 rtl:right-auto rtl:left-3">
+                <span class="px-2.5 py-1 rounded-full text-xs font-bold shadow-md ${item.inStock ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}">
+                  ${item.inStock ? 'In Stock' : 'Out of Stock'}
+                </span>
+              </div>
+
+              <!-- Category Tag -->
+              <div class="absolute bottom-3 left-3 rtl:left-auto rtl:right-3">
+                <span class="px-2.5 py-0.5 rounded-md text-[11px] font-semibold bg-black/60 backdrop-blur-xs text-white">
+                  ${item.category}
+                </span>
+              </div>
+            </div>
+
+            <div class="p-4 space-y-2">
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h4 class="font-bold text-slate-900 dark:text-white text-sm">${item.name}</h4>
+                  <p class="text-xs text-slate-400 font-medium" dir="rtl">${item.nameAr}</p>
+                </div>
+              </div>
+              <p class="text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${item.desc}</p>
+            </div>
+          </div>
+
+          <!-- Bottom Price & Availability Controls -->
+          <div class="p-4 pt-0 border-t border-slate-100 dark:border-dark-700/60 mt-2 space-y-3">
+            <div class="flex items-center justify-between pt-3">
+              
+              <!-- In-line Price Editor -->
+              <div class="flex items-center gap-1">
+                <span class="text-xs font-semibold text-slate-400">د.ل</span>
+                <input type="number" step="0.5" value="${item.price.toFixed(2)}" onchange="updateItemPrice('${item.id}', this.value)" class="w-20 px-2 py-1 bg-slate-50 dark:bg-dark-900 border border-slate-200 dark:border-dark-700 rounded-lg text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-right" />
+              </div>
+
+              <!-- In-Stock Toggle Switch -->
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" ${item.inStock ? 'checked' : ''} onchange="toggleItemStock('${item.id}', this.checked)" class="sr-only peer">
+                <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-dark-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] rtl:after:right-[2px] rtl:after:left-auto peer-checked:after:-translate-x-full after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-emerald-500"></div>
+                <span class="text-xs font-medium text-slate-600 dark:text-slate-300 ml-2 rtl:mr-2 rtl:ml-0">${item.inStock ? 'متوفر 🟢' : 'نفذ 🔴'}</span>
+              </label>
+
+            </div>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      // Update count badge
+      const countEl = document.getElementById('cat-count-all');
+      if (countEl) countEl.textContent = catalog.length;
+    }
+
+    function toggleItemStock(itemId, isChecked) {
+      const item = catalog.find(i => String(i.id) === String(itemId));
+      if (item) {
+        item.inStock = isChecked;
+        showToast(`"${item.nameAr || item.name}" ${isChecked ? 'متوفر الآن بالطلب 🟢' : 'تم إيقافه (نفدت الكمية) 🔴'}`, isChecked ? 'success' : 'warning');
+        renderCatalog();
+
+        fetch(`/api/v1/products/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_available: isChecked })
+        }).catch(err => console.warn('Stock sync error:', err));
+      }
+    }
+
+    function updateItemPrice(itemId, newPrice) {
+      const price = parseFloat(newPrice);
+      if (isNaN(price) || price <= 0) return;
+      const item = catalog.find(i => String(i.id) === String(itemId));
+      if (item) {
+        item.price = price;
+        showToast(`تم تحديث سعر "${item.nameAr || item.name}" إلى ${price.toFixed(2)} د.ل ✅`, 'success');
+
+        fetch(`/api/v1/products/${itemId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ price: price, price_lyd: price })
+        }).catch(err => console.warn('Price sync error:', err));
+      }
+    }
+
+    function filterCatalogCategory(category) {
+      document.querySelectorAll('.cat-pill').forEach(btn => {
+        if (btn.getAttribute('data-cat') === category) {
+          btn.className = "cat-pill active px-4 py-2 rounded-xl text-xs font-semibold bg-brand-500 text-white shadow-sm transition";
+        } else {
+          btn.className = "cat-pill px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-dark-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-dark-700 hover:border-brand-500 transition";
+        }
+      });
+      renderCatalog(category);
+    }
+
+    function openAddItemModal() {
+      document.getElementById('add-item-modal').classList.remove('hidden');
+    }
+
+    function closeAddItemModal() {
+      document.getElementById('add-item-modal').classList.add('hidden');
+    }
+
+    function handleAddNewItem(e) {
+      e.preventDefault();
+      const title = document.getElementById('new-item-title').value;
+      const titleAr = document.getElementById('new-item-title-ar').value;
+      const cat = document.getElementById('new-item-cat').value;
+      const price = parseFloat(document.getElementById('new-item-price').value);
+      const desc = document.getElementById('new-item-desc').value;
+
+      const newItem = {
+        id: catalog.length + 1,
+        name: title,
+        nameAr: titleAr,
+        category: cat,
+        price: price,
+        inStock: true,
+        img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80",
+        desc: desc || "Fresh chef's special recipe prepared on order."
+      };
+
+      catalog.unshift(newItem);
+      closeAddItemModal();
+      document.getElementById('add-item-form').reset();
+      showToast(`Dish "${title}" added to catalog!`, 'success');
+      renderCatalog();
+    }
+
+    // ================= 4.1 AI MENU & INVOICE OCR ENGINE (GEMINI 3.7) =================
+    let currentAiImageBase64 = null;
+    let extractedAiItems = [];
+
+    function openAiScanModal() {
+      document.getElementById('ai-scan-modal').classList.remove('hidden');
+      switchAiTab('text');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function closeAiScanModal() {
+      document.getElementById('ai-scan-modal').classList.add('hidden');
+      document.getElementById('ai-loading-box').classList.add('hidden');
+      document.getElementById('ai-results-box').classList.add('hidden');
+      document.getElementById('btn-save-ai-items').classList.add('hidden');
+      document.getElementById('btn-run-ai-scan').classList.remove('hidden');
+    }
+
+    function switchAiTab(tab) {
+      const btnText = document.getElementById('ai-tab-btn-text');
+      const btnImage = document.getElementById('ai-tab-btn-image');
+      const secText = document.getElementById('ai-section-text');
+      const secImage = document.getElementById('ai-section-image');
+
+      if (tab === 'text') {
+        btnText.className = 'py-2 text-xs font-bold rounded-lg bg-white dark:bg-dark-700 text-purple-600 dark:text-purple-400 shadow-xs transition';
+        btnImage.className = 'py-2 text-xs font-bold rounded-lg text-slate-500 dark:text-slate-400 transition';
+        secText.classList.remove('hidden');
+        secImage.classList.add('hidden');
+      } else {
+        btnImage.className = 'py-2 text-xs font-bold rounded-lg bg-white dark:bg-dark-700 text-purple-600 dark:text-purple-400 shadow-xs transition';
+        btnText.className = 'py-2 text-xs font-bold rounded-lg text-slate-500 dark:text-slate-400 transition';
+        secImage.classList.remove('hidden');
+        secText.classList.add('hidden');
+      }
+    }
+
+    function handleAiImageSelect(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        currentAiImageBase64 = e.target.result;
+        document.getElementById('ai-image-preview').src = currentAiImageBase64;
+        document.getElementById('ai-image-name').textContent = file.name;
+        document.getElementById('ai-image-preview-box').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function runAiMenuScan() {
+      const textContent = document.getElementById('ai-input-text').value.trim();
+      const storeType = document.querySelector('input[name="ai-store-type"]:checked')?.value || 'restaurant';
+
+      if (!currentAiImageBase64 && !textContent) {
+        showToast('يرجى كتابة نص المنيو أو رفع صورة أولاً!', 'warning');
+        return;
+      }
+
+      document.getElementById('ai-loading-box').classList.remove('hidden');
+      document.getElementById('ai-results-box').classList.add('hidden');
+      document.getElementById('btn-run-ai-scan').disabled = true;
+
+      try {
+        const response = await fetch('/api/v1/ai/parse-menu-invoice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text_content: textContent,
+            image_base64: currentAiImageBase64,
+            store_type: storeType
+          })
+        });
+
+        const result = await response.json();
+
+        if (!result.success || !result.data || !result.data.items) {
+          throw new Error(result.error || 'لم يتمكن الذكاء الاصطناعي من استخراج الأصناف');
+        }
+
+        extractedAiItems = result.data.items;
+        renderAiExtractedTable(extractedAiItems);
+        showToast(`🎉 تم استخراج ${extractedAiItems.length} صنف بنجاح بالذكاء الاصطناعي!`, 'success');
+      } catch (err) {
+        console.error('AI OCR Scan Error:', err);
+        showToast(`خطأ في المعالجة: ${err.message}`, 'warning');
+      } finally {
+        document.getElementById('ai-loading-box').classList.add('hidden');
+        document.getElementById('btn-run-ai-scan').disabled = false;
+      }
+    }
+
+    function renderAiExtractedTable(items) {
+      const tbody = document.getElementById('ai-items-tbody');
+      tbody.innerHTML = '';
+
+      items.forEach((item, idx) => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50 dark:hover:bg-dark-700/50';
+        tr.innerHTML = `
+          <td class="p-2"><input type="checkbox" class="ai-item-check" data-idx="${idx}" checked /></td>
+          <td class="p-2">
+            <input type="text" value="${item.nameAr || item.name}" class="w-full bg-transparent font-bold text-slate-800 dark:text-white border-b border-transparent focus:border-purple-500 focus:outline-none" onchange="extractedAiItems[${idx}].nameAr = this.value" />
+            <div class="text-[10px] text-slate-400 truncate">${item.descAr || ''}</div>
+          </td>
+          <td class="p-2">
+            <span class="px-2 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-medium text-[10px]">${item.category}</span>
+          </td>
+          <td class="p-2">
+            <div class="flex items-center gap-1">
+              <input type="number" step="0.5" value="${item.priceLyd}" class="w-16 px-1 py-0.5 bg-slate-100 dark:bg-dark-900 rounded font-mono font-bold text-amber-500" onchange="extractedAiItems[${idx}].priceLyd = parseFloat(this.value)" />
+              <span class="text-[10px] text-slate-400">د.ل</span>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('ai-extracted-count').textContent = items.length;
+      document.getElementById('ai-results-box').classList.remove('hidden');
+      document.getElementById('btn-save-ai-items').classList.remove('hidden');
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function toggleAiSelectAll(masterCheckbox) {
+      document.querySelectorAll('.ai-item-check').forEach(cb => cb.checked = masterCheckbox.checked);
+    }
+
+    function saveExtractedAiItems() {
+      const checkboxes = document.querySelectorAll('.ai-item-check:checked');
+      let addedCount = 0;
+
+      checkboxes.forEach(cb => {
+        const idx = parseInt(cb.getAttribute('data-idx'));
+        const item = extractedAiItems[idx];
+        if (item) {
+          catalog.unshift({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            name: item.nameAr,
+            nameAr: item.nameAr,
+            category: item.category.includes('مشوي') ? 'Shawarma' : (item.category.includes('بيتزا') ? 'Burgers' : 'Sides'),
+            price: item.priceLyd || 15.0,
+            inStock: true,
+            img: "https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=400&q=80",
+            desc: item.descAr || "وجبة طازجة مضافة بالذكاء الاصطناعي."
+          });
+          addedCount++;
+        }
+      });
+
+      closeAiScanModal();
+      renderCatalog();
+      showToast(`🚀 تم إضافة ${addedCount} صنف جديد إلى قائمة المطعم بنجاح!`, 'success');
+    }
+
+    // ================= 5. THERMAL RECEIPT MODAL =================
+    function showReceiptModal(orderId) {
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      document.getElementById('rcpt-order-id').textContent = order.id;
+      const body = document.getElementById('receipt-body');
+      
+      const itemRows = order.items.map(i => `
+        <div class="flex justify-between">
+          <span>${i.qty}x ${i.name}</span>
+          <span>${(i.price * i.qty).toFixed(2)} د.ل</span>
+        </div>
+        ${i.notes ? `<div class="text-[10px] pl-3">** ${i.notes}</div>` : ''}
+      `).join('');
+
+      body.innerHTML = `
+        <div class="text-center pb-2 border-b border-dashed border-slate-400">
+          <p class="font-bold text-sm">مطعم ومقهى رانشيلو</p>
+          <p class="text-[10px]">شارع أفريقيا - نالوت، ليبيا | 091-2345678</p>
+          <p class="text-[10px] mt-1">Date: ${new Date().toLocaleTimeString()} | Cashier: KDS-01</p>
+        </div>
+
+        <div class="py-2 border-b border-dashed border-slate-400">
+          <p class="font-bold">ORDER #${order.id} [${order.type.toUpperCase()}]</p>
+          <p class="text-[11px]">Customer: ${order.customer}</p>
+          <p class="text-[11px]">Phone: ${order.phone}</p>
+        </div>
+
+        <div class="py-2 space-y-1 border-b border-dashed border-slate-400">
+          ${itemRows}
+        </div>
+
+        <div class="pt-2 flex justify-between font-bold text-sm">
+          <span>TOTAL AMOUNT:</span>
+          <span>${order.total.toFixed(2)} د.ل</span>
+        </div>
+
+        ${order.notes ? `
+          <div class="pt-2 text-[11px] font-bold text-red-600">
+            NOTE: ${order.notes}
+          </div>
+        ` : ''}
+
+        <div class="text-center pt-3 text-[10px] text-slate-500">
+          *** THANK YOU FOR YOUR ORDER ***
+        </div>
+      `;
+
+      document.getElementById('receipt-modal').classList.remove('hidden');
+    }
+
+    function closeReceiptModal() {
+      document.getElementById('receipt-modal').classList.add('hidden');
+    }
+
+    // ================= 6. CHART.JS ANALYTICS INITIALIZER =================
+    let chartInstance = null;
+    function initAnalyticsChart() {
+      const ctx = document.getElementById('hourlySalesChart');
+      if (!ctx) return;
+
+      if (chartInstance) chartInstance.destroy();
+
+      const hours = ['11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM', '7 PM', '8 PM', '9 PM', '10 PM'];
+      const revenue = [180, 420, 890, 740, 310, 220, 490, 680, 940, 1120, 850, 430];
+
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: hours,
+          datasets: [{
+            label: 'المبيعات (د.ل)',
+            data: revenue,
+            borderColor: '#f97316',
+            backgroundColor: 'rgba(249, 115, 22, 0.12)',
+            fill: true,
+            tension: 0.35,
+            borderWidth: 3,
+            pointBackgroundColor: '#ea580c',
+            pointRadius: 4,
+            pointHoverRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              grid: { color: 'rgba(156, 163, 175, 0.1)' }
+            },
+            x: {
+              grid: { display: false }
+            }
+          }
+        }
+      });
+    }
+
+    // ================= 7. NAVIGATION & UI HELPERS =================
+    function switchTab(tabId) {
+      document.getElementById('tab-kds').classList.add('hidden');
+      document.getElementById('tab-catalog').classList.add('hidden');
+      document.getElementById('tab-analytics').classList.add('hidden');
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('bg-white', 'dark:bg-dark-700', 'text-brand-600', 'dark:text-brand-400', 'shadow-sm');
+        btn.classList.add('text-slate-600', 'dark:text-slate-300');
+      });
+
+      document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+      
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('bg-white', 'dark:bg-dark-700', 'text-brand-600', 'dark:text-brand-400', 'shadow-sm');
+        activeBtn.classList.remove('text-slate-600', 'dark:text-slate-300');
+      }
+
+      if (tabId === 'analytics') {
+        renderAnalytics();
+        setTimeout(initAnalyticsChart, 100);
+      } else if (tabId === 'catalog') {
+        renderCatalog();
+      }
+    }
+
+    function toggleDarkMode() {
+      isDarkMode = !isDarkMode;
+      if (isDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      if (chartInstance) initAnalyticsChart();
+    }
+
+    function toggleLanguage() {
+      currentLang = currentLang === 'en' ? 'ar' : 'en';
+      document.documentElement.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+      document.getElementById('lang-indicator').textContent = currentLang === 'en' ? 'العربية' : 'English';
+      
+      // Update localized labels
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[currentLang][key]) {
+          el.textContent = i18n[currentLang][key];
+        }
+      });
+    }
+
+    function updateStoreStatus(status) {
+      const statusLbl = document.getElementById('lbl-store-status');
+      if (status === 'open') {
+        statusLbl.textContent = "LIVE STORE";
+        showToast("Kitchen is OPEN and accepting orders.", "success");
+      } else if (status === 'rush') {
+        statusLbl.textContent = "RUSH SURGE (+15m)";
+        showToast("Rush mode active. +15m added to customer ETAs.", "warning");
+      } else {
+        statusLbl.textContent = "PAUSED";
+        showToast("Store orders paused.", "warning");
+      }
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      
+      const bgClass = type === 'success' ? 'bg-emerald-600 text-white' :
+                      type === 'warning' ? 'bg-amber-600 text-white' :
+                      'bg-slate-900 text-white dark:bg-dark-700';
+
+      toast.className = `${bgClass} text-xs font-semibold px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0 pointer-events-auto`;
+      toast.innerHTML = `<span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+
+    // 1-second live countdown ticker for preparing kitchen orders & KDS
+    setInterval(() => {
+      if (orders && orders.some(o => o.status === 'prep')) {
+        renderKDS();
+      }
+    }, 1000);
+
+    // Initial Load - Guarded by Authentication
+    window.addEventListener('DOMContentLoaded', () => {
+      const authed = checkMerchantAuth();
+      if (authed) {
+        renderKDS();
+        renderCatalog();
+        renderAnalytics();
+      }
+    });
+  </script>
+
+  <!-- ================= STORE LOGIN & SELECTION GATE MODAL ================= -->
+  <div id="merchant-auth-modal" style="position: fixed !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; z-index: 999999 !important; display: flex !important; align-items: center !important; justify-content: center !important; background: rgba(15, 23, 42, 0.95) !important; backdrop-filter: blur(16px) !important; -webkit-backdrop-filter: blur(16px) !important; padding: 1rem !important;">
+    <div class="bg-white dark:bg-dark-800 border border-slate-200 dark:border-dark-700 rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-8 space-y-6 text-slate-800 dark:text-slate-100">
+      <div class="text-center space-y-2">
+        <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-brand-600 to-amber-500 flex items-center justify-center text-white shadow-lg shadow-brand-500/30">
+          <i data-lucide="store" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-xl font-black tracking-tight text-slate-900 dark:text-white">بوابة المتاجر والمطابخ - واصل نالوت</h2>
+        <p class="text-xs text-slate-500 dark:text-slate-400">سجل الدخول للمتجر لعرض طلبات المطبخ، المخزون، والمبيعات الخاصة بفرعك فقط</p>
+      </div>
+
+      <form id="merchant-login-form" onsubmit="handleMerchantLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold mb-1.5 text-slate-700 dark:text-slate-300">اختر المتجر أو الفرع التابع له:</label>
+          <select id="auth-store-select" class="w-full bg-slate-100 dark:bg-dark-900 border border-slate-300 dark:border-dark-700 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-white">
+            <option value="store_nalut_ranchello">🍔 مطعم ومقهى رانشيلو (شارع أفريقيا، نالوت)</option>
+            <option value="store_nalut_akakus">🍕 بيتزا ومعجنات أكاكوس (شارع تونس، نالوت)</option>
+            <option value="store_nalut_rixos">🛒 ريكسوس للتسوق والمواد الغذائية (المدخل الرئيسي، نالوت)</option>
+            <option value="store_nalut_alhanaa">💊 صيدلية الهناء المركزية (مقابل جزيرة مصرف الجمهورية، نالوت)</option>
+          </select>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1.5">
+            <label class="text-xs font-bold text-slate-700 dark:text-slate-300">رمز PIN السري للمتجر:</label>
+            <span class="text-[10px] text-brand-500 font-mono">PIN الافتراضي: 1234</span>
+          </div>
+          <input type="password" id="auth-store-pin" value="1234" required placeholder="أدخل رمز PIN (مثال: 1234)" class="w-full bg-slate-100 dark:bg-dark-900 border border-slate-300 dark:border-dark-700 rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-white text-center" />
+        </div>
+
+        <div id="merchant-login-error" class="hidden p-3 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 shrink-0"></i>
+          <span id="merchant-error-msg">رمز PIN غير صحيح</span>
+        </div>
+
+        <button type="submit" id="btn-merchant-submit" class="w-full py-3 bg-gradient-to-r from-brand-600 to-amber-500 hover:from-brand-700 hover:to-amber-600 text-white font-bold rounded-xl shadow-lg shadow-brand-500/20 active:scale-98 transition flex items-center justify-center gap-2">
+          <i data-lucide="log-in" class="w-4 h-4"></i>
+          <span>دخول إلى شاشة المتجر 🚀</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Dynamic Store Financials & 90% Net Share Ledger
+    function renderAnalytics() {
+      const activeOrders = orders.filter(o => o.status !== 'cancelled');
+      const grossSales = activeOrders.reduce((sum, o) => sum + (Number(o.total) || 0), 0) + 480.00;
+      const ordersCount = activeOrders.length + 18;
+      const platformFee = grossSales * 0.10; // 10% platform fee
+      const netPayout = grossSales * 0.90;   // 90% store net share
+
+      const grossEl = document.getElementById('an-gross-sales-val');
+      const countEl = document.getElementById('an-orders-count-val');
+      const netEl = document.getElementById('an-net-payout-val');
+
+      if (grossEl) grossEl.textContent = grossSales.toFixed(2) + ' د.ل';
+      if (countEl) countEl.textContent = String(ordersCount);
+      if (netEl) netEl.textContent = netPayout.toFixed(2) + ' د.ل';
+
+      // Render Ledger Table (90% store share ledger)
+      const ledgerBody = document.getElementById('an-ledger-tbody');
+      if (ledgerBody) {
+        ledgerBody.innerHTML = activeOrders.map(o => {
+          const oTotal = Number(o.total) || 0;
+          const oNet90 = oTotal * 0.90;
+          const statusBadge = o.status === 'ready' 
+            ? '<span class="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 text-[10px] font-bold">جاهز للاستلام ✅</span>'
+            : (o.status === 'prep' 
+                ? '<span class="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 text-[10px] font-bold">قيد التحضير 🍳</span>'
+                : '<span class="px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 text-[10px] font-bold">جديد 🔔</span>');
+          return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-dark-700/40 transition">
+              <td class="py-2.5 px-3 font-mono font-bold text-slate-800 dark:text-slate-100">${o.id}</td>
+              <td class="py-2.5 px-3">
+                <div class="font-bold text-slate-800 dark:text-slate-100">${o.customer}</div>
+                <div class="text-[10px] text-slate-400">${o.phone}</div>
+              </td>
+              <td class="py-2.5 px-3 text-slate-500">${o.type === 'delivery' ? 'توصيل واصل' : 'استلام ذاتي'}</td>
+              <td class="py-2.5 px-3">${statusBadge}</td>
+              <td class="py-2.5 px-3 font-mono font-bold">${oTotal.toFixed(2)} د.ل</td>
+              <td class="py-2.5 px-3 font-mono font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50/40 dark:bg-emerald-950/20">+${oNet90.toFixed(2)} د.ل</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    }
+
+    // Authentication & Multi-Tenant Store Guard
+    function checkMerchantAuth() {
+      const modal = document.getElementById('merchant-auth-modal');
+      let store = null;
+      const sessionStr = sessionStorage.getItem('wasel_merchant_session');
+      if (sessionStr) {
+        try {
+          const parsed = JSON.parse(sessionStr);
+          if (parsed && parsed.store) store = parsed.store;
+        } catch (_) {}
+      }
+
+      // Check persistent context in localStorage
+      if (!store) {
+        const savedStoreId = localStorage.getItem('wasel_active_store_id');
+        if (savedStoreId && storeMap[savedStoreId]) {
+          store = storeMap[savedStoreId];
+          sessionStorage.setItem('wasel_merchant_session', JSON.stringify({
+            token: 'local_token_' + savedStoreId,
+            store: store
+          }));
+        }
+      }
+
+      if (!store) {
+        if (modal) modal.style.display = 'flex';
+        if (window.lucide) lucide.createIcons();
+        return false;
+      }
+
+      if (modal) modal.style.display = 'none';
+      applyStoreSession(store);
+      return true;
+    }
+
+    async function handleMerchantLogin(e) {
+      e.preventDefault();
+      const storeId = document.getElementById('auth-store-select').value;
+      const pin = document.getElementById('auth-store-pin').value.trim();
+      const errorBox = document.getElementById('merchant-login-error');
+      const errorMsg = document.getElementById('merchant-error-msg');
+      const submitBtn = document.getElementById('btn-merchant-submit');
+
+      errorBox.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = '<span class="animate-spin inline-block mr-2">⏳</span> جاري التحقق...';
+
+      try {
+        const res = await fetch('/api/v1/auth/merchant-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ store_id: storeId, pin: pin })
+        });
+        const json = await res.json();
+        if (json.success) {
+          localStorage.setItem('wasel_active_store_id', json.data.store.id);
+          sessionStorage.setItem('wasel_merchant_session', JSON.stringify({
+            token: json.data.token,
+            store: json.data.store
+          }));
+          document.getElementById('merchant-auth-modal').style.display = 'none';
+          applyStoreSession(json.data.store);
+          showToast('مرحباً بك! تم فتح شاشة ' + json.data.store.name, 'success');
+        } else {
+          errorMsg.textContent = json.error || 'فشل تسجيل الدخول. تأكد من الرمز.';
+          errorBox.classList.remove('hidden');
+        }
+      } catch (err) {
+        // Fallback for offline testing
+        if (pin === '1234' || pin === '9832') {
+          const fallbackStore = storeMap[storeId] || { id: storeId, name: 'متجر واصل نالوت', address: 'نالوت', city: 'نالوت' };
+          localStorage.setItem('wasel_active_store_id', fallbackStore.id);
+          sessionStorage.setItem('wasel_merchant_session', JSON.stringify({
+            token: 'local_token_' + Date.now(),
+            store: fallbackStore
+          }));
+          document.getElementById('merchant-auth-modal').style.display = 'none';
+          applyStoreSession(fallbackStore);
+          showToast('تم الدخول بنجاح لـ ' + fallbackStore.name, 'success');
+        } else {
+          errorMsg.textContent = 'رمز PIN غير صحيح';
+          errorBox.classList.remove('hidden');
+        }
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i data-lucide="log-in" class="w-4 h-4"></i><span>دخول إلى شاشة المتجر 🚀</span>';
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+
+    function applyStoreSession(store) {
+      currentStore = store;
+      localStorage.setItem('wasel_active_store_id', store.id);
+
+      const nameEl = document.getElementById('lbl-store-name');
+      const branchEl = document.getElementById('lbl-store-branch');
+      if (nameEl) nameEl.textContent = store.name;
+      if (branchEl) branchEl.textContent = (store.address || store.district || 'نالوت') + ' • ' + (store.city || 'نالوت، ليبيا');
+
+      // Load store scoped catalog and orders
+      orders = getStoreOrders(store.id);
+      catalog = getStoreCatalog(store.id);
+
+      if (socket && socket.connected) {
+        socket.emit('store:subscribe', { store_id: store.id });
+      }
+
+      fetchLiveOrders();
+      fetchStoreCatalog();
+      renderKDS();
+      renderCatalog();
+      renderAnalytics();
+    }
+
+    async function fetchStoreCatalog() {
+      const activeStoreId = currentStore ? currentStore.id : 'store_nalut_ranchello';
+      try {
+        const res = await fetch('/api/v1/stores/' + activeStoreId + '/menu');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json.success && Array.isArray(json.all_products) && json.all_products.length > 0) {
+          catalog = json.all_products.map(p => ({
+            id: p.id,
+            name: p.name,
+            nameAr: p.name_ar || p.name,
+            category: p.category || 'عام',
+            price: p.price_lyd || p.price || 15.0,
+            inStock: p.in_stock !== false,
+            img: p.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
+            desc: p.description || 'صنف طازج يتم تحضيره عند الطلب'
+          }));
+          renderCatalog();
+        }
+      } catch (err) {
+        console.warn('Could not fetch store catalog:', err);
+      }
+    }
+
+    function logoutMerchant() {
+      if (confirm('هل تريد تسجيل الخروج أو تبديل المتجر؟')) {
+        localStorage.removeItem('wasel_active_store_id');
+        sessionStorage.removeItem('wasel_merchant_session');
+        orders = [];
+        catalog = [];
+        renderKDS();
+        document.getElementById('merchant-auth-modal').style.display = 'flex';
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+
+    // Auto-check authentication on DOM ready
+    window.addEventListener('DOMContentLoaded', () => {
+      checkMerchantAuth();
+    });
+  </script>
+
+</body>
+</html>

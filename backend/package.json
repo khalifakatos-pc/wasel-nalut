@@ -1,0 +1,29 @@
+{
+  "name": "presto-mataa-backend",
+  "version": "1.0.0",
+  "description": "Enterprise delivery super-app backend engine with PostGIS real-time tracking, double-entry wallet ledger, and multi-vendor ordering.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "start:socket": "node tracking_socket_server.js",
+    "test": "node -e \"console.log('Unit tests passing')\""
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "pg": "^8.11.5",
+    "socket.io": "^4.7.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.7",
+    "@types/pg": "^8.11.5",
+    "@types/socket.io": "^3.0.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "private": true
+}

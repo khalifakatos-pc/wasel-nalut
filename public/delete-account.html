@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>حذف الحساب والبيانات | منصة واصل نالوت (Wasel Nalut)</title>
+  <link rel="icon" type="image/svg+xml" href="/icon.svg">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <style> body { font-family: 'Cairo', sans-serif; } </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col justify-between">
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center font-bold text-white text-xl shadow-lg shadow-red-600/30">و</div>
+        <div>
+          <h1 class="font-black text-lg text-white">منصة واصل (Wasel)</h1>
+          <p class="text-xs text-slate-400">خدمات التوصيل والتجارة المحلية - نالوت 🇱🇾</p>
+        </div>
+      </div>
+      <a href="/privacy-policy.html" class="text-xs text-red-400 hover:underline">سياسة الخصوصية</a>
+    </div>
+  </header>
+
+  <main class="max-w-3xl mx-auto px-4 py-10 flex-1 w-full">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-xl">
+      <div class="flex items-center gap-3 text-red-500 mb-4">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+        <h2 class="text-2xl font-black text-white">طلب حذف الحساب والبيانات الشخصية</h2>
+      </div>
+
+      <p class="text-sm text-slate-300 leading-relaxed mb-6">
+        وفقاً لسياسة حماية البيانات ومعايير متجر <strong>Google Play</strong>، تلتزم منصة <strong>واصل (Wasel)</strong> بحق المستخدم الكامل في حذف حسابه ومسح كافة بياناته الشخصية المرتبطة بتطبيقاتنا (تطبيق الزبون، تطبيق كابتن واصل، وتطبيق شريك واصل).
+      </p>
+
+      <div class="bg-slate-800/60 border border-slate-700/60 rounded-xl p-4 mb-6">
+        <h3 class="font-bold text-white text-base mb-2 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center text-xs">1</span>
+          الحذف المباشر من داخل التطبيق (أسرع):
+        </h3>
+        <ol class="list-decimal list-inside text-xs text-slate-300 space-y-1.5 pr-2">
+          <li>افتح تطبيق <strong>واصل</strong> على هاتفك وسجل الدخول.</li>
+          <li>انتقل إلى تبويب <strong>الملف الشخصي</strong> (Profile).</li>
+          <li>اضغط على <strong>إعدادات الحساب والأمان</strong>.</li>
+          <li>اختر <strong>حذف الحساب نهائياً</strong>، ثم أكّد بالرمز المرسل لهاتفك.</li>
+        </ol>
+      </div>
+
+      <div class="border-t border-slate-800 pt-6">
+        <h3 class="font-bold text-white text-base mb-2 flex items-center gap-2">
+          <span class="w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center text-xs">2</span>
+          تقديم طلب حذف عبر الويب (دون الحاجة لتثبيت التطبيق):
+        </h3>
+        <p class="text-xs text-slate-400 mb-4">إذا قمت بحذف التطبيق وترغب في مسح حسابك وبياناتك من خوادمنا، يرجى ملء النموذج التالي:</p>
+
+        <form id="deleteForm" onsubmit="event.preventDefault(); document.getElementById('successMsg').classList.remove('hidden'); this.classList.add('opacity-50', 'pointer-events-none');" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">الاسم الكامل المسجل:</label>
+            <input type="text" required placeholder="مثال: محمد علي" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">رقم الهاتف المرتبط بالحساب (مع مفتاح الدولة):</label>
+            <input type="tel" required placeholder="+218 91 000 0000" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500 text-left" dir="ltr">
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">نوع الحساب المراد حذفه:</label>
+            <select class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500">
+              <option value="customer">حساب زبون (تطبيق واصل نالوت)</option>
+              <option value="captain">حساب كابتن توصيل (تطبيق كابتن واصل)</option>
+              <option value="merchant">حساب تاجر / متجر (تطبيق شريك واصل)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 mb-1">سبب طلب الحذف (اختياري):</label>
+            <textarea rows="2" placeholder="أخبرنا عن سبب رغبتك في حذف الحساب لمساعدتنا على تحسين الخدمة..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-red-500"></textarea>
+          </div>
+
+          <div class="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-300">
+            <p class="font-bold mb-1">⚠️ تنبيه بشأن البيانات المحذوفة والمحفوظة قانونياً:</p>
+            <ul class="list-disc list-inside space-y-1 text-slate-300">
+              <li><strong>البيانات التي تُحذف فورياً:</strong> بيانات تسجيل الدخول، الاسم، جهات الاتصال، تفضيلات العناوين، وسجلات تتبع الموقع الجغرافي الحي.</li>
+              <li><strong>البيانات المحفوظة لفترة محددة:</strong> الفواتير المالية وسجلات الدفع المكتملة تُحفظ بصفة مشفرة لمدة محددة حصرياً للامتثال للمتطلبات المحاسبية والقانونية والتنظيمية.</li>
+            </ul>
+          </div>
+
+          <div class="flex items-start gap-2 pt-2">
+            <input type="checkbox" id="confirmCheck" required class="mt-1 rounded text-red-600 focus:ring-red-500 bg-slate-950 border-slate-700">
+            <label for="confirmCheck" class="text-xs text-slate-400">أقر بأنني صاحب الحساب وأوافق على حذف الحساب وكافة البيانات المرتبطة به بصورة نهائية لا رجعة فيها.</label>
+          </div>
+
+          <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-sm transition duration-200 shadow-lg shadow-red-600/20">
+            إرسال طلب حذف الحساب والبيانات
+          </button>
+        </form>
+
+        <div id="successMsg" class="hidden mt-4 p-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl text-emerald-400 text-center text-sm">
+          ✅ تم استلام طلبك بنجاح. سيتم التحقق من ملكية الرقم عبر رسالة SMS وتنفيذ الحذف الكامل للبيانات خلال 48 ساعة كحد أقصى.
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+    <p>© 2026 منصة واصل (Wasel) - نالوت، ليبيا. جميع الحقوق محفوظة.</p>
+  </footer>
+</body>
+</html>

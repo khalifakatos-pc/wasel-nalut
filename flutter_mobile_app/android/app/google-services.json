@@ -1,0 +1,86 @@
+﻿{
+  "project_info": {
+    "project_number": "929105547947",
+    "project_id": "wasel-nalut",
+    "storage_bucket": "wasel-nalut.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:929105547947:android:9413297c698293c2ef5dee",
+        "android_client_info": {
+          "package_name": "com.wasel.admin.wasel_admin_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmYQomS9kmBg7J5ZLjA7gE80V76EHA3vI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:929105547947:android:91469d6e7b9ca2b1ef5dee",
+        "android_client_info": {
+          "package_name": "com.wasel.captain.wasel_captain_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmYQomS9kmBg7J5ZLjA7gE80V76EHA3vI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:929105547947:android:f57d617514811365ef5dee",
+        "android_client_info": {
+          "package_name": "com.wasel.customer.wasel_customer_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmYQomS9kmBg7J5ZLjA7gE80V76EHA3vI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:929105547947:android:9e9f666b41e358e2ef5dee",
+        "android_client_info": {
+          "package_name": "com.wasel.merchant.wasel_merchant_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAmYQomS9kmBg7J5ZLjA7gE80V76EHA3vI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

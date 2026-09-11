@@ -1,0 +1,596 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'merchant_theme.dart';
+import 'merchant_models.dart';
+import 'thermal_receipt_dialog.dart';
+
+/// ============================================================================
+/// KITCHEN DISPLAY SYSTEM (KDS) SCREEN
+/// ============================================================================
+
+class KdsScreen extends StatefulWidget {
+  final List<KdsOrder> orders;
+  final Function(KdsOrder) onOrderUpdated;
+
+  const KdsScreen({
+    super.key,
+    required this.orders,
+    required this.onOrderUpdated,
+  });
+
+  @override
+  State<KdsScreen> createState() => _KdsScreenState();
+}
+
+class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  Timer? _countdownTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  List<KdsOrder> get _newOrders =>
+      widget.orders.where((o) => o.status == KdsTicketStatus.newOrder).toList();
+
+  List<KdsOrder> get _prepOrders =>
+      widget.orders.where((o) => o.status == KdsTicketStatus.preparing).toList();
+
+  List<KdsOrder> get _readyOrders =>
+      widget.orders.where((o) => o.status == KdsTicketStatus.readyForPickup).toList();
+
+  void _acceptOrder(KdsOrder order, int prepMinutes) {
+    setState(() {
+      order.status = KdsTicketStatus.preparing;
+      order.prepTimeMinutes = prepMinutes;
+    });
+    widget.onOrderUpdated(order);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ تم قبول الطلب ${order.orderNumber} وتحديد $prepMinutes دقيقة للطهي'),
+        backgroundColor: MerchantColors.prepBlue,
+      ),
+    );
+  }
+
+  void _rejectOrder(KdsOrder order) {
+    setState(() {
+      order.status = KdsTicketStatus.cancelled;
+    });
+    widget.onOrderUpdated(order);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('❌ تم رفض الطلب ${order.orderNumber}'),
+        backgroundColor: MerchantColors.rejectedRed,
+      ),
+    );
+  }
+
+  void _markOrderReady(KdsOrder order) {
+    setState(() {
+      order.status = KdsTicketStatus.readyForPickup;
+    });
+    widget.onOrderUpdated(order);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🍳 تم تجهيز الطلب ${order.orderNumber} وإشعار الكابتن والزبون!'),
+        backgroundColor: MerchantColors.readyGreen,
+      ),
+    );
+  }
+
+  void _markOrderHandedOver(KdsOrder order) {
+    setState(() {
+      order.status = KdsTicketStatus.completed;
+    });
+    widget.onOrderUpdated(order);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🛵 تم تسليم الطلب ${order.orderNumber} للكابتن بنجاح'),
+        backgroundColor: MerchantColors.revenueGreen,
+      ),
+    );
+  }
+
+  void _simulateNewIncomingOrder() {
+    final newOrd = KdsOrder(
+      id: 'ord_${DateTime.now().millisecondsSinceEpoch}',
+      orderNumber: '#WSL-${(1000 + (DateTime.now().millisecond * 9)).toString().padLeft(4, '0')}',
+      customerName: 'طارق العكرمي (نالوت)',
+      customerPhone: '+218 92 555 4433',
+      deliveryAddress: 'طريق وازن، نالوت',
+      customerNotes: 'طلب فوري ساخن عبر سوبر آب واصل',
+      status: KdsTicketStatus.newOrder,
+      timePlaced: DateTime.now(),
+      prepTimeMinutes: 15,
+      totalAmountLyd: 42.00,
+      paymentMethod: 'كاش عند الاستلام (COD)',
+      items: [
+        KdsOrderItem(name: 'صحن مشويات مشكل قصر نالوت', quantity: 1, priceLyd: 28.00, notes: 'سلطة مشوية زيادة'),
+        KdsOrderItem(name: 'فطيرة قصر نالوت بالجبنة والزعتر', quantity: 1, priceLyd: 12.00),
+        KdsOrderItem(name: 'عصير ليمون ونعناع طبيعي', quantity: 1, priceLyd: 5.50),
+      ],
+    );
+
+    setState(() {
+      widget.orders.insert(0, newOrd);
+    });
+    _tabController.animateTo(0);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🔔 ورد طلب تحضير جديد: ${newOrd.orderNumber}'),
+        backgroundColor: MerchantColors.primary,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: MerchantColors.darkBg,
+      appBar: AppBar(
+        title: const Text('شاشة تحضير الطلبات 📋'),
+        centerTitle: true,
+        backgroundColor: MerchantColors.darkSurface,
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: MerchantColors.primary,
+          labelColor: MerchantColors.primary,
+          unselectedLabelColor: Colors.white60,
+          tabs: [
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('جديدة', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _newOrders.isNotEmpty ? MerchantColors.newOrderAmber : Colors.white12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_newOrders.length}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: _newOrders.isNotEmpty ? Colors.black : Colors.white70,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('قيد التحضير', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _prepOrders.isNotEmpty ? MerchantColors.prepBlue : Colors.white12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_prepOrders.length}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('جاهز للاستلام', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _readyOrders.isNotEmpty ? MerchantColors.readyGreen : Colors.white12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_readyOrders.length}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildOrderList(_newOrders, isNew: true),
+          _buildOrderList(_prepOrders, isPrep: true),
+          _buildOrderList(_readyOrders, isReady: true),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _simulateNewIncomingOrder,
+        backgroundColor: MerchantColors.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_alert_rounded),
+        label: const Text('طلب تجريبي للمطبخ 🔔', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildOrderList(List<KdsOrder> orders, {bool isNew = false, bool isPrep = false, bool isReady = false}) {
+    if (orders.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              isNew ? Icons.notifications_none_rounded : (isPrep ? Icons.soup_kitchen_rounded : Icons.check_circle_outline_rounded),
+              size: 64,
+              color: Colors.white24,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              isNew ? 'لا توجد طلبات جديدة حالياً' : (isPrep ? 'لا توجد وجبات قيد الطهي' : 'لا توجد طلبات جاهزة للاستلام'),
+              style: const TextStyle(color: Colors.white54, fontSize: 15),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+      itemCount: orders.length,
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: MerchantColors.darkCard,
+            borderRadius: MerchantRadius.lg,
+            border: Border.all(
+              color: isNew
+                  ? MerchantColors.newOrderAmber
+                  : (isPrep ? MerchantColors.prepBlue : MerchantColors.readyGreen),
+              width: isNew ? 2.0 : 1.2,
+            ),
+            boxShadow: isNew
+                ? [
+                    BoxShadow(
+                      color: MerchantColors.newOrderAmber.withValues(alpha: 0.15),
+                      blurRadius: 16,
+                      spreadRadius: 2,
+                    )
+                  ]
+                : null,
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top Header Row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          order.orderNumber,
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: MerchantColors.primary.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Text('🛵 توصيل واصل', style: TextStyle(color: MerchantColors.primary, fontSize: 11, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'منذ ${order.elapsedMinutes} دقيقة',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: order.isUrgent ? MerchantColors.rejectedRed : Colors.white54,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // Customer Info
+                Row(
+                  children: [
+                    const Icon(Icons.person_rounded, size: 16, color: Colors.white54),
+                    const SizedBox(width: 6),
+                    Text(order.customerName, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(width: 12),
+                    const Icon(Icons.phone_rounded, size: 14, color: Colors.white54),
+                    const SizedBox(width: 4),
+                    Text(order.customerPhone, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                  ],
+                ),
+                if (order.customerNotes != null && order.customerNotes!.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: MerchantColors.darkCardElevated,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.note_alt_outlined, size: 14, color: MerchantColors.accentAmber),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'ملاحظة: ${order.customerNotes}',
+                            style: const TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const Divider(height: 20),
+
+                // Items list
+                ...order.items.map((item) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: MerchantColors.primary.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${item.quantity}x',
+                              style: const TextStyle(color: MerchantColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(item.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                        ],
+                      ),
+                      Text('${item.totalLyd.toStringAsFixed(2)} د.ل', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
+                    ],
+                  ),
+                )),
+                const Divider(height: 20),
+
+                // Total & Payment
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('الدفع: ${order.paymentMethod}', style: const TextStyle(fontSize: 12, color: Colors.white60)),
+                    Row(
+                      children: [
+                        const Text('الإجمالي: ', style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        Text(
+                          '${order.totalAmountLyd.toStringAsFixed(2)} د.ل',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: MerchantColors.primary, fontFamily: 'monospace'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Action Buttons for this state
+                if (isNew) ...[
+                  const Text('تحديد وقت الطهي والقبول:', style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _acceptOrder(order, 15),
+                          style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.prepBlue, foregroundColor: Colors.white),
+                          child: const Text('15 دقيقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _acceptOrder(order, 25),
+                          style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.primary, foregroundColor: Colors.white),
+                          child: const Text('25 دقيقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _acceptOrder(order, 35),
+                          style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.accentAmber, foregroundColor: Colors.black),
+                          child: const Text('35 دقيقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      IconButton.outlined(
+                        icon: const Icon(Icons.close_rounded, color: MerchantColors.rejectedRed, size: 20),
+                        onPressed: () => _rejectOrder(order),
+                      ),
+                    ],
+                  ),
+                ] else if (isPrep) ...[
+                  Builder(
+                    builder: (context) {
+                      final targetTime = order.timePlaced.add(Duration(minutes: order.prepTimeMinutes));
+                      final remaining = targetTime.difference(DateTime.now());
+                      final isOverdue = remaining.isNegative;
+                      final totalSeconds = order.prepTimeMinutes * 60;
+                      final elapsedSeconds = DateTime.now().difference(order.timePlaced).inSeconds;
+                      final progress = (elapsedSeconds / (totalSeconds > 0 ? totalSeconds : 1)).clamp(0.0, 1.0);
+
+                      final remMinutes = isOverdue ? remaining.inMinutes.abs() : remaining.inMinutes;
+                      final remSecs = isOverdue ? (remaining.inSeconds.abs() % 60) : (remaining.inSeconds % 60);
+                      final timeFormatted = '${remMinutes.toString().padLeft(2, '0')}:${remSecs.toString().padLeft(2, '0')}';
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isOverdue ? MerchantColors.rejectedRed.withValues(alpha: 0.15) : MerchantColors.prepBlue.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.prepBlue,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      isOverdue ? Icons.warning_amber_rounded : Icons.timer_outlined,
+                                      color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.prepBlue,
+                                      size: 18,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      isOverdue ? '⚠️ متأخر عن وقت التحضير:' : '⏳ العد التنازلي للتحضير:',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: isOverdue ? MerchantColors.rejectedRed : Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  isOverdue ? '+$timeFormatted د' : '$timeFormatted د',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w900,
+                                    color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.primary,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(4),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: Colors.white12,
+                                color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.prepBlue,
+                                minHeight: 6,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check_circle_rounded, size: 18),
+                          label: const Text('الطلب جاهز للاستلام 🍳', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MerchantColors.readyGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () => _markOrderReady(order),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.receipt_long_rounded, color: Colors.white),
+                        onPressed: () => ThermalReceiptDialog.show(context, order),
+                      ),
+                    ],
+                  ),
+                ] else if (isReady) ...[
+                  if (order.courierName != null) ...[
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: MerchantColors.darkCardElevated,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.delivery_dining_rounded, color: MerchantColors.readyGreen, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'الكابتن: ${order.courierName} (${order.courierVehicle})',
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.handshake_rounded, size: 18),
+                          label: const Text('تم التسليم للكابتن ✅', style: TextStyle(fontWeight: FontWeight.bold)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: MerchantColors.revenueGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          onPressed: () => _markOrderHandedOver(order),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        icon: const Icon(Icons.print_rounded, color: Colors.white),
+                        onPressed: () => ThermalReceiptDialog.show(context, order),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
