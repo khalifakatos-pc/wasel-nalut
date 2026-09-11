@@ -21,6 +21,8 @@ __pycache__/
 
 # Executables & Binaries
 *.exe
+*.apk
+release_apks/
 tools/cloudflared*
 
 # IDE & OS
