@@ -1574,26 +1574,116 @@ app.patch('/api/v1/products/:id', (req, res) => {
   if (req.io) {
     req.io.emit('catalog:product_updated', product);
   }
+  saveSeedData();
   res.json({ success: true, data: product });
 });
 
 app.post('/api/v1/products', (req, res) => {
   const newProduct = {
     id: req.body.id || `prod_${Date.now()}`,
-    store_id: req.body.store_id || 'store_nalut_ranchello',
+    store_id: req.body.store_id || 'store_default',
     name_ar: req.body.name_ar || req.body.name || 'صنف جديد',
     name_en: req.body.name_en || req.body.name || 'New Item',
     category_id: req.body.category_id || 'cat_food',
     category: req.body.category || 'وجبات',
     price_lyd: parseFloat(req.body.price || req.body.price_lyd || 20.0),
+    description: req.body.description || '',
     is_available: req.body.is_available !== undefined ? req.body.is_available : true,
     created_at: new Date().toISOString()
   };
   db.products.push(newProduct);
+  saveSeedData();
   if (req.io) {
     req.io.emit('catalog:product_added', newProduct);
   }
   res.status(201).json({ success: true, data: newProduct });
+});
+
+app.delete('/api/v1/products/:id', (req, res) => {
+  const initialLen = db.products.length;
+  db.products = db.products.filter(p => p.id !== req.params.id);
+  saveSeedData();
+  if (req.io) {
+    req.io.emit('catalog:product_deleted', { id: req.params.id });
+  }
+  res.json({ success: true, message: 'Product deleted', deleted: db.products.length < initialLen });
+});
+
+app.post('/api/v1/admin/batch-import', (req, res) => {
+  try {
+    const { store, products = [] } = req.body;
+    if (!store || !store.name) {
+      return res.status(400).json({ success: false, error: 'Store object with at least "name" is required' });
+    }
+
+    const storeId = store.id || `store_nalut_${Date.now()}`;
+    const newStore = {
+      id: storeId,
+      name: store.name,
+      name_en: store.name_en || store.name,
+      type: store.type || 'restaurant',
+      district: store.district || 'نالوت',
+      city: 'nalut',
+      phone: store.phone || '',
+      pin: store.pin || '1234',
+      app_mode: store.app_mode || ((store.type === 'grocery' || store.type === 'pharmacy') ? 'retail' : 'kitchen'),
+      commission_rate: store.commission_rate || 10.0,
+      rating: 5.0,
+      review_count: 0,
+      delivery_time_min: store.delivery_time_min || 20,
+      delivery_time_max: store.delivery_time_max || 35,
+      min_order_lyd: store.min_order_lyd || 10.0,
+      base_delivery_fee_lyd: store.base_delivery_fee_lyd || 4.0,
+      latitude: store.latitude || 31.8686,
+      longitude: store.longitude || 10.9818,
+      is_open: store.is_open !== false,
+      is_featured: store.is_featured !== false,
+      created_at: new Date().toISOString()
+    };
+
+    db.stores = db.stores.filter(s => s.id !== storeId);
+    db.stores.unshift(newStore);
+
+    const createdProducts = [];
+    if (Array.isArray(products) && products.length > 0) {
+      db.products = db.products.filter(p => p.store_id !== storeId);
+      for (let i = 0; i < products.length; i++) {
+        const p = products[i];
+        const prod = {
+          id: p.id || `prod_${Date.now()}_${i}`,
+          store_id: storeId,
+          name_ar: p.name_ar || p.name || 'صنف',
+          name_en: p.name_en || p.name || 'Item',
+          category_id: p.category_id || 'cat_food',
+          category: p.category || 'وجبات',
+          price_lyd: parseFloat(p.price || p.price_lyd || 15.0),
+          description: p.description || '',
+          is_available: p.is_available !== false,
+          created_at: new Date().toISOString()
+        };
+        db.products.push(prod);
+        createdProducts.push(prod);
+      }
+    }
+
+    saveSeedData();
+
+    if (req.io) {
+      req.io.emit('catalog:store_imported', { store: newStore, products_count: createdProducts.length });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: `Successfully imported store "${newStore.name}" with ${createdProducts.length} products`,
+      data: {
+        store: newStore,
+        products_count: createdProducts.length,
+        products: createdProducts
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // ----------------------------------------------------------------------------
