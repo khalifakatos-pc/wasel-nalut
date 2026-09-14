@@ -186,6 +186,11 @@ class _CaptainsTabState extends State<CaptainsTab> {
                             Row(
                               children: [
                                 IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AdminColors.alertRed),
+                                  tooltip: 'حذف الكابتن من الأسطول',
+                                  onPressed: () => _confirmDeleteDriver(driver),
+                                ),
+                                IconButton(
                                   icon: const Icon(Icons.key_rounded, size: 20, color: AdminColors.primaryGold),
                                   tooltip: 'بيانات دخول الكابتن (Wasel Captain)',
                                   onPressed: () => _showCaptainCredentialsDialog(driver),
@@ -301,6 +306,56 @@ class _CaptainsTabState extends State<CaptainsTab> {
     );
   }
 
+  void _confirmDeleteDriver(Map<String, dynamic> driver) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AdminColors.alertRed),
+              SizedBox(width: 8),
+              Text('حذف الكابتن من الأسطول', style: TextStyle(color: AdminColors.alertRed, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'هل أنت متأكد من حذف الكابتن "${driver['full_name']}" نهائياً من أسطول واصل نالوت؟\nسيتم إيقاف حسابه فوراً.',
+            style: const TextStyle(color: AdminColors.textPrimary, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء', style: TextStyle(color: AdminColors.textSecondary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminColors.alertRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final ok = await AdminSupabaseService.deleteDriver(driver['id'].toString());
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? '🗑️ تم حذف الكابتن بنجاح' : '❌ تعذر حذف الكابتن'),
+                      backgroundColor: ok ? Colors.grey[900] : AdminColors.alertRed,
+                    ),
+                  );
+                  _loadDrivers();
+                }
+              },
+              child: const Text('نعم، حذف الكابتن'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddDriverDialog() {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: '09');
@@ -309,97 +364,138 @@ class _CaptainsTabState extends State<CaptainsTab> {
     final plateCtrl = TextEditingController(text: 'نالوت 14-');
     final limitCtrl = TextEditingController(text: '250.0');
 
+    const vehicles = ['سيارة هيونداي', 'سيارة كيا', 'تويوتا', 'دراجة نارية', 'شاحنة صغيرة'];
+    const codLimits = [150.0, 250.0, 350.0, 500.0];
+
     showDialog(
       context: context,
-      builder: (dialogContext) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: AlertDialog(
-          backgroundColor: AdminColors.surfaceElevated,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Row(
-            children: [
-              Icon(Icons.person_add_alt_1_rounded, color: AdminColors.primaryGold),
-              SizedBox(width: 8),
-              Text('تسجيل كابتن جديد وتوليد الحساب'),
-            ],
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogCtx, setDlgState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: AlertDialog(
+            backgroundColor: AdminColors.surfaceElevated,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Row(
               children: [
-                TextField(
-                  controller: nameCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'اسم الكابتن الكامل*',
-                    prefixIcon: Icon(Icons.person),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 2,
-                      child: TextField(
-                        controller: phoneCtrl,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'رقم هاتف الكابتن*',
-                          prefixIcon: Icon(Icons.phone_android),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 1,
-                      child: TextField(
-                        controller: pinCtrl,
-                        keyboardType: TextInputType.number,
-                        maxLength: 4,
-                        decoration: const InputDecoration(
-                          labelText: 'رمز PIN*',
-                          counterText: '',
-                          prefixIcon: Icon(Icons.lock_outline),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: vehicleCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'نوع وموديل المركبة',
-                    prefixIcon: Icon(Icons.directions_car),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: plateCtrl,
-                        decoration: const InputDecoration(
-                          labelText: 'رقم اللوحة',
-                          prefixIcon: Icon(Icons.confirmation_number_outlined),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: TextField(
-                        controller: limitCtrl,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: 'سقف الكاش د.ل',
-                          prefixIcon: Icon(Icons.money),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                Icon(Icons.person_add_alt_1_rounded, color: AdminColors.primaryGold),
+                SizedBox(width: 8),
+                Text('تسجيل كابتن جديد وتوليد الحساب'),
               ],
             ),
-          ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: nameCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم الكابتن الكامل*',
+                      prefixIcon: Icon(Icons.person),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: TextField(
+                          controller: phoneCtrl,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'رقم هاتف الكابتن*',
+                            prefixIcon: Icon(Icons.phone_android),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 1,
+                        child: TextField(
+                          controller: pinCtrl,
+                          keyboardType: TextInputType.number,
+                          maxLength: 4,
+                          decoration: const InputDecoration(
+                            labelText: 'رمز PIN*',
+                            counterText: '',
+                            prefixIcon: Icon(Icons.lock_outline),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: vehicleCtrl,
+                    decoration: const InputDecoration(
+                      labelText: 'نوع وموديل المركبة',
+                      prefixIcon: Icon(Icons.directions_car),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: vehicles.map((v) {
+                      final isSelected = vehicleCtrl.text == v;
+                      return ActionChip(
+                        label: Text(v, style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : AdminColors.textPrimary)),
+                        backgroundColor: isSelected ? AdminColors.primaryGold : AdminColors.surface,
+                        side: BorderSide(color: isSelected ? AdminColors.primaryGold : AdminColors.divider),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        onPressed: () {
+                          setDlgState(() => vehicleCtrl.text = v);
+                        },
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: plateCtrl,
+                          decoration: const InputDecoration(
+                            labelText: 'رقم اللوحة',
+                            prefixIcon: Icon(Icons.confirmation_number_outlined),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: limitCtrl,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: 'سقف الكاش د.ل',
+                            prefixIcon: Icon(Icons.money),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text('سقف العهدة السريع (COD):', style: TextStyle(fontSize: 11, color: AdminColors.textSecondary)),
+                  const SizedBox(height: 4),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: codLimits.map((l) {
+                      final isSelected = limitCtrl.text == l.toStringAsFixed(1) || limitCtrl.text == l.toInt().toString();
+                      return ActionChip(
+                        label: Text('${l.toInt()} د.ل', style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : AdminColors.primaryGold)),
+                        backgroundColor: isSelected ? AdminColors.primaryGold : AdminColors.surface,
+                        side: BorderSide(color: isSelected ? AdminColors.primaryGold : AdminColors.primaryGold.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        onPressed: () {
+                          setDlgState(() => limitCtrl.text = l.toStringAsFixed(1));
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext),
@@ -450,8 +546,9 @@ class _CaptainsTabState extends State<CaptainsTab> {
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   void _showLiveRadarDialog() {
     // Nalut Core Coordinates: 31.8687, 10.9818

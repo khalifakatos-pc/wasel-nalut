@@ -215,7 +215,48 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 4,
+                  children: [5.0, 10.0, 15.0, 20.0, 25.0, 30.0, 50.0].map((amt) {
+                    return ActionChip(
+                      label: Text('${amt.toInt()} د.ل', style: const TextStyle(fontSize: 11, color: AdminColors.primaryGold)),
+                      backgroundColor: AdminColors.surface,
+                      side: const BorderSide(color: AdminColors.primaryGold),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                      onPressed: () {
+                        setDlgState(() {
+                          priceController.text = amt.toStringAsFixed(1);
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      icon: const Icon(Icons.add, size: 14, color: AdminColors.emeraldGreen),
+                      label: const Text('+5 د.ل', style: TextStyle(fontSize: 11, color: AdminColors.emeraldGreen)),
+                      onPressed: () {
+                        final cur = double.tryParse(priceController.text) ?? 0.0;
+                        setDlgState(() => priceController.text = (cur + 5.0).toStringAsFixed(1));
+                      },
+                    ),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                      icon: const Icon(Icons.add, size: 14, color: AdminColors.emeraldGreen),
+                      label: const Text('+10 د.ل', style: TextStyle(fontSize: 11, color: AdminColors.emeraldGreen)),
+                      onPressed: () {
+                        final cur = double.tryParse(priceController.text) ?? 0.0;
+                        setDlgState(() => priceController.text = (cur + 10.0).toStringAsFixed(1));
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
                 const Text('التصنيف:', style: TextStyle(fontSize: 12, color: AdminColors.textSecondary)),
                 const SizedBox(height: 4),
                 DropdownButtonFormField<String>(

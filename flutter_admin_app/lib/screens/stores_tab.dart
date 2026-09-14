@@ -146,8 +146,13 @@ class _StoresTabState extends State<StoresTab> {
                                 ),
                               ],
                             ),
-                            Row(
+                             Row(
                               children: [
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline_rounded, size: 18, color: AdminColors.alertRed),
+                                  tooltip: 'حذف المتجر',
+                                  onPressed: () => _confirmDeleteStore(store),
+                                ),
                                 IconButton(
                                   icon: const Icon(Icons.key_rounded, size: 18, color: AdminColors.primaryGold),
                                   tooltip: 'بيانات دخول التاجر',
@@ -266,6 +271,56 @@ class _StoresTabState extends State<StoresTab> {
     );
   }
 
+  void _confirmDeleteStore(Map<String, dynamic> store) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: AdminColors.alertRed),
+              SizedBox(width: 8),
+              Text('حذف المتجر نهائياً', style: TextStyle(color: AdminColors.alertRed, fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'هل أنت متأكد من رغبتك في حذف متجر "${store['name']}" وكافة أصنافه من المنظومة؟\nلا يمكن التراجع عن هذه الخطوة.',
+            style: const TextStyle(color: AdminColors.textPrimary, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء', style: TextStyle(color: AdminColors.textSecondary)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AdminColors.alertRed,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final ok = await AdminSupabaseService.deleteStore(store['id'].toString());
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(ok ? '🗑️ تم حذف متجر ${store['name']} بنجاح' : '❌ تعذر حذف المتجر'),
+                      backgroundColor: ok ? Colors.grey[900] : AdminColors.alertRed,
+                    ),
+                  );
+                  _loadStores();
+                }
+              },
+              child: const Text('نعم، حذف المتجر'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showAddStoreDialog() {
     final nameCtrl = TextEditingController();
     final nameEnCtrl = TextEditingController();
@@ -274,8 +329,20 @@ class _StoresTabState extends State<StoresTab> {
     final districtCtrl = TextEditingController(text: 'نالوت - شارع أفريقيا');
     final feeCtrl = TextEditingController(text: '5.0');
     final commissionCtrl = TextEditingController(text: '10.0');
-    final minOrderCtrl = TextEditingController(text: '10.0');
+    final minOrderCtrl = TextEditingController(text: '15.0');
     String selectedType = 'restaurant';
+    bool addStarterMenu = true;
+
+    const nalutDistricts = [
+      'شارع أفريقيا',
+      'حي الشهداء',
+      'قصر نالوت',
+      'طريق وازن',
+      'منطقة القلعة',
+      'الخربة',
+      'تالات',
+      'وسط المدينة',
+    ];
 
     showDialog(
       context: context,
@@ -297,6 +364,7 @@ class _StoresTabState extends State<StoresTab> {
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TextField(
                       controller: nameCtrl,
@@ -328,7 +396,34 @@ class _StoresTabState extends State<StoresTab> {
                         DropdownMenuItem(value: 'pharmacy', child: Text('صيدلية (تجميع Pick & Pack)')),
                         DropdownMenuItem(value: 'bakery', child: Text('مخبز وحلويات')),
                       ],
-                      onChanged: (val) => setDialogState(() => selectedType = val ?? 'restaurant'),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setDialogState(() {
+                            selectedType = val;
+                            if (val == 'pizza') {
+                              feeCtrl.text = '4.0';
+                              commissionCtrl.text = '12.0';
+                              minOrderCtrl.text = '15.0';
+                            } else if (val == 'grocery') {
+                              feeCtrl.text = '5.0';
+                              commissionCtrl.text = '8.0';
+                              minOrderCtrl.text = '20.0';
+                            } else if (val == 'pharmacy') {
+                              feeCtrl.text = '4.0';
+                              commissionCtrl.text = '5.0';
+                              minOrderCtrl.text = '10.0';
+                            } else if (val == 'bakery') {
+                              feeCtrl.text = '3.5';
+                              commissionCtrl.text = '10.0';
+                              minOrderCtrl.text = '10.0';
+                            } else {
+                              feeCtrl.text = '5.0';
+                              commissionCtrl.text = '10.0';
+                              minOrderCtrl.text = '15.0';
+                            }
+                          });
+                        }
+                      },
                     ),
                     const SizedBox(height: 10),
                     Row(
@@ -368,6 +463,27 @@ class _StoresTabState extends State<StoresTab> {
                         prefixIcon: Icon(Icons.location_on_outlined),
                       ),
                     ),
+                    const SizedBox(height: 6),
+                    const Text('أحياء وشوارع نالوت السريعة:', style: TextStyle(fontSize: 11, color: AdminColors.textSecondary)),
+                    const SizedBox(height: 4),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: nalutDistricts.map((d) {
+                        final isSelected = districtCtrl.text.contains(d);
+                        return ActionChip(
+                          label: Text(d, style: TextStyle(fontSize: 11, color: isSelected ? Colors.black : AdminColors.textPrimary)),
+                          backgroundColor: isSelected ? AdminColors.primaryGold : AdminColors.surface,
+                          side: BorderSide(color: isSelected ? AdminColors.primaryGold : AdminColors.divider),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          onPressed: () {
+                            setDialogState(() {
+                              districtCtrl.text = 'نالوت - $d';
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -393,6 +509,31 @@ class _StoresTabState extends State<StoresTab> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: minOrderCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'الحد الأدنى للطلب (د.ل)',
+                        prefixIcon: Icon(Icons.shopping_bag_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: AdminColors.surface,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AdminColors.divider),
+                      ),
+                      child: CheckboxListTile(
+                        value: addStarterMenu,
+                        activeColor: AdminColors.emeraldGreen,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10),
+                        title: const Text('توليد قائمة أصناف أولية تلقائياً', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AdminColors.textPrimary)),
+                        subtitle: const Text('إضافة 4 أصناف نموذجية جاهزة للبدء الفوري', style: TextStyle(fontSize: 11, color: AdminColors.textSecondary)),
+                        onChanged: (val) => setDialogState(() => addStarterMenu = val ?? true),
+                      ),
                     ),
                   ],
                 ),
@@ -427,6 +568,12 @@ class _StoresTabState extends State<StoresTab> {
                     commissionRate: double.tryParse(commissionCtrl.text.trim()) ?? 10.0,
                     minOrderLyd: double.tryParse(minOrderCtrl.text.trim()) ?? 10.0,
                   );
+                  if (storeResult != null && addStarterMenu) {
+                    final storeId = storeResult['id']?.toString() ?? '';
+                    if (storeId.isNotEmpty) {
+                      await AdminSupabaseService.addStarterProductsForStore(storeId, selectedType);
+                    }
+                  }
                   _loadStores();
                   if (storeResult != null && mounted) {
                     _showMerchantCredentialsDialog(storeResult);

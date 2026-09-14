@@ -1746,6 +1746,15 @@ class AdminSupabaseService {
   }
 
   static Future<bool> deleteProduct(String productId) async {
+    // 1. Try Live Unified Backend
+    try {
+      final res = await http
+          .delete(Uri.parse('$backendBaseUrl/products/$productId'))
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200 || res.statusCode == 204) return true;
+    } catch (_) {}
+
+    // 2. Fallback to Supabase Cloud
     try {
       final res = await http
           .delete(
@@ -1757,6 +1766,53 @@ class AdminSupabaseService {
     } catch (_) {
       return false;
     }
+  }
+
+  /// Add starter menu templates for new stores automatically
+  static Future<int> addStarterProductsForStore(String storeId, String storeType) async {
+    List<Map<String, dynamic>> starterItems = [];
+    if (storeType == 'pizza') {
+      starterItems = [
+        {'name': 'بيتزا مارغريتا كلاسيك', 'price': 18.0, 'category': 'بيتزا وفطائر', 'desc': 'صلصة طماطم طازجة، جبنة موزاريلا فاخرة، ريحان'},
+        {'name': 'بيتزا لحم مفروم مشكل', 'price': 25.0, 'category': 'بيتزا وفطائر', 'desc': 'لحم مفروم متبل، فلفل، زيتون، جبنة موزاريلا'},
+        {'name': 'فطيرة سبانخ وجبنة كيري', 'price': 14.0, 'category': 'بيتزا وفطائر', 'desc': 'فطيرة ساخنة ومقرمشة مع حشوة السبانخ والجبن'},
+        {'name': 'مشروب غازي بارد 330 مل', 'price': 3.0, 'category': 'مشروبات ومقبلات', 'desc': 'بيبسي أو كوكاكولا أو فانتا مثلج'},
+      ];
+    } else if (storeType == 'grocery' || storeType == 'supermarket') {
+      starterItems = [
+        {'name': 'حليب معقم كامل الدسم 1 لتر', 'price': 4.5, 'category': 'ألبان وأجبان', 'desc': 'حليب طازج معقم'},
+        {'name': 'زيت طهي نباتي نقي 1 لتر', 'price': 9.0, 'category': 'مواد غذائية أساسية', 'desc': 'زيت نقي للطبخ والقلي'},
+        {'name': 'أرز بسمتي فاخر 1 كجم', 'price': 6.5, 'category': 'حبوب وبقوليات', 'desc': 'أرز حبة طويلة ممتاز'},
+        {'name': 'مياه نالوت المعدنية شد 6', 'price': 4.0, 'category': 'مشروبات ومياه', 'desc': 'مياه نقية طبيعية'},
+      ];
+    } else if (storeType == 'pharmacy') {
+      starterItems = [
+        {'name': 'بنادول إكسترا أقراص 500 ملغ', 'price': 8.5, 'category': 'مسكنات وأدوية', 'desc': 'مسكن للصداع والآلام وخافض حرارة'},
+        {'name': 'فيتامين سي فوار 1000 ملغ', 'price': 12.0, 'category': 'فيتامينات ومكملات', 'desc': 'مكمل غذائي لتقوية المناعة'},
+        {'name': 'شاش وضمادات طبية معقمة', 'price': 5.0, 'category': 'إسعافات أولية', 'desc': 'عبوة شاش طبي معقم متعدد الأحجام'},
+      ];
+    } else {
+      // Restaurant
+      starterItems = [
+        {'name': 'سندوتش شاورما دجاج مميز', 'price': 12.0, 'category': 'سندوتشات سريعة', 'desc': 'دجاج متبل مع ثومية وبطاطا مقرمشة في خبز صاج'},
+        {'name': 'وجبة كباب صحن مشوي', 'price': 22.0, 'category': 'مشويات جبلية', 'desc': 'أسياخ كباب لحم مشوي على الفحم مع سلطة وخبز'},
+        {'name': 'سكالوب دجاج بالجبنة', 'price': 16.0, 'category': 'سندوتشات سريعة', 'desc': 'صدر دجاج مقرمش مع جبنة وصوص خاص'},
+        {'name': 'صحن بطاطا مقلية صوابع', 'price': 6.0, 'category': 'مشروبات ومقبلات', 'desc': 'بطاطا ذهبية ساخنة ومملحة'},
+      ];
+    }
+
+    int addedCount = 0;
+    for (final item in starterItems) {
+      final success = await addProduct(
+        storeId: storeId,
+        name: item['name'] as String,
+        price: (item['price'] as num).toDouble(),
+        category: item['category'] as String,
+        description: item['desc'] as String,
+      );
+      if (success) addedCount++;
+    }
+    return addedCount;
   }
 
   // --------------------------------------------------------------------------

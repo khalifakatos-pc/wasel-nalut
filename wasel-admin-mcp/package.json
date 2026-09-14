@@ -1,0 +1,13 @@
+{
+  "name": "wasel-admin-mcp",
+  "version": "1.0.0",
+  "description": "Model Context Protocol (MCP) Server for Wasel Nalut Admin Management and Data Ingestion via Hermes Agent",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  }
+}
