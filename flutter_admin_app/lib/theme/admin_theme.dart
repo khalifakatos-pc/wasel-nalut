@@ -48,3 +48,27 @@ class AdminTheme {
     );
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// MOTION & ANIMATION TOKENS (60 / 120 FPS HIGH PERFORMANCE)
+/// ---------------------------------------------------------------------------
+class AppMotion {
+  static const Duration fast = Duration(milliseconds: 150);      // Quick controls, toggle switches
+  static const Duration normal = Duration(milliseconds: 300);    // Tab transitions, modal sheets
+  static const Duration slow = Duration(milliseconds: 500);      // Financial counter rolling
+  static const Duration relaxed = Duration(milliseconds: 800);   // Live fleet beacon pulse
+  static const Duration extended = Duration(milliseconds: 1200); // Radar sweep cycle
+  static const Duration shimmer = Duration(milliseconds: 1500);  // Operations table shimmer
+
+  static const Curve easeOutCubic = Curves.easeOutCubic;
+  static const Curve easeInOutCubic = Curves.easeInOutCubic;
+  static const Curve elasticOut = Curves.elasticOut;
+  static const Curve springSnappy = Cubic(0.175, 0.885, 0.32, 1.275);
+  static const Curve decelerate = Curves.decelerate;
+  static const Curve pulseCurve = Curves.easeInOutSine;
+  static const Curve linear = Curves.linear;
+
+  static const double pressScaleButton = 0.96;
+  static const double pressScaleCard = 0.98;
+}
+

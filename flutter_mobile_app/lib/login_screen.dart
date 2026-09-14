@@ -3,11 +3,19 @@ import 'package:flutter/services.dart';
 import 'design_system.dart';
 import 'otp_verification_screen.dart';
 import 'services/whatsapp_auth_service.dart';
+import 'services/api_service.dart';
 import 'main.dart';
 
 /// Login screen with Libyan phone number input (+218) for Wasel Nalut.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  final VoidCallback? onToggleTheme;
+  final bool isDark;
+
+  const LoginScreen({
+    super.key,
+    this.onToggleTheme,
+    this.isDark = false,
+  });
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -167,6 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       final isSelected = _selectedCarrier == carrier;
                       return Expanded(
                         child: GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () =>
                               setState(() => _selectedCarrier = carrier),
                           child: AnimatedContainer(
@@ -344,13 +353,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   height: 50,
                   child: OutlinedButton(
-                    onPressed: () {
+                    onPressed: () async {
+                      await ApiService.setGuestMode(true);
+                      if (!context.mounted) return;
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
                           builder: (_) => MainNavigationShell(
-                            onToggleTheme: () {},
-                            isDark: false,
+                            onToggleTheme: widget.onToggleTheme ?? () {},
+                            isDark: widget.isDark,
                           ),
                         ),
                         (route) => false,

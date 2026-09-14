@@ -35,6 +35,9 @@ class _SmartSettingsTabState extends State<SmartSettingsTab> {
   // Ratings
   bool _ratingsEnabled = true;
 
+  // Nalut Delivery Zones
+  List<Map<String, dynamic>> _zones = [];
+
   @override
   void initState() {
     super.initState();
@@ -44,8 +47,10 @@ class _SmartSettingsTabState extends State<SmartSettingsTab> {
   Future<void> _loadConfig() async {
     setState(() => _isLoading = true);
     final cfg = await AdminSupabaseService.fetchSystemConfigurations();
+    final zones = await AdminSupabaseService.fetchDeliveryZones();
     if (mounted) {
       setState(() {
+        _zones = List<Map<String, dynamic>>.from(zones);
         _referralEnabled = cfg['referral_enabled'] ?? true;
         _referralTargetCountCtrl.text = (cfg['referral_target_count'] ?? 3).toString();
         _referralRewardType = cfg['referral_reward_type'] ?? 'free_delivery';
@@ -434,6 +439,14 @@ class _SmartSettingsTabState extends State<SmartSettingsTab> {
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+
+            // 5. Nalut Delivery Zones Section
+            _buildDeliveryZonesCard(),
+            const SizedBox(height: 16),
+
+            // 6. Purge Test Data & Live Launch Mode
+            _buildPurgeTestDataCard(),
             const SizedBox(height: 24),
 
             // Save Action Button
@@ -576,6 +589,316 @@ class _SmartSettingsTabState extends State<SmartSettingsTab> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDeliveryZonesCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AdminColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AdminColors.primaryGold.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.share_location_rounded, color: AdminColors.primaryGold, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '📍 نطاقات وأسعار التوصيل في نالوت',
+                      style: TextStyle(
+                        fontSize: 14.5,
+                        fontWeight: FontWeight.bold,
+                        color: AdminColors.textPrimary,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'تسعير التوصيل ووقت الوصول لكل حي ونطاق جغرافي',
+                      style: TextStyle(fontSize: 11, color: AdminColors.textSecondary),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const Divider(color: AdminColors.divider, height: 24),
+          if (_zones.isEmpty)
+            const Center(child: Text('جاري تحميل النطاقات...', style: TextStyle(color: AdminColors.textSecondary)))
+          else
+            ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _zones.length,
+              separatorBuilder: (_, _) => const Divider(color: AdminColors.divider, height: 16),
+              itemBuilder: (context, index) {
+                final z = _zones[index];
+                final fee = (z['fee_lyd'] is num) ? (z['fee_lyd'] as num).toDouble() : 5.0;
+                final minM = z['min_minutes'] ?? 20;
+                final maxM = z['max_minutes'] ?? 30;
+
+                return Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            z['name'] ?? 'منطقة نالوت',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'وقت الوصول المتوقع: $minM - $maxM دقيقة',
+                            style: const TextStyle(fontSize: 11, color: AdminColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AdminColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.5)),
+                      ),
+                      child: Text(
+                        '${fee.toStringAsFixed(2)} د.ل',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: AdminColors.primaryGold),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.edit, size: 18, color: AdminColors.textSecondary),
+                      onPressed: () => _showEditZoneDialog(z),
+                      tooltip: 'تعديل السعر والوقت',
+                    ),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditZoneDialog(Map<String, dynamic> zone) {
+    final feeCtrl = TextEditingController(text: (zone['fee_lyd'] ?? 5.0).toString());
+    final minCtrl = TextEditingController(text: (zone['min_minutes'] ?? 20).toString());
+    final maxCtrl = TextEditingController(text: (zone['max_minutes'] ?? 30).toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.edit_location_alt_rounded, color: AdminColors.primaryGold),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('تعديل تعرفة: ${zone['name']}', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: feeCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'سعر التوصيل (د.ل)',
+                  prefixIcon: Icon(Icons.delivery_dining),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: minCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'أدنى وقت (دقيقة)',
+                        prefixIcon: Icon(Icons.timer_outlined),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: maxCtrl,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'أقصى وقت (دقيقة)',
+                        prefixIcon: Icon(Icons.timelapse),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء', style: TextStyle(color: AdminColors.textSecondary))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AdminColors.emeraldGreen, foregroundColor: Colors.white),
+              onPressed: () async {
+                Navigator.pop(ctx);
+                final newFee = double.tryParse(feeCtrl.text.trim()) ?? 5.0;
+                final minMin = int.tryParse(minCtrl.text.trim()) ?? 20;
+                final maxMin = int.tryParse(maxCtrl.text.trim()) ?? 30;
+
+                await AdminSupabaseService.updateDeliveryZoneFee(
+                  zoneId: zone['id'],
+                  newFee: newFee,
+                  minMinutes: minMin,
+                  maxMinutes: maxMin,
+                );
+                final updated = await AdminSupabaseService.fetchDeliveryZones();
+                if (mounted) {
+                  setState(() => _zones = List<Map<String, dynamic>>.from(updated));
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('✅ تم تحديث تسعيرة النطاق بنجاح')),
+                  );
+                }
+              },
+              child: const Text('حفظ التعديل'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPurgeTestDataCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF2D1515),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.cleaning_services_rounded, color: Colors.redAccent, size: 24),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '🧹 مركز تطهير البيانات والجاهزية للعمل الحقيقي',
+                  style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'تفريغ ومسح كافة الطلبات التجريبية وتصفير عهد الكاش الوهمية للكباتن، لبدء العمل الميداني الفعلي في نالوت ببيانات حقيقية نظيفة بنسبة 100%.',
+            style: TextStyle(color: Colors.white70, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red[800],
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+              label: const Text('تطهير البيانات التجريبية وبدء العمل الحقيقي', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: _showPurgeConfirmDialog,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPurgeConfirmDialog() {
+    final pinCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('تأكيد تطهير البيانات وبدء العمل الحقيقي', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '⚠️ سيتم مسح كافة الطلبات التجريبية وتصفير عهد الكاش، ولن تتأثر قوائم المتاجر والوجبات.\nلتأكيد العملية، يرجى إدخال رمز الـ PIN الإداري:',
+                style: TextStyle(color: AdminColors.textSecondary, fontSize: 12.5, height: 1.4),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                controller: pinCtrl,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'رمز PIN الإدارة (مثال: 9832)',
+                  prefixIcon: Icon(Icons.lock_outline),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء', style: TextStyle(color: AdminColors.textSecondary))),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red[800], foregroundColor: Colors.white),
+              onPressed: () async {
+                final pin = pinCtrl.text.trim();
+                Navigator.pop(ctx);
+                final res = await AdminSupabaseService.purgeTestData(pin);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(res['message'] ?? ''),
+                      backgroundColor: res['success'] == true ? Colors.green[700] : Colors.red[700],
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                  _loadConfig();
+                }
+              },
+              child: const Text('تأكيد التطهير والبدء'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

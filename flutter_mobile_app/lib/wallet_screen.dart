@@ -476,6 +476,7 @@ class _WalletScreenState extends State<WalletScreen> {
   Widget _buildFilterTab(String id, String label) {
     final isSelected = _selectedFilter == id;
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => setState(() => _selectedFilter = id),
       child: Container(
         margin: const EdgeInsets.only(right: 4),

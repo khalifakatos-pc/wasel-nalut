@@ -20,6 +20,9 @@ class AdminSupabaseService {
         'Prefer': 'return=representation',
       };
 
+  static final List<Map<String, dynamic>> _dynamicStores = [];
+  static final List<Map<String, dynamic>> _dynamicDrivers = [];
+
   // --------------------------------------------------------------------------
   // KPI CALCULATOR
   // --------------------------------------------------------------------------
@@ -46,10 +49,10 @@ class AdminSupabaseService {
             'total_orders': totalOrders,
             'gmv_lyd': gmv,
             'platform_fee_lyd': platformFee,
-            'cod_with_drivers_lyd': 120.0,
+            'cod_with_drivers_lyd': (d['metrics']?['cod_pending_lyd'] as num?)?.toDouble() ?? 0.0,
             'active_orders': activeOrders,
             'online_drivers': onlineDrivers,
-            'open_stores': 4,
+            'open_stores': (d['metrics']?['stores_count'] as num?)?.toInt() ?? 0,
           };
         }
       }
@@ -109,15 +112,15 @@ class AdminSupabaseService {
         'open_stores': openStoresCount,
       };
     } catch (_) {
-      // Graceful offline fallback with realistic Nalut numbers
+      // Graceful zero-state fallback
       return {
-        'total_orders': 5,
-        'gmv_lyd': 249.0,
-        'platform_fee_lyd': 24.9,
-        'cod_with_drivers_lyd': 240.0,
-        'active_orders': 3,
-        'online_drivers': 3,
-        'open_stores': 3,
+        'total_orders': 0,
+        'gmv_lyd': 0.0,
+        'platform_fee_lyd': 0.0,
+        'cod_with_drivers_lyd': 0.0,
+        'active_orders': 0,
+        'online_drivers': 0,
+        'open_stores': 0,
       };
     }
   }
@@ -126,65 +129,6 @@ class AdminSupabaseService {
   // STORES MANAGEMENT
   // --------------------------------------------------------------------------
   static Future<List<Map<String, dynamic>>> fetchStores() async {
-    final List<Map<String, dynamic>> realNalutStores = [
-      {
-        'id': 'store_nalut_alhanaa',
-        'name': 'صيدلية الهناء',
-        'name_en': 'Al-Hanaa Pharmacy',
-        'type': 'pharmacy',
-        'district': 'مقابل جزيرة مصرف الجمهورية، نالوت',
-        'phone': '0910000000',
-        'rating': 4.9,
-        'review_count': 94,
-        'base_delivery_fee_lyd': 5.00,
-        'latitude': 31.877755,
-        'longitude': 10.978004,
-        'is_open': true,
-      },
-      {
-        'id': 'store_nalut_ranchello',
-        'name': 'مطعم ومقهى رانشيلو',
-        'name_en': 'Ranchello Restaurant & Cafe',
-        'type': 'restaurant',
-        'district': 'شارع أفريقيا، نالوت',
-        'phone': '0919570011',
-        'rating': 4.8,
-        'review_count': 165,
-        'base_delivery_fee_lyd': 5.00,
-        'latitude': 31.862130,
-        'longitude': 10.986878,
-        'is_open': true,
-      },
-      {
-        'id': 'store_nalut_akakus',
-        'name': 'بيتزا أكاكوس',
-        'name_en': 'Pizza Akakus',
-        'type': 'pizza',
-        'district': 'شارع تونس، نالوت',
-        'phone': '0910000000',
-        'rating': 4.7,
-        'review_count': 142,
-        'base_delivery_fee_lyd': 5.00,
-        'latitude': 31.881501,
-        'longitude': 10.975753,
-        'is_open': true,
-      },
-      {
-        'id': 'store_nalut_rixos',
-        'name': 'ريكسوس للتسوق',
-        'name_en': 'Rixos Shopping Market',
-        'type': 'grocery',
-        'district': 'المدخل الرئيسي - نالوت',
-        'phone': '0910000000',
-        'rating': 4.8,
-        'review_count': 210,
-        'base_delivery_fee_lyd': 5.00,
-        'latitude': 31.892879,
-        'longitude': 10.965377,
-        'is_open': true,
-      },
-    ];
-
     // 1. Try Live Unified Backend First
     try {
       final res = await http
@@ -197,15 +141,13 @@ class AdminSupabaseService {
             ? data['data']
             : (data is List ? data : []);
 
-        if (list.isNotEmpty) {
-          final List<Map<String, dynamic>> combined = list.map((s) => Map<String, dynamic>.from(s as Map)).toList();
-          for (final realStore in realNalutStores) {
-            if (!combined.any((s) => s['id'] == realStore['id'])) {
-              combined.add(realStore);
-            }
+        final List<Map<String, dynamic>> combined = list.map((s) => Map<String, dynamic>.from(s as Map)).toList();
+        for (final dyn in _dynamicStores) {
+          if (!combined.any((s) => s['id'] == dyn['id'])) {
+            combined.insert(0, dyn);
           }
-          return combined;
         }
+        return combined;
       }
     } catch (_) {}
 
@@ -215,16 +157,16 @@ class AdminSupabaseService {
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
         final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
-        for (final realStore in realNalutStores) {
-          if (!combined.any((s) => s['id'] == realStore['id'])) {
-            combined.add(realStore);
+        for (final dyn in _dynamicStores) {
+          if (!combined.any((s) => s['id'] == dyn['id'])) {
+            combined.insert(0, dyn);
           }
         }
         return combined;
       }
     } catch (_) {}
 
-    return realNalutStores;
+    return List<Map<String, dynamic>>.from(_dynamicStores);
   }
 
   static Future<bool> toggleStoreOpen(String storeId, bool isOpen) async {
@@ -256,9 +198,7 @@ class AdminSupabaseService {
             ? data['data']
             : (data is List ? data : []);
 
-        if (list.isNotEmpty) {
-          return list.map((o) => Map<String, dynamic>.from(o as Map)).toList();
-        }
+        return list.map((o) => Map<String, dynamic>.from(o as Map)).toList();
       }
     } catch (_) {}
 
@@ -267,60 +207,11 @@ class AdminSupabaseService {
       final res = await http.get(Uri.parse('$supabaseUrl/orders?select=*&order=created_at.desc'), headers: _headers).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          return List<Map<String, dynamic>>.from(list);
-        }
+        return List<Map<String, dynamic>>.from(list);
       }
     } catch (_) {}
 
-    // Fallback sample orders for demo
-    return [
-      {
-        'id': 'ord_101',
-        'order_number': 'WAS-9831',
-        'customer_name': 'فرج عاصم النالوتي',
-        'customer_phone': '091-2345678',
-        'store_id': 'store_nalut_01',
-        'store_name': 'مطعم قصر نالوت للمشويات',
-        'driver_name': 'كابتن طارق النالوتي',
-        'status': 'out_for_delivery',
-        'total_amount_lyd': 42.00,
-        'payment_method': 'cash_on_delivery',
-        'otp_code': '4821',
-        'delivery_address': 'حي القلعة الأثرية - قرب المسجد العتيق',
-        'created_at': DateTime.now().subtract(const Duration(minutes: 18)).toIso8601String(),
-      },
-      {
-        'id': 'ord_102',
-        'order_number': 'WAS-9832',
-        'customer_name': 'سالم كاطوس',
-        'customer_phone': '092-8765432',
-        'store_id': 'store_nalut_02',
-        'store_name': 'بيتزا ومعجنات القلعة',
-        'driver_name': 'كابتن أنيس الجبالي',
-        'status': 'preparing',
-        'total_amount_lyd': 34.00,
-        'payment_method': 'sadad',
-        'otp_code': '8192',
-        'delivery_address': 'شارع المستشفى المركزي',
-        'created_at': DateTime.now().subtract(const Duration(minutes: 8)).toIso8601String(),
-      },
-      {
-        'id': 'ord_103',
-        'order_number': 'WAS-9833',
-        'customer_name': 'عمر الباروني',
-        'customer_phone': '094-1122334',
-        'store_id': 'store_nalut_03',
-        'store_name': 'أسواق نالوت المركزية',
-        'driver_name': 'في انتظار كابتن...',
-        'status': 'placed',
-        'total_amount_lyd': 55.00,
-        'payment_method': 'cash_on_delivery',
-        'otp_code': '3301',
-        'delivery_address': 'طريق المعهد العالي نالوت',
-        'created_at': DateTime.now().subtract(const Duration(minutes: 2)).toIso8601String(),
-      },
-    ];
+    return [];
   }
 
   static Future<bool> updateOrderStatus(String orderId, String newStatus) async {
@@ -366,9 +257,13 @@ class AdminSupabaseService {
             ? data['data']
             : (data is List ? data : []);
 
-        if (list.isNotEmpty) {
-          return list.map((d) => Map<String, dynamic>.from(d as Map)).toList();
+        final combined = list.map((d) => Map<String, dynamic>.from(d as Map)).toList();
+        for (final dyn in _dynamicDrivers) {
+          if (!combined.any((d) => d['id'] == dyn['id'])) {
+            combined.insert(0, dyn);
+          }
         }
+        return combined;
       }
     } catch (_) {}
 
@@ -377,48 +272,17 @@ class AdminSupabaseService {
       final res = await http.get(Uri.parse('$supabaseUrl/drivers?select=*'), headers: _headers).timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          return List<Map<String, dynamic>>.from(list);
+        final combined = List<Map<String, dynamic>>.from(list);
+        for (final dyn in _dynamicDrivers) {
+          if (!combined.any((d) => d['id'] == dyn['id'])) {
+            combined.insert(0, dyn);
+          }
         }
+        return combined;
       }
     } catch (_) {}
 
-    // Fallback drivers
-    return [
-      {
-        'id': 'drv_01',
-        'full_name': 'طارق النالوتي',
-        'phone': '091-5544332',
-        'vehicle_type': 'سيارة هيونداي فيرنا',
-        'plate_number': '14-88492',
-        'status': 'busy_delivery',
-        'rating': 4.9,
-        'total_trips': 68,
-        'wallet_balance_lyd': 120.00,
-      },
-      {
-        'id': 'drv_02',
-        'full_name': 'أنيس الجبالي',
-        'phone': '092-3322110',
-        'vehicle_type': 'دراجة نارية ياماها',
-        'plate_number': '14-33201',
-        'status': 'available',
-        'rating': 4.8,
-        'total_trips': 42,
-        'wallet_balance_lyd': 85.00,
-      },
-      {
-        'id': 'drv_03',
-        'full_name': 'محمد خليفة',
-        'phone': '094-7766554',
-        'vehicle_type': 'تويوتا ياريس',
-        'plate_number': '14-11928',
-        'status': 'available',
-        'rating': 5.0,
-        'total_trips': 19,
-        'wallet_balance_lyd': 35.00,
-      },
-    ];
+    return List<Map<String, dynamic>>.from(_dynamicDrivers);
   }
 
   static Future<bool> settleDriverCash(String driverId) async {
@@ -437,69 +301,266 @@ class AdminSupabaseService {
   static Future<bool> addDriver({
     required String fullName,
     required String phone,
+    String pin = '1234',
     required String vehicleType,
     required String plateNumber,
+    double maxCodLimit = 250.0,
   }) async {
+    final id = 'drv_${DateTime.now().millisecondsSinceEpoch}';
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    final driverMap = {
+      'id': id,
+      'full_name': fullName,
+      'phone': cleanPhone.isNotEmpty ? cleanPhone : phone,
+      'pin': pin.isNotEmpty ? pin : '1234',
+      'vehicle_type': vehicleType,
+      'plate_number': plateNumber,
+      'status': 'available',
+      'rating': 5.0,
+      'total_trips': 0,
+      'wallet_balance_lyd': 0.00,
+      'max_cod_limit_lyd': maxCodLimit,
+      'latitude': 31.8686,
+      'longitude': 10.9818,
+    };
+
+    _dynamicDrivers.insert(0, driverMap);
+
+    // 1. Post to unified backend
     try {
-      final id = 'drv_${DateTime.now().millisecondsSinceEpoch}';
-      final payload = {
-        'id': id,
-        'full_name': fullName,
-        'phone': phone,
-        'vehicle_type': vehicleType,
-        'plate_number': plateNumber,
-        'status': 'available',
-        'rating': 5.0,
-        'total_trips': 0,
-        'wallet_balance_lyd': 0.00,
-        'latitude': 31.8686,
-        'longitude': 10.9818,
-      };
+      await http.post(
+        Uri.parse('$backendBaseUrl/drivers'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(driverMap),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+
+    // 2. Post to Supabase Cloud
+    try {
       final res = await http.post(
         Uri.parse('$supabaseUrl/drivers'),
         headers: _headers,
-        body: jsonEncode(payload),
+        body: jsonEncode(driverMap),
       ).timeout(const Duration(seconds: 4));
       return res.statusCode == 200 || res.statusCode == 201;
     } catch (_) {
-      return false;
+      return true; // Local addition succeeded
     }
   }
 
-  static Future<bool> addStore({
+  static Future<bool> deleteDriver(String driverId) async {
+    _dynamicDrivers.removeWhere((d) => d['id'] == driverId);
+    try {
+      await http.delete(
+        Uri.parse('$backendBaseUrl/drivers/$driverId'),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    try {
+      await http.delete(
+        Uri.parse('$supabaseUrl/drivers?id=eq.$driverId'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    return true;
+  }
+
+  static Future<Map<String, dynamic>?> addStore({
     required String name,
+    String? nameEn,
     required String type,
     required String district,
     required double baseDeliveryFee,
+    String? phone,
+    String? pin,
+    double commissionRate = 10.0,
+    double minOrderLyd = 10.00,
+    double? latitude,
+    double? longitude,
   }) async {
+    final id = 'store_nalut_${DateTime.now().millisecondsSinceEpoch}';
+    final cleanPhone = (phone ?? '0910000000').replaceAll(RegExp(r'[^0-9]'), '');
+    final cleanPin = (pin != null && pin.isNotEmpty) ? pin : '1234';
+
+    final appMode = (type == 'grocery' || type == 'pharmacy') ? 'retail' : 'kitchen';
+
+    final payload = {
+      'id': id,
+      'name': name,
+      'name_en': (nameEn != null && nameEn.isNotEmpty) ? nameEn : name,
+      'type': type,
+      'district': district,
+      'city': 'nalut',
+      'phone': cleanPhone,
+      'pin': cleanPin,
+      'app_mode': appMode,
+      'commission_rate': commissionRate,
+      'rating': 5.0,
+      'review_count': 0,
+      'delivery_time_min': 20,
+      'delivery_time_max': 35,
+      'min_order_lyd': minOrderLyd,
+      'base_delivery_fee_lyd': baseDeliveryFee,
+      'latitude': latitude ?? 31.8686,
+      'longitude': longitude ?? 10.9818,
+      'is_open': true,
+      'is_featured': true,
+    };
+
+    _dynamicStores.insert(0, payload);
+
+    // 1. Post to unified backend
     try {
-      final id = 'store_nalut_${DateTime.now().millisecondsSinceEpoch}';
-      final payload = {
-        'id': id,
-        'name': name,
-        'type': type,
-        'district': district,
-        'city': 'nalut',
-        'rating': 5.0,
-        'review_count': 1,
-        'delivery_time_min': 20,
-        'delivery_time_max': 35,
-        'min_order_lyd': 10.00,
-        'base_delivery_fee_lyd': baseDeliveryFee,
-        'latitude': 31.8686,
-        'longitude': 10.9818,
-        'is_open': true,
-        'is_featured': true,
-      };
+      await http.post(
+        Uri.parse('$backendBaseUrl/stores'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+
+    // 2. Post to Supabase Cloud
+    try {
       final res = await http.post(
         Uri.parse('$supabaseUrl/stores'),
         headers: _headers,
         body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 201;
-    } catch (_) {
-      return false;
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return payload;
+      }
+    } catch (_) {}
+
+    return payload; // Local addition succeeded
+  }
+
+  static Future<bool> deleteStore(String storeId) async {
+    _dynamicStores.removeWhere((s) => s['id'] == storeId);
+    try {
+      await http.delete(
+        Uri.parse('$backendBaseUrl/stores/$storeId'),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    try {
+      await http.delete(
+        Uri.parse('$supabaseUrl/stores?id=eq.$storeId'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+    return true;
+  }
+
+  // --------------------------------------------------------------------------
+  // NALUT DELIVERY ZONES & TARIFFS (إدارة نطاقات وأسعار التوصيل في نالوت)
+  // --------------------------------------------------------------------------
+  static final List<Map<String, dynamic>> _deliveryZones = [
+    {
+      'id': 'zone_nalut_center',
+      'name': 'نالوت - المركز والبلدة القديمة',
+      'fee_lyd': 3.00,
+      'min_minutes': 15,
+      'max_minutes': 25,
+      'is_active': true,
+    },
+    {
+      'id': 'zone_nalut_qalaa',
+      'name': 'نالوت - حي القلعة وسيدي خليفة',
+      'fee_lyd': 3.50,
+      'min_minutes': 20,
+      'max_minutes': 30,
+      'is_active': true,
+    },
+    {
+      'id': 'zone_nalut_africa',
+      'name': 'نالوت - شارع أفريقيا والمنطقة الحرفية',
+      'fee_lyd': 4.00,
+      'min_minutes': 20,
+      'max_minutes': 30,
+      'is_active': true,
+    },
+    {
+      'id': 'zone_nalut_airport',
+      'name': 'نالوت - طريق المطار والمدخل الشرقي',
+      'fee_lyd': 5.00,
+      'min_minutes': 25,
+      'max_minutes': 35,
+      'is_active': true,
+    },
+    {
+      'id': 'zone_nalut_talat',
+      'name': 'منطقة تالات وضواحي نالوت الجبلية',
+      'fee_lyd': 6.50,
+      'min_minutes': 30,
+      'max_minutes': 45,
+      'is_active': true,
+    },
+    {
+      'id': 'zone_nalut_kabaw_road',
+      'name': 'خط طريق كاباو والمزارع المجاورة',
+      'fee_lyd': 8.50,
+      'min_minutes': 35,
+      'max_minutes': 50,
+      'is_active': true,
+    },
+  ];
+
+  static Future<List<Map<String, dynamic>>> fetchDeliveryZones() async {
+    return _deliveryZones;
+  }
+
+  static Future<bool> updateDeliveryZoneFee({
+    required String zoneId,
+    required double newFee,
+    required int minMinutes,
+    required int maxMinutes,
+  }) async {
+    final idx = _deliveryZones.indexWhere((z) => z['id'] == zoneId);
+    if (idx != -1) {
+      _deliveryZones[idx]['fee_lyd'] = newFee;
+      _deliveryZones[idx]['min_minutes'] = minMinutes;
+      _deliveryZones[idx]['max_minutes'] = maxMinutes;
+      return true;
     }
+    return false;
+  }
+
+  // --------------------------------------------------------------------------
+  // PURGE TEST DATA & PRODUCTION LIVE SLATE (تطهير البيانات الوهمية وتفعيل النمط الحي)
+  // --------------------------------------------------------------------------
+  static Future<Map<String, dynamic>> purgeTestData(String adminPin) async {
+    if (adminPin.trim() != '9832') {
+      return {'success': false, 'message': 'رمز الـ PIN الإداري غير صحيح'};
+    }
+
+    try {
+      // 1. Purge test orders
+      await http.delete(
+        Uri.parse('$supabaseUrl/orders?id=neq.none'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+
+    try {
+      // 2. Reset drivers balances and trip counters
+      await http.patch(
+        Uri.parse('$supabaseUrl/drivers?wallet_balance_lyd=gt.0'),
+        headers: _headers,
+        body: jsonEncode({
+          'wallet_balance_lyd': 0.0,
+          'total_trips': 0,
+          'status': 'available',
+        }),
+      ).timeout(const Duration(seconds: 4));
+    } catch (_) {}
+
+    for (var d in _dynamicDrivers) {
+      d['wallet_balance_lyd'] = 0.0;
+      d['total_trips'] = 0;
+    }
+
+    return {
+      'success': true,
+      'message': '✅ تم تطهير كافة البيانات التجريبية بنجاح! المنظومة جاهزة للتشغيل الحقيقي.',
+    };
   }
 
   // --------------------------------------------------------------------------
@@ -1752,5 +1813,268 @@ class AdminSupabaseService {
     } catch (_) {
       return false;
     }
+  }
+
+  // --------------------------------------------------------------------------
+  // DYNAMIC PRODUCT MODIFIERS & CUSTOMIZATION ENGINE (الهريسة، المستثنيات، الإضافات)
+  // --------------------------------------------------------------------------
+  static final Map<String, List<Map<String, dynamic>>> _productModifierCache = {};
+
+  static List<Map<String, dynamic>> getPresetTemplates() {
+    return [
+      {
+        'id': 'preset_sandwich_libyan',
+        'title': 'قالب السندوتش والشاورما الليبي 🥪',
+        'description': 'يشمل ميزان الهريسة، مستثنيات بدون كاتشب/بصل، كثر بطاطا، وإضافات الجبن',
+        'category_hint': 'سندوتشات',
+        'groups': [
+          {
+            'id': 'grp_harissa_scale',
+            'title': 'مستوى الهريسة والشطة 🌶️',
+            'type': 'single',
+            'is_required': true,
+            'options': [
+              {'name': 'بدون هريسة ⚪ (بارد)', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'هريسة خفيفة 🌶️', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'هريسة عادية موزونة 🌶️🌶️', 'price': 0.0, 'is_default': true, 'is_available': true},
+              {'name': 'زيادة هريسة (حارة هلبا) 🔥', 'price': 0.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+          {
+            'id': 'grp_exclusions',
+            'title': 'استثناءات سريعة (بدون...) 🚫',
+            'type': 'multiple',
+            'is_required': false,
+            'options': [
+              {'name': 'بدون كاتشب', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'بدون مايونيز', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'بدون بصل', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'بدون طماطم', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'بدون مخلل', 'price': 0.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+          {
+            'id': 'grp_addons_sandwich',
+            'title': 'إضافات ومفضلات السندوتش 🍟🧀',
+            'type': 'multiple',
+            'is_required': false,
+            'options': [
+              {'name': 'كثر البطاطا داخل السندوتش 🍟', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'حمّر الخبزة هلبا (مقرمشة) 🥖', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'زيادة جبنة شيدر مدخنة (+2.00 د.ل)', 'price': 2.0, 'is_default': false, 'is_available': true},
+              {'name': 'صوص ثومية إضافي (+1.50 د.ل)', 'price': 1.5, 'is_default': false, 'is_available': true},
+              {'name': 'دحي مقلي (بيضة) (+1.00 د.ل)', 'price': 1.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+        ],
+      },
+      {
+        'id': 'preset_pizza_libyan',
+        'title': 'قالب البيتزا والفطائر 🍕',
+        'description': 'خيارات حجم البيتزا، العجينة والأطراف، والموزاريلا الإضافية',
+        'category_hint': 'بيتزا',
+        'groups': [
+          {
+            'id': 'grp_pizza_size',
+            'title': 'حجم البيتزا 🍕',
+            'type': 'single',
+            'is_required': true,
+            'options': [
+              {'name': 'حجم وسط (قياسي)', 'price': 0.0, 'is_default': true, 'is_available': true},
+              {'name': 'حجم عائلي كبير (+6.00 د.ل)', 'price': 6.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+          {
+            'id': 'grp_pizza_crust',
+            'title': 'خيارات العجينة والأطراف 🧀',
+            'type': 'single',
+            'is_required': false,
+            'options': [
+              {'name': 'عجينة تقليدية متوازنة', 'price': 0.0, 'is_default': true, 'is_available': true},
+              {'name': 'أطراف محشوة بجبنة الموزاريلا (+4.00 د.ل)', 'price': 4.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+          {
+            'id': 'grp_pizza_addons',
+            'title': 'إضافات واستثناءات 🚫➕',
+            'type': 'multiple',
+            'is_required': false,
+            'options': [
+              {'name': 'بدون زيتون', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'بدون فلفل حلو', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'زيادة جبنة موزاريلا (+3.00 د.ل)', 'price': 3.0, 'is_default': false, 'is_available': true},
+              {'name': 'صلصة حارة جانبية (+1.00 د.ل)', 'price': 1.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+        ],
+      },
+      {
+        'id': 'preset_grill_libyan',
+        'title': 'قالب المشويات والشواية 🥩',
+        'description': 'نوع الخبز، التتبيلة والشطة، والسلطات الجانبية والمقبلات',
+        'category_hint': 'مشويات',
+        'groups': [
+          {
+            'id': 'grp_grill_bread',
+            'title': 'نوع الخبز 🥖',
+            'type': 'single',
+            'is_required': true,
+            'options': [
+              {'name': 'خبز تنور ليبي طازج', 'price': 0.0, 'is_default': true, 'is_available': true},
+              {'name': 'خبز شامي خفيف', 'price': 0.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+          {
+            'id': 'grp_grill_spice',
+            'title': 'درجة الحرارة والتتبيلة 🌶️',
+            'type': 'single',
+            'is_required': true,
+            'options': [
+              {'name': 'تتبيلة نالوتية عادية', 'price': 0.0, 'is_default': true, 'is_available': true},
+              {'name': 'تتبيلة حارة مع شطة', 'price': 0.0, 'is_default': false, 'is_available': true},
+            ],
+          },
+          {
+            'id': 'grp_grill_addons',
+            'title': 'إضافات ومستثنيات 🥗',
+            'type': 'multiple',
+            'is_required': false,
+            'options': [
+              {'name': 'بدون بصل وسماق', 'price': 0.0, 'is_default': false, 'is_available': true},
+              {'name': 'سلطة مشوية زيادة (+2.50 د.ل)', 'price': 2.5, 'is_default': false, 'is_available': true},
+              {'name': 'صوص طحينة إضافي (+1.50 د.ل)', 'price': 1.5, 'is_default': false, 'is_available': true},
+            ],
+          },
+        ],
+      },
+    ];
+  }
+
+  static List<Map<String, dynamic>> getDefaultModifiersForProduct(String category, String productName) {
+    final lowerCat = category.toLowerCase();
+    final lowerName = productName.toLowerCase();
+
+    final templates = getPresetTemplates();
+    if (lowerCat.contains('بيتزا') || lowerName.contains('بيتزا') || lowerCat.contains('فطائر')) {
+      return List<Map<String, dynamic>>.from(templates[1]['groups'] as List);
+    } else if (lowerCat.contains('مشوي') || lowerName.contains('كباب') || lowerName.contains('شواية')) {
+      return List<Map<String, dynamic>>.from(templates[2]['groups'] as List);
+    } else {
+      // Default to Libyan sandwich template
+      return List<Map<String, dynamic>>.from(templates[0]['groups'] as List);
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchModifierGroupsForProduct(
+    String productId,
+    String category,
+    String productName,
+  ) async {
+    // 1. Check in-memory cache
+    if (_productModifierCache.containsKey(productId)) {
+      return _productModifierCache[productId]!;
+    }
+
+    // 2. Try Supabase cloud fetch from vouchers / config notes
+    try {
+      final res = await http.get(
+        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.MOD-$productId&select=*'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(res.body);
+        if (list.isNotEmpty && list.first['notes'] != null) {
+          final dynamic parsed = jsonDecode(list.first['notes']);
+          if (parsed is List) {
+            final result = parsed.map((g) => Map<String, dynamic>.from(g as Map)).toList();
+            _productModifierCache[productId] = result;
+            return result;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback to sensible Libyan Nalut preset
+    final defaultGroups = getDefaultModifiersForProduct(category, productName);
+    _productModifierCache[productId] = defaultGroups;
+    return defaultGroups;
+  }
+
+  static Future<bool> saveModifierGroupsForProduct(
+    String productId,
+    List<Map<String, dynamic>> groups,
+  ) async {
+    _productModifierCache[productId] = groups;
+
+    try {
+      final payload = {
+        'notes': jsonEncode(groups),
+      };
+
+      // Check if voucher exists
+      final checkRes = await http.get(
+        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.MOD-$productId&select=id'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+
+      if (checkRes.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(checkRes.body);
+        if (list.isNotEmpty) {
+          final updateRes = await http.patch(
+            Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.MOD-$productId'),
+            headers: _headers,
+            body: jsonEncode(payload),
+          ).timeout(const Duration(seconds: 4));
+          return updateRes.statusCode == 200 || updateRes.statusCode == 204;
+        }
+      }
+
+      // Create new
+      final createPayload = {
+        'id': 'mod_${DateTime.now().millisecondsSinceEpoch}',
+        'voucher_number': 'MOD-$productId',
+        'type': 'expense',
+        'beneficiary_name': 'تخصيصات وجبة $productId',
+        'beneficiary_role': 'operational',
+        'amount_lyd': 0.0,
+        'payment_method': 'cash',
+        'notes': jsonEncode(groups),
+        'created_by': 'إدارة واصل - نالوت',
+        'created_at': DateTime.now().toIso8601String(),
+      };
+
+      final insertRes = await http.post(
+        Uri.parse('$supabaseUrl/vouchers'),
+        headers: _headers,
+        body: jsonEncode(createPayload),
+      ).timeout(const Duration(seconds: 4));
+
+      return insertRes.statusCode == 200 || insertRes.statusCode == 201;
+    } catch (_) {
+      return true; // Succeeded in local cache
+    }
+  }
+
+  static Future<int> applyModifierGroupsToCategory({
+    required String storeId,
+    required String category,
+    required List<Map<String, dynamic>> groups,
+  }) async {
+    int updatedCount = 0;
+    try {
+      final products = await fetchProductsForStore(storeId);
+      for (var p in products) {
+        final pCat = (p['category'] ?? '').toString();
+        if (pCat == category || category == 'الكل') {
+          final pId = p['id']?.toString();
+          if (pId != null) {
+            await saveModifierGroupsForProduct(pId, groups);
+            updatedCount++;
+          }
+        }
+      }
+    } catch (_) {}
+    return updatedCount;
   }
 }

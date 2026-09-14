@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
+import '../widgets/admin_motion_widgets.dart';
 
 class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});
@@ -199,38 +200,34 @@ class _DashboardTabState extends State<DashboardTab> {
                 'مبيعات نالوت اليوم (GMV)',
                 style: TextStyle(fontSize: 14, color: AdminColors.textSecondary),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AdminColors.emeraldGreen.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'مباشر حياً',
-                  style: TextStyle(fontSize: 11, color: AdminColors.emeraldGreen, fontWeight: FontWeight.bold),
+              WaselPulseGlow(
+                glowColor: AdminColors.emeraldGreen,
+                shape: BoxShape.rectangle,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AdminColors.emeraldGreen.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'مباشر حياً',
+                    style: TextStyle(fontSize: 11, color: AdminColors.emeraldGreen, fontWeight: FontWeight.bold),
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                gmv.toStringAsFixed(1),
-                style: const TextStyle(
-                  fontSize: 36,
-                  fontWeight: FontWeight.bold,
-                  color: AdminColors.textPrimary,
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'د.ل',
-                style: TextStyle(fontSize: 18, color: AdminColors.primaryGold, fontWeight: FontWeight.bold),
-              ),
-            ],
+          WaselNumberOdometer(
+            value: gmv,
+            decimalPlaces: 1,
+            suffix: ' د.ل',
+            style: const TextStyle(
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              color: AdminColors.textPrimary,
+            ),
           ),
           const Divider(color: AdminColors.divider, height: 28),
           Row(
@@ -240,8 +237,11 @@ class _DashboardTabState extends State<DashboardTab> {
                 'صافي أرباح المنظومة (10%):',
                 style: TextStyle(fontSize: 14, color: AdminColors.textSecondary),
               ),
-              Text(
-                '+${platformFee.toStringAsFixed(1)} د.ل',
+              WaselNumberOdometer(
+                value: platformFee,
+                decimalPlaces: 1,
+                prefix: '+',
+                suffix: ' د.ل',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -282,8 +282,10 @@ class _DashboardTabState extends State<DashboardTab> {
               children: [
                 const Text('كاش معلق مع الكباتن (COD)', style: TextStyle(fontSize: 12, color: AdminColors.textSecondary)),
                 const SizedBox(height: 4),
-                Text(
-                  '${cod.toStringAsFixed(1)} د.ل',
+                WaselNumberOdometer(
+                  value: cod,
+                  decimalPlaces: 1,
+                  suffix: ' د.ل',
                   style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AdminColors.textPrimary),
                 ),
               ],
@@ -330,9 +332,8 @@ class _DashboardTabState extends State<DashboardTab> {
   }
 
   Widget _buildActionBtn({required String label, required IconData icon, required Color color, required VoidCallback onTap}) {
-    return InkWell(
+    return WaselBouncyPressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(

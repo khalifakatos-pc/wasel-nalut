@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
 import '../widgets/digital_voucher_dialog.dart';
@@ -182,16 +183,26 @@ class _CaptainsTabState extends State<CaptainsTab> {
                                 ),
                               ],
                             ),
-                            ElevatedButton.icon(
-                              onPressed: balance > 0 ? () => _settleCash(driver) : null,
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AdminColors.emeraldGreen,
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: AdminColors.surfaceElevated,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                              ),
-                              icon: const Icon(Icons.check_circle_outline, size: 18),
-                              label: const Text('تسوية العهدة', style: TextStyle(fontWeight: FontWeight.bold)),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.key_rounded, size: 20, color: AdminColors.primaryGold),
+                                  tooltip: 'بيانات دخول الكابتن (Wasel Captain)',
+                                  onPressed: () => _showCaptainCredentialsDialog(driver),
+                                ),
+                                const SizedBox(width: 4),
+                                ElevatedButton.icon(
+                                  onPressed: balance > 0 ? () => _settleCash(driver) : null,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AdminColors.emeraldGreen,
+                                    foregroundColor: Colors.white,
+                                    disabledBackgroundColor: AdminColors.surfaceElevated,
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                  ),
+                                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                                  label: const Text('تسوية العهدة', style: TextStyle(fontWeight: FontWeight.bold)),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -211,11 +222,92 @@ class _CaptainsTabState extends State<CaptainsTab> {
     );
   }
 
+  void _showCaptainCredentialsDialog(Map<String, dynamic> driver) {
+    final name = driver['full_name'] ?? 'كابتن نالوت';
+    final phone = driver['phone'] ?? '0910000000';
+    final pin = driver['pin'] ?? '1234';
+    final vehicle = '${driver['vehicle_type'] ?? 'مركبة'} (${driver['plate_number'] ?? 'نالوت'})';
+    final codLimit = (driver['max_cod_limit_lyd'] is num) ? (driver['max_cod_limit_lyd'] as num).toDouble() : 250.0;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.badge_rounded, color: AdminColors.primaryGold),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('بيانات دخول: $name', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('يستخدم الكابتن هذه البيانات لفتح تطبيق الكابتن (Wasel Captain):', style: TextStyle(color: AdminColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 14),
+              _buildCaptainCredentialItem('📞 رقم الهاتف', phone),
+              const SizedBox(height: 8),
+              _buildCaptainCredentialItem('🔑 رمز PIN السري', pin),
+              const SizedBox(height: 8),
+              _buildCaptainCredentialItem('🚗 المركبة واللوحة', vehicle),
+              const SizedBox(height: 8),
+              _buildCaptainCredentialItem('💰 سقف عهدة الكاش COD', '${codLimit.toStringAsFixed(0)} د.ل'),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('نسخ البيانات'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: 'بيانات كابتن واصل نالوت:\nالاسم: $name\nالهاتف: $phone\nرمز PIN: $pin\nالمركبة: $vehicle\nسقف الكاش: $codLimit د.ل'));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('📋 تم نسخ بيانات الكابتن إلى الحافظة')),
+                );
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AdminColors.primaryGold, foregroundColor: Colors.black),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('تم'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCaptainCredentialItem(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AdminColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AdminColors.divider),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: AdminColors.textSecondary)),
+          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AdminColors.primaryGold)),
+        ],
+      ),
+    );
+  }
+
   void _showAddDriverDialog() {
     final nameCtrl = TextEditingController();
-    final phoneCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: '09');
+    final pinCtrl = TextEditingController(text: '1234');
     final vehicleCtrl = TextEditingController(text: 'سيارة هيونداي');
-    final plateCtrl = TextEditingController(text: '14-');
+    final plateCtrl = TextEditingController(text: 'نالوت 14-');
+    final limitCtrl = TextEditingController(text: '250.0');
 
     showDialog(
       context: context,
@@ -223,11 +315,12 @@ class _CaptainsTabState extends State<CaptainsTab> {
         textDirection: TextDirection.rtl,
         child: AlertDialog(
           backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Row(
             children: [
-              Icon(Icons.two_wheeler, color: AdminColors.primaryGold),
+              Icon(Icons.person_add_alt_1_rounded, color: AdminColors.primaryGold),
               SizedBox(width: 8),
-              Text('تسجيل كابتن جديد في نالوت'),
+              Text('تسجيل كابتن جديد وتوليد الحساب'),
             ],
           ),
           content: SingleChildScrollView(
@@ -237,34 +330,72 @@ class _CaptainsTabState extends State<CaptainsTab> {
                 TextField(
                   controller: nameCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'اسم الكابتن الرباعي',
+                    labelText: 'اسم الكابتن الكامل*',
                     prefixIcon: Icon(Icons.person),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: phoneCtrl,
-                  keyboardType: TextInputType.phone,
-                  decoration: const InputDecoration(
-                    labelText: 'رقم الهاتف (ليبيانا / المدار)',
-                    prefixIcon: Icon(Icons.phone),
-                  ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: TextField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: const InputDecoration(
+                          labelText: 'رقم هاتف الكابتن*',
+                          prefixIcon: Icon(Icons.phone_android),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: TextField(
+                        controller: pinCtrl,
+                        keyboardType: TextInputType.number,
+                        maxLength: 4,
+                        decoration: const InputDecoration(
+                          labelText: 'رمز PIN*',
+                          counterText: '',
+                          prefixIcon: Icon(Icons.lock_outline),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 TextField(
                   controller: vehicleCtrl,
                   decoration: const InputDecoration(
-                    labelText: 'نوع المركبة (سيارة / دراجة نارية)',
+                    labelText: 'نوع وموديل المركبة',
                     prefixIcon: Icon(Icons.directions_car),
                   ),
                 ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: plateCtrl,
-                  decoration: const InputDecoration(
-                    labelText: 'رقم لوحة المركبة',
-                    prefixIcon: Icon(Icons.confirmation_number),
-                  ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: plateCtrl,
+                        decoration: const InputDecoration(
+                          labelText: 'رقم اللوحة',
+                          prefixIcon: Icon(Icons.confirmation_number_outlined),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: limitCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          labelText: 'سقف الكاش د.ل',
+                          prefixIcon: Icon(Icons.money),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -280,22 +411,38 @@ class _CaptainsTabState extends State<CaptainsTab> {
                 foregroundColor: Colors.white,
               ),
               onPressed: () async {
-                if (nameCtrl.text.isNotEmpty && phoneCtrl.text.isNotEmpty) {
-                  Navigator.pop(dialogContext);
-                  await AdminSupabaseService.addDriver(
-                    fullName: nameCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    vehicleType: vehicleCtrl.text.trim(),
-                    plateNumber: plateCtrl.text.trim(),
-                  );
-                  _loadDrivers();
-                  if (!mounted) return;
+                if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      backgroundColor: AdminColors.emeraldGreen,
-                      content: Text('✅ تم تسجيل واعتماد الكابتن ${nameCtrl.text} في السحابة بنجاح!'),
-                    ),
+                    const SnackBar(content: Text('يرجى كتابة الاسم ورقم الهاتف')),
                   );
+                  return;
+                }
+                Navigator.pop(dialogContext);
+                final cleanPhone = phoneCtrl.text.trim();
+                final cleanPin = pinCtrl.text.trim();
+                final cleanName = nameCtrl.text.trim();
+                final cleanVeh = vehicleCtrl.text.trim();
+                final cleanPlate = plateCtrl.text.trim();
+                final limit = double.tryParse(limitCtrl.text.trim()) ?? 250.0;
+
+                await AdminSupabaseService.addDriver(
+                  fullName: cleanName,
+                  phone: cleanPhone,
+                  pin: cleanPin,
+                  vehicleType: cleanVeh,
+                  plateNumber: cleanPlate,
+                  maxCodLimit: limit,
+                );
+                _loadDrivers();
+                if (mounted) {
+                  _showCaptainCredentialsDialog({
+                    'full_name': cleanName,
+                    'phone': cleanPhone,
+                    'pin': cleanPin,
+                    'vehicle_type': cleanVeh,
+                    'plate_number': cleanPlate,
+                    'max_cod_limit_lyd': limit,
+                  });
                 }
               },
               child: const Text('حفظ واعتماد الكابتن'),
@@ -453,132 +600,46 @@ class _CaptainsTabState extends State<CaptainsTab> {
                         ),
                       ),
 
-                      // Partner Store 1 (Top Left): قصر نالوت للمشويات
-                      Positioned(
-                        top: 80,
-                        left: 100,
-                        child: _buildStoreRadarMarker(
-                          name: 'مطعم قصر نالوت',
-                          orders: 5,
-                          type: 'مشويات ومأكولات ليبية',
-                          lat: 31.8686,
-                          lng: 10.9818,
-                        ),
-                      ),
-
-                      // Partner Store 2 (Bottom Right): بيتزا وفطائر القلعة
-                      Positioned(
-                        bottom: 90,
-                        right: 80,
-                        child: _buildStoreRadarMarker(
-                          name: 'بيتزا القلعة نالوت',
-                          orders: 4,
-                          type: 'بيتزا ومعجنات',
-                          lat: 31.8710,
-                          lng: 10.9850,
-                        ),
-                      ),
-
-                      // Partner Store 3 (Top Right): أسواق نالوت المركزية
-                      Positioned(
-                        top: 70,
-                        right: 90,
-                        child: _buildStoreRadarMarker(
-                          name: 'أسواق نالوت المركزية',
-                          orders: 8,
-                          type: 'تموينات وبقالة 15 دقيقة',
-                          lat: 31.8740,
-                          lng: 10.9830,
-                        ),
-                      ),
-
-                      // Green Captain Markers (Available / Delivering)
-                      Positioned(
-                        top: 140,
-                        right: 180,
-                        child: _buildCaptainRadarMarker(
-                          name: 'كابتن وسيم النالوتي',
-                          vehicle: 'كيا سيراتو',
-                          status: 'delivering', // Green
-                          battery: '95%',
-                          speed: '38 كم/س',
-                          orderId: 'WSL-90412',
-                          color: AdminColors.emeraldGreen,
-                          customerName: 'محمد سالم الورفلي',
-                          dest: 'حي الشهداء، شارع النور',
-                        ),
-                      ),
-
-                      Positioned(
-                        bottom: 120,
-                        left: 140,
-                        child: _buildCaptainRadarMarker(
-                          name: 'كابتن طارق العكرمي',
-                          vehicle: 'تويوتا هايلوكس',
-                          status: 'delivering', // Green
-                          battery: '88%',
-                          speed: '32 كم/س',
-                          orderId: 'WSL-90388',
-                          color: AdminColors.emeraldGreen,
-                          customerName: 'أحمد بن عثمان',
-                          dest: 'طريق وازن، نالوت',
-                        ),
-                      ),
-
-                      // Orange Captain Markers (Busy / Preparing / Matching)
-                      Positioned(
-                        bottom: 160,
-                        right: 170,
-                        child: _buildCaptainRadarMarker(
-                          name: 'كابتن إبراهيم الجبالي',
-                          vehicle: 'دراجة ياماها',
-                          status: 'busy', // Orange
-                          battery: '90%',
-                          speed: '25 كم/س',
-                          orderId: 'WSL-90394',
-                          color: const Color(0xFFF59E0B),
-                          customerName: 'عمر الجبالي',
-                          dest: 'منطقة القلعة الأثرية',
-                        ),
-                      ),
-
-                      // Green Captain Available
-                      Positioned(
-                        top: 190,
-                        left: 190,
-                        child: _buildCaptainRadarMarker(
-                          name: 'كابتن سالم التالاتي',
-                          vehicle: 'هيونداي أفانتي',
-                          status: 'available', // Green
-                          battery: '98%',
-                          speed: '0 كم/س',
-                          orderId: null,
-                          color: AdminColors.emeraldGreen,
-                          customerName: null,
-                          dest: 'وسط البلاد نالوت',
-                        ),
-                      ),
-
-                      // Customer Dropoff Destination Markers (Purple Pins)
-                      Positioned(
-                        top: 40,
-                        left: 280,
-                        child: _buildCustomerDropoffMarker(
-                          name: 'محمد الورفلي (حي الشهداء)',
-                          orderId: 'WSL-90412',
-                          eta: '4 دقائق',
-                        ),
-                      ),
-
-                      Positioned(
-                        bottom: 40,
-                        left: 220,
-                        child: _buildCustomerDropoffMarker(
-                          name: 'أحمد بن عثمان (طريق وازن)',
-                          orderId: 'WSL-90388',
-                          eta: '7 دقائق',
-                        ),
-                      ),
+                      // Dynamic Captain Markers from live _drivers
+                      if (_drivers.isEmpty)
+                        Center(
+                          child: Container(
+                            margin: const EdgeInsets.only(top: 140),
+                            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B).withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: const Color(0xFF334155)),
+                            ),
+                            child: const Text(
+                              'لا يوجد كباتن مسجلين حالياً على رادار الأسطول',
+                              style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        )
+                      else
+                        ..._drivers.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final drv = entry.value;
+                          final isAvailable = drv['status'] != 'busy_delivery';
+                          final double topPos = 80.0 + (idx % 3) * 60.0;
+                          final double leftPos = 60.0 + ((idx * 80) % 220).toDouble();
+                          return Positioned(
+                            top: topPos,
+                            left: leftPos,
+                            child: _buildCaptainRadarMarker(
+                              name: drv['full_name']?.toString() ?? 'كابتن واصل',
+                              vehicle: drv['vehicle_type']?.toString() ?? 'مركبة',
+                              status: isAvailable ? 'available' : 'delivering',
+                              battery: '95%',
+                              speed: isAvailable ? '0 كم/س' : '30 كم/س',
+                              orderId: null,
+                              color: isAvailable ? AdminColors.emeraldGreen : const Color(0xFFF59E0B),
+                              customerName: null,
+                              dest: drv['phone']?.toString() ?? 'نالوت',
+                            ),
+                          );
+                        }),
 
                       // Legend at bottom
                       Positioned(
@@ -691,72 +752,6 @@ class _CaptainsTabState extends State<CaptainsTab> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStoreRadarMarker({
-    required String name,
-    required int orders,
-    required String type,
-    required double lat,
-    required double lng,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(6),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF97316),
-            borderRadius: BorderRadius.circular(8),
-            boxShadow: [
-              BoxShadow(color: const Color(0xFFF97316).withValues(alpha: 0.5), blurRadius: 10),
-            ],
-          ),
-          child: const Icon(Icons.storefront, color: Colors.white, size: 18),
-        ),
-        const SizedBox(height: 2),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          decoration: BoxDecoration(
-            color: Colors.black87,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(name, style: const TextStyle(color: Color(0xFFF97316), fontSize: 9, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCustomerDropoffMarker({
-    required String name,
-    required String orderId,
-    required String eta,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(5),
-          decoration: BoxDecoration(
-            color: const Color(0xFF8B5CF6),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(color: const Color(0xFF8B5CF6).withValues(alpha: 0.5), blurRadius: 10),
-            ],
-          ),
-          child: const Icon(Icons.location_on, color: Colors.white, size: 16),
-        ),
-        const SizedBox(height: 2),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-          decoration: BoxDecoration(
-            color: Colors.black87,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text('$orderId ($eta)', style: const TextStyle(color: Color(0xFFA78BFA), fontSize: 9)),
-        ),
-      ],
     );
   }
 

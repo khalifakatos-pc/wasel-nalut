@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'design_system.dart';
 import 'login_screen.dart';
 import 'main.dart';
+import 'services/api_service.dart';
 
 /// Onboarding screen with 3 welcome slides introducing Wasel Super-App in Nalut.
 class OnboardingScreen extends StatefulWidget {
@@ -50,7 +51,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     ),
   ];
 
-  void _enterMainApp() {
+  Future<void> _enterMainApp() async {
+    await ApiService.setGuestMode(true);
+    if (!mounted) return;
     if (widget.onComplete != null) {
       widget.onComplete!();
     } else {

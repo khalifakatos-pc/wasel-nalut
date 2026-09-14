@@ -23,6 +23,10 @@ enum PaymentType {
   prepaidSadad,
   prepaidTadawul,
   prepaidWallet,
+  prepaidJumhouria,
+  prepaidNab,
+  prepaidLypay,
+  prepaidOnepay,
 }
 
 enum TransactionType {
@@ -252,16 +256,16 @@ class DriverMockData {
   );
 
   static const DriverStats initialStats = DriverStats(
-    netEarningsTodayLyd: 148.50,
-    netEarningsYesterdayLyd: 125.00,
-    completedTripsToday: 12,
-    cashInHandCodLyd: 185.00,
+    netEarningsTodayLyd: 0.0,
+    netEarningsYesterdayLyd: 0.0,
+    completedTripsToday: 0,
+    cashInHandCodLyd: 0.0,
     maxCodLimitLyd: 500.0,
-    rating: 4.98,
-    totalReviews: 624,
-    acceptanceRate: 0.98,
-    onTimeRate: 0.99,
-    onlineDurationSeconds: 14200,
+    rating: 5.0,
+    totalReviews: 0,
+    acceptanceRate: 1.0,
+    onTimeRate: 1.0,
+    onlineDurationSeconds: 0,
   );
 
   static const List<DeliveryZoneHeat> libyanZones = [

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
+import 'product_modifiers_sheet.dart';
 
 class StoreMenuScreen extends StatefulWidget {
   final String storeId;
@@ -226,13 +227,35 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                     fillColor: AdminColors.surface,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  items: ['مشويات جبلية', 'بيتزا وفطائر', 'سندوتشات سريعة', 'مشروبات ومقبلات', 'عام']
-                      .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                      .toList(),
+                  items: {
+                    ..._categories.where((c) => c != 'الكل'),
+                    'مشويات جبلية',
+                    'بيتزا وفطائر',
+                    'سندوتشات سريعة',
+                    'مشروبات ومقبلات',
+                    'أدوية ومسكنات',
+                    'مواد غذائية',
+                    'قسم مخصص جديد...',
+                  }.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
                   onChanged: (val) {
                     if (val != null) setDlgState(() => category = val);
                   },
                 ),
+                if (category == 'قسم مخصص جديد...') ...[
+                  const SizedBox(height: 8),
+                  TextField(
+                    onChanged: (val) => setDlgState(() {}),
+                    controller: descController, // or reuse a field or local controller
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    decoration: InputDecoration(
+                      hintText: 'اكتب اسم القسم الجديد هنا (مثال: شاورما، حلويات)',
+                      hintStyle: const TextStyle(color: Colors.white30, fontSize: 12),
+                      filled: true,
+                      fillColor: AdminColors.surface,
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 12),
                 const Text('الوصف والمكونات:', style: TextStyle(fontSize: 12, color: AdminColors.textSecondary)),
                 const SizedBox(height: 4),
@@ -277,7 +300,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                   storeId: widget.storeId,
                   name: name,
                   price: price,
-                  category: category,
+                  category: category == 'قسم مخصص جديد...' ? 'عام' : category,
                   description: descController.text.trim(),
                 );
 
@@ -330,6 +353,20 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
             child: const Text('تأكيد الحذف'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _openModifiersSheet(Map<String, dynamic> product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ProductModifiersSheet(
+        storeId: widget.storeId,
+        productId: product['id'].toString(),
+        productName: product['name'].toString(),
+        category: product['category']?.toString() ?? 'عام',
       ),
     );
   }
@@ -617,6 +654,34 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                                         ],
                                       ),
                                     ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  InkWell(
+                                    onTap: () => _openModifiersSheet(p),
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: AdminColors.surfaceElevated,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.35)),
+                                      ),
+                                      child: const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.tune_rounded, size: 16, color: AdminColors.primaryGold),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'تخصيص الخيارات (الهريسة، بدون كاتشب، الإضافات) ⚙️',
+                                            style: TextStyle(
+                                              color: AdminColors.primaryGold,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
                                 ],
                               ),

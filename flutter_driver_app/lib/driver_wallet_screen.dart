@@ -15,18 +15,19 @@ class DriverWalletScreen extends StatefulWidget {
 }
 
 class _DriverWalletScreenState extends State<DriverWalletScreen> {
-  double _availableEarningsLyd = 348.50;
-  double _cashInHandCodLyd = 120.00;
+  double _availableEarningsLyd = 0.0;
+  double _cashInHandCodLyd = 0.0;
   final double _maxCodLimitLyd = 500.00;
-  int _completedTrips = 12;
+  int _completedTrips = 0;
   String _selectedFilter = 'الكل';
+  String _captainName = 'كابتن واصل';
 
   late List<LedgerTransaction> _transactions;
 
   @override
   void initState() {
     super.initState();
-    _transactions = List.from(DriverMockData.getSampleTransactions());
+    _transactions = [];
     _loadLiveWalletData();
   }
 
@@ -35,10 +36,11 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     final vouchers = await DriverSupabaseService.fetchDriverVouchers();
     if (mounted) {
       setState(() {
+        _captainName = profile['full_name']?.toString() ?? 'كابتن واصل';
         _cashInHandCodLyd = (profile['wallet_balance_lyd'] is num)
             ? (profile['wallet_balance_lyd'] as num).toDouble()
             : 0.0;
-        final int trips = (profile['total_trips'] is int) ? profile['total_trips'] as int : 12;
+        final int trips = (profile['total_trips'] is int) ? profile['total_trips'] as int : 0;
         _completedTrips = trips;
         _availableEarningsLyd = (trips * 5.0).toDouble();
 
@@ -703,7 +705,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                   const SizedBox(height: 16),
 
                   _buildReceiptRow('رقم السند المرجعي:', tx.referenceId),
-                  _buildReceiptRow('اسم الكابتن:', 'طارق النالوتي (#DRV-01)'),
+                  _buildReceiptRow('اسم الكابتن:', _captainName),
                   _buildReceiptRow(
                     'التاريخ والوقت:',
                     '${tx.timestamp.year}-${tx.timestamp.month.toString().padLeft(2, '0')}-${tx.timestamp.day.toString().padLeft(2, '0')} ${tx.timestamp.hour.toString().padLeft(2, '0')}:${tx.timestamp.minute.toString().padLeft(2, '0')}',

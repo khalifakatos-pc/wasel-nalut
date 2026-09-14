@@ -209,3 +209,28 @@ class DriverTheme {
     );
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// MOTION & ANIMATION TOKENS (60 / 120 FPS HIGH PERFORMANCE)
+/// ---------------------------------------------------------------------------
+class AppMotion {
+  static const Duration fast = Duration(milliseconds: 150);      // Tap feedback, micro bounce, toggles
+  static const Duration normal = Duration(milliseconds: 300);    // Bottom sheets, card expansions
+  static const Duration slow = Duration(milliseconds: 500);      // Radar sweeps, status morphing
+  static const Duration relaxed = Duration(milliseconds: 800);   // Live telemetry beacons, breathing glow
+  static const Duration extended = Duration(milliseconds: 1200); // Radar search pulse cycle
+  static const Duration shimmer = Duration(milliseconds: 1500);  // Route loading shimmer
+
+  static const Curve easeOutCubic = Curves.easeOutCubic;
+  static const Curve easeInOutCubic = Curves.easeInOutCubic;
+  static const Curve elasticOut = Curves.elasticOut;
+  static const Curve springSnappy = Cubic(0.175, 0.885, 0.32, 1.275);
+  static const Curve decelerate = Curves.decelerate;
+  static const Curve pulseCurve = Curves.easeInOutSine;
+  static const Curve linear = Curves.linear;
+
+  static const double pressScaleButton = 0.96;
+  static const double pressScaleCard = 0.97;
+  static const double pressScaleIcon = 0.90;
+}
+

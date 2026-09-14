@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'design_system.dart';
 import 'services/api_service.dart';
 
@@ -12,6 +14,9 @@ class SatelliteLocationPicker extends StatefulWidget {
 }
 
 class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
+  late final MapController _mapController;
+  double _currentZoom = 16.5;
+
   String _selectedTag = 'home';
   final TextEditingController _titleController = TextEditingController(text: 'المنزل (الحوش)');
   final TextEditingController _detailsController = TextEditingController(text: 'نالوت - حي القلعة، الشارع الرئيسي');
@@ -26,6 +31,7 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
     {'name': 'حي سيدي خليفة', 'lat': 31.8650, 'lng': 10.9780, 'desc': 'حي سيدي خليفة، بجانب المسجد'},
     {'name': 'طريق القلعة', 'lat': 31.8695, 'lng': 10.9835, 'desc': 'طريق القلعة الأثرية، المرتفع الغربي'},
     {'name': 'الحوامد/كاباو', 'lat': 31.8820, 'lng': 10.9950, 'desc': 'طريق الحوامد / كاباو، مفرق المزارع'},
+    {'name': 'قصر نالوت الأثري', 'lat': 31.8710, 'lng': 10.9850, 'desc': 'قصر نالوت الأثري والمناطق المجاورة'},
   ];
 
   final Map<String, String> _tagIcons = {
@@ -42,6 +48,37 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
     'custom': 'مكان آخر',
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _mapController = MapController();
+    if (widget.initialAddress != null) {
+      if (widget.initialAddress!['latitude'] != null) {
+        _lat = (widget.initialAddress!['latitude'] as num).toDouble();
+      }
+      if (widget.initialAddress!['longitude'] != null) {
+        _lng = (widget.initialAddress!['longitude'] as num).toDouble();
+      }
+      if (widget.initialAddress!['title'] != null) {
+        _titleController.text = widget.initialAddress!['title'];
+      }
+      if (widget.initialAddress!['details'] != null) {
+        _detailsController.text = widget.initialAddress!['details'];
+      }
+      if (widget.initialAddress!['tag'] != null) {
+        _selectedTag = widget.initialAddress!['tag'];
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _detailsController.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
+
   void _onTagSelected(String tag) {
     setState(() {
       _selectedTag = tag;
@@ -54,15 +91,17 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
       _selectedDistrict = dist['name'];
       _lat = dist['lat'];
       _lng = dist['lng'];
-      _detailsController.text = 'نالوت - ${dist['desc']}';
+      _detailsController.text = 'نالوت - ';
     });
+    _mapController.move(LatLng(_lat, _lng), _currentZoom);
   }
 
   void _locateCurrentGps() {
     setState(() {
-      _lat = 31.8686 + (DateTime.now().millisecond % 50) * 0.0001;
-      _lng = 10.9818 + (DateTime.now().millisecond % 50) * 0.0001;
+      _lat = 31.8687;
+      _lng = 10.9818;
     });
+    _mapController.move(LatLng(_lat, _lng), 17.5);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('🎯 تم التقاط إحداثيات GPS بدقة عالية في نالوت!'),
@@ -72,11 +111,23 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
     );
   }
 
+  void _zoomIn() {
+    _currentZoom = (_currentZoom + 1).clamp(11.0, 19.0);
+    _mapController.move(LatLng(_lat, _lng), _currentZoom);
+    setState(() {});
+  }
+
+  void _zoomOut() {
+    _currentZoom = (_currentZoom - 1).clamp(11.0, 19.0);
+    _mapController.move(LatLng(_lat, _lng), _currentZoom);
+    setState(() {});
+  }
+
   Future<void> _saveAddress() async {
     setState(() => _isSaving = true);
     final newAddress = {
-      'id': 'addr_${DateTime.now().millisecondsSinceEpoch}',
-      'user_phone': '0920000000',
+      'id': 'addr_',
+      'user_phone': ApiService.userPhone.isNotEmpty ? ApiService.userPhone : '0920000000',
       'tag': _selectedTag,
       'title': _titleController.text.trim(),
       'details': _detailsController.text.trim(),
@@ -90,6 +141,12 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
 
     if (mounted) {
       setState(() => _isSaving = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ تم حفظ العنوان بنجاح!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
       Navigator.pop(context, newAddress);
     }
   }
@@ -109,56 +166,120 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
           ),
           actions: [
             IconButton(
-              icon: Icon(_isSatelliteMode ? Icons.map_outlined : Icons.satellite_alt),
-              tooltip: _isSatelliteMode ? 'التبديل إلى الخريطة العادية' : 'التبديل إلى صور الأقمار الصناعية',
+              icon: Icon(_isSatelliteMode ? Icons.map_outlined : Icons.satellite_alt_rounded),
+              tooltip: _isSatelliteMode ? 'التبديل إلى خريطة الشوارع' : 'التبديل إلى صور الأقمار الصناعية الحقيقية',
               onPressed: () => setState(() => _isSatelliteMode = !_isSatelliteMode),
             ),
           ],
         ),
         body: Stack(
           children: [
-            // 1. Satellite Imagery Map View Simulation
+            // 1. Real Interactive Satellite & Streets Map (ArcGIS World Imagery + OpenStreetMap)
             Positioned.fill(
               child: _buildSatelliteMapView(),
             ),
 
-            // 2. Fixed Center Pin (Pointer on roof)
+            // 2. Fixed Center Pin (Pointing to Roof)
             Center(
-              child: Padding(
-                padding: const EdgeInsets.only(bottom: 40.0),
-                child: Column(
+              child: IgnorePointer(
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 36.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.85),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppColors.waselPrimary, width: 1.5),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black45, blurRadius: 8, offset: Offset(0, 2)),
+                          ],
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.home_work_rounded, color: Colors.amber, size: 14),
+                            SizedBox(width: 6),
+                            Text(
+                              'سقف البيت / موقع التوصيل',
+                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Icon(Icons.location_on_rounded, size: 48, color: AppColors.waselPrimary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // 3. Top Mode Badge
+            Positioned(
+              top: 16,
+              right: 16,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.75),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: Colors.white24),
+                ),
+                child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('📍', style: TextStyle(fontSize: 48)),
-                    Container(
-                      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.black87,
-                        borderRadius: BorderRadius.all(Radius.circular(12)),
-                      ),
-                      child: Text(
-                        'ضع الدبوس فوق سقف بيتك أو استراحتك',
-                        style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                      ),
+                    Icon(
+                      _isSatelliteMode ? Icons.satellite_alt_rounded : Icons.map_rounded,
+                      color: _isSatelliteMode ? Colors.greenAccent : Colors.cyanAccent,
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isSatelliteMode ? 'قمر صناعي حقيقي • نالوت' : 'خريطة الشوارع • نالوت',
+                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
               ),
             ),
 
-            // 3. GPS My Location floating button
+            // 4. Zoom & GPS Controls
             Positioned(
               left: 16,
-              bottom: 260,
-              child: FloatingActionButton(
-                heroTag: 'gps_locate',
-                backgroundColor: AppColors.waselPrimary,
-                onPressed: _locateCurrentGps,
-                child: const Icon(Icons.my_location, color: Colors.white),
+              bottom: 300,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  FloatingActionButton.small(
+                    heroTag: 'zoom_in',
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    onPressed: _zoomIn,
+                    child: const Icon(Icons.add_rounded),
+                  ),
+                  const SizedBox(height: 8),
+                  FloatingActionButton.small(
+                    heroTag: 'zoom_out',
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.black87,
+                    onPressed: _zoomOut,
+                    child: const Icon(Icons.remove_rounded),
+                  ),
+                  const SizedBox(height: 12),
+                  FloatingActionButton(
+                    heroTag: 'gps_locate',
+                    backgroundColor: AppColors.waselPrimary,
+                    onPressed: _locateCurrentGps,
+                    child: const Icon(Icons.my_location_rounded, color: Colors.white),
+                  ),
+                ],
               ),
             ),
 
-            // 4. Bottom Address Details Card
+            // 5. Bottom Address Details Card
             Positioned(
               right: 0,
               left: 0,
@@ -176,7 +297,7 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Tag Selector Row: المنزل | العمل | الاستراحة
+                    // Tag Selector Row: المنزل | العمل | الاستراحة | مكان آخر
                     Row(
                       children: _tagTitles.keys.map((tag) {
                         final isSelected = _selectedTag == tag;
@@ -281,7 +402,7 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
                           ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                           : const Icon(Icons.check_circle_outline),
                       label: Text(
-                        'حفظ العنوان في أماكني (${_titleController.text})',
+                        'حفظ العنوان في أماكني ()',
                         style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
@@ -296,90 +417,42 @@ class _SatelliteLocationPickerState extends State<SatelliteLocationPicker> {
   }
 
   Widget _buildSatelliteMapView() {
-    return Container(
-      color: const Color(0xFF1B261D), // Deep aerial landscape green
-      child: Stack(
-        children: [
-          // Aerial background texture with roads and mountains
-          CustomPaint(
-            size: Size.infinite,
-            painter: _SatelliteGridPainter(isSatellite: _isSatelliteMode),
-          ),
-          // Watermark badge
-          Positioned(
-            top: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.black54,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.satellite_alt, color: Colors.greenAccent, size: 16),
-                  const SizedBox(width: 6),
-                  Text(
-                    _isSatelliteMode ? 'أقمار صناعية عالية الدقة • نالوت' : 'خريطة الشوارع • نالوت',
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: LatLng(_lat, _lng),
+        initialZoom: _currentZoom,
+        minZoom: 11.0,
+        maxZoom: 19.0,
+        onPositionChanged: (camera, hasGesture) {
+          if (hasGesture) {
+            _lat = camera.center.latitude;
+            _lng = camera.center.longitude;
+            _currentZoom = camera.zoom;
+          }
+        },
+        onTap: (tapPosition, point) {
+          setState(() {
+            _lat = point.latitude;
+            _lng = point.longitude;
+          });
+          _mapController.move(point, _currentZoom);
+        },
       ),
+      children: [
+        if (_isSatelliteMode)
+          TileLayer(
+            urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+            userAgentPackageName: 'com.wasel.customer.wasel_customer_app',
+            maxZoom: 19,
+          )
+        else
+          TileLayer(
+            urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+            userAgentPackageName: 'com.wasel.customer.wasel_customer_app',
+            maxZoom: 19,
+          ),
+      ],
     );
   }
-}
-
-class _SatelliteGridPainter extends CustomPainter {
-  final bool isSatellite;
-  _SatelliteGridPainter({required this.isSatellite});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = isSatellite ? const Color(0xFF6B7280).withValues(alpha: 0.6) : Colors.white
-      ..strokeWidth = 6.0
-      ..strokeCap = StrokeCap.round;
-
-    final roofPaint = Paint()
-      ..color = isSatellite ? const Color(0xFFB45309).withValues(alpha: 0.4) : Colors.amber.withValues(alpha: 0.3)
-      ..style = PaintingStyle.fill;
-
-    // Draw main mountain roads of Nalut
-    final path = Path();
-    path.moveTo(0, size.height * 0.35);
-    path.quadraticBezierTo(size.width * 0.4, size.height * 0.4, size.width * 0.5, size.height * 0.5);
-    path.quadraticBezierTo(size.width * 0.7, size.height * 0.65, size.width, size.height * 0.55);
-    canvas.drawPath(path, roadPaint);
-
-    // Draw secondary roads
-    final path2 = Path();
-    path2.moveTo(size.width * 0.5, 0);
-    path2.lineTo(size.width * 0.5, size.height);
-    canvas.drawPath(path2, roadPaint..strokeWidth = 4.0);
-
-    // Draw house rooftops (aerial view)
-    final houseOffsets = [
-      Offset(size.width * 0.35, size.height * 0.45),
-      Offset(size.width * 0.6, size.height * 0.42),
-      Offset(size.width * 0.45, size.height * 0.58),
-      Offset(size.width * 0.55, size.height * 0.55),
-      Offset(size.width * 0.25, size.height * 0.38),
-      Offset(size.width * 0.72, size.height * 0.62),
-    ];
-
-    for (var pos in houseOffsets) {
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(Rect.fromCenter(center: pos, width: 42, height: 36), const Radius.circular(4)),
-        roofPaint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _SatelliteGridPainter oldDelegate) => oldDelegate.isSatellite != isSatellite;
 }

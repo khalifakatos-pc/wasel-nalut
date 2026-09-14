@@ -4,9 +4,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'merchant_theme.dart';
 import 'merchant_models.dart';
+import 'merchant_login_screen.dart';
+import 'merchant_receipts_screen.dart';
+import 'merchant_inventory_screen.dart';
 import 'kds_screen.dart';
 import 'retail_picking_screen.dart';
-import 'catalog_screen.dart';
 import 'sales_analytics_screen.dart';
 import 'services/merchant_supabase_service.dart';
 import 'services/merchant_notification_service.dart';
@@ -36,13 +38,156 @@ class WaselMerchantApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const MerchantMainShell(),
+      home: const MerchantAuthGate(),
     );
   }
 }
 
+/// ============================================================================
+/// AUTH GATEWAY (عزل المتاجر والتحقق من تسجيل الدخول)
+/// ============================================================================
+
+class MerchantAuthGate extends StatefulWidget {
+  const MerchantAuthGate({super.key});
+
+  @override
+  State<MerchantAuthGate> createState() => _MerchantAuthGateState();
+}
+
+class _MerchantAuthGateState extends State<MerchantAuthGate> {
+  bool _isChecking = true;
+  bool _isLoggedIn = false;
+  PartnerStore _activeStore = PartnerStore.defaultStore;
+  MerchantUser? _activeUser;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStoredSession();
+  }
+
+  Future<void> _checkStoredSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final loggedIn = prefs.getBool('wasel_merchant_logged_in') ?? false;
+      final storeId = prefs.getString('wasel_active_store_id');
+      final userPhone = prefs.getString('wasel_merchant_user_phone');
+      final userName = prefs.getString('wasel_merchant_user_name');
+      final userRole = prefs.getString('wasel_merchant_user_role');
+
+      if (loggedIn && storeId != null) {
+        final storeName = prefs.getString('wasel_active_store_name');
+        final storeType = prefs.getString('wasel_active_store_type') ?? 'restaurant';
+        final storeDistrict = prefs.getString('wasel_active_store_district') ?? 'نالوت';
+        final storeMode = prefs.getString('wasel_active_store_mode') ?? 'kitchen';
+
+        final store = PartnerStore.nalutStores.firstWhere(
+          (s) => s.id == storeId,
+          orElse: () => PartnerStore(
+            id: storeId,
+            name: storeName ?? (userName ?? 'متجر نالوت'),
+            nameEn: '',
+            type: storeType,
+            district: storeDistrict,
+            phone: userPhone ?? '',
+            mode: storeMode == 'retail' ? PartnerAppMode.retail : PartnerAppMode.kitchen,
+            icon: storeMode == 'retail' ? Icons.shopping_cart_rounded : Icons.storefront_rounded,
+          ),
+        );
+
+        _activeStore = store;
+        _isLoggedIn = true;
+        _activeUser = MerchantUser(
+          id: 'usr_$storeId',
+          phone: userPhone ?? '0910000000',
+          name: userName ?? store.name,
+          storeId: store.id,
+          role: userRole ?? 'مدير المتجر',
+        );
+        MerchantSupabaseService.currentStoreId = store.id;
+        MerchantSupabaseService.currentUser = _activeUser;
+      }
+    } catch (_) {}
+
+    if (mounted) {
+      setState(() => _isChecking = false);
+    }
+  }
+
+  void _onLoginSuccess(MerchantUser user, PartnerStore store) {
+    setState(() {
+      _activeUser = user;
+      _activeStore = store;
+      _isLoggedIn = true;
+      MerchantSupabaseService.currentStoreId = store.id;
+      MerchantSupabaseService.currentUser = user;
+    });
+  }
+
+  Future<void> _handleLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('wasel_merchant_logged_in');
+    await prefs.remove('wasel_active_store_id');
+    await prefs.remove('wasel_merchant_user_phone');
+    await prefs.remove('wasel_merchant_user_name');
+    await prefs.remove('wasel_merchant_user_role');
+
+    MerchantSupabaseService.currentUser = null;
+
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = false;
+        _activeUser = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('👋 تم تسجيل الخروج من المتجر بنجاح'),
+          backgroundColor: MerchantColors.readyGreen,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isChecking) {
+      return const Scaffold(
+        backgroundColor: MerchantColors.darkBg,
+        body: Center(
+          child: CircularProgressIndicator(color: MerchantColors.primary),
+        ),
+      );
+    }
+
+    if (!_isLoggedIn) {
+      return MerchantLoginScreen(
+        onLoginSuccess: _onLoginSuccess,
+      );
+    }
+
+    return MerchantMainShell(
+      store: _activeStore,
+      user: _activeUser,
+      onLogout: _handleLogout,
+    );
+  }
+}
+
+/// ============================================================================
+/// MAIN ISOLATED MERCHANT SHELL
+/// ============================================================================
+
 class MerchantMainShell extends StatefulWidget {
-  const MerchantMainShell({super.key});
+  final PartnerStore store;
+  final MerchantUser? user;
+  final VoidCallback onLogout;
+
+  const MerchantMainShell({
+    super.key,
+    required this.store,
+    this.user,
+    required this.onLogout,
+  });
 
   @override
   State<MerchantMainShell> createState() => _MerchantMainShellState();
@@ -53,52 +198,26 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   StoreStatus _storeStatus = StoreStatus.open;
   Timer? _pollTimer;
 
-  // Active Partner Store in Nalut
-  PartnerStore _currentStore = PartnerStore.nalutStores[0];
-
+  late PartnerStore _currentStore;
   late List<KdsOrder> _orders;
   late List<CatalogProduct> _catalog;
 
   @override
   void initState() {
     super.initState();
+    _currentStore = widget.store;
     MerchantSupabaseService.currentStoreId = _currentStore.id;
-    _orders = _currentStore.mode == PartnerAppMode.retail
-        ? MerchantMockData.getSampleRetailOrders()
-        : MerchantMockData.getSampleOrders();
-    _catalog = MerchantMockData.getSampleCatalog();
+
+    _orders = [];
+    _catalog = [];
 
     _initNotifications();
-    _loadSavedStore();
     _loadLiveMerchantData();
 
-    // Poll Supabase Cloud every 4 seconds for new incoming orders
+    // Poll Supabase / backend every 4 seconds for new incoming orders
     _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       _pollOrdersSilently();
     });
-  }
-
-  Future<void> _loadSavedStore() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final savedId = prefs.getString('wasel_active_store_id');
-      if (savedId != null && savedId != _currentStore.id) {
-        final store = PartnerStore.nalutStores.firstWhere(
-          (s) => s.id == savedId,
-          orElse: () => _currentStore,
-        );
-        if (store.id != _currentStore.id && mounted) {
-          setState(() {
-            _currentStore = store;
-            MerchantSupabaseService.currentStoreId = store.id;
-            _orders = store.mode == PartnerAppMode.retail
-                ? MerchantMockData.getSampleRetailOrders()
-                : MerchantMockData.getSampleOrders();
-          });
-          _loadLiveMerchantData();
-        }
-      }
-    } catch (_) {}
   }
 
   Future<void> _initNotifications() async {
@@ -111,37 +230,6 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   void dispose() {
     _pollTimer?.cancel();
     super.dispose();
-  }
-
-  void _switchStore(PartnerStore newStore) {
-    if (_currentStore.id == newStore.id) return;
-    setState(() {
-      _currentStore = newStore;
-      MerchantSupabaseService.currentStoreId = newStore.id;
-      _orders = newStore.mode == PartnerAppMode.retail
-          ? MerchantMockData.getSampleRetailOrders()
-          : MerchantMockData.getSampleOrders();
-    });
-
-    // Multi-tenant persistent context: wasel_active_store_id
-    SharedPreferences.getInstance().then((prefs) {
-      prefs.setString('wasel_active_store_id', newStore.id);
-    }).catchError((_) {});
-
-    _loadLiveMerchantData();
-
-    final isKitchen = newStore.mode == PartnerAppMode.kitchen;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          isKitchen
-              ? '📋 تم التحويل إلى: ${newStore.name} (وضع إدارة الطلبات والتحضير)'
-              : '🛒 تم التحويل إلى: ${newStore.name} (وضع تجميع السلة والتعبئة)',
-        ),
-        backgroundColor: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal,
-        duration: const Duration(seconds: 3),
-      ),
-    );
   }
 
   Future<void> _loadLiveMerchantData() async {
@@ -173,7 +261,7 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
       if (incomingNew.isNotEmpty && mounted) {
         final newOrd = incomingNew.first;
         final isKitchen = _currentStore.mode == PartnerAppMode.kitchen;
-        // 1. Kitchen / Retail Alert Notification
+        // Kitchen / Retail Alert Notification
         MerchantNotificationService().showKitchenOrderAlert(
           title: isKitchen
               ? '🚨 تنبيه طلب جديد: ${newOrd.orderNumber}'
@@ -181,7 +269,6 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
           body: 'طلب بقيمة ${newOrd.totalAmountLyd.toStringAsFixed(2)} د.ل لـ ${_currentStore.name}.',
         );
 
-        // 2. In-App Banner
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -270,9 +357,111 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     );
   }
 
+  void _showStoreProfileModal() {
+    final user = widget.user;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: MerchantColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: MerchantColors.primary.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(_currentStore.icon, color: MerchantColors.primary, size: 28),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _currentStore.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _currentStore.district,
+                          style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.6)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white54),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const Divider(color: MerchantColors.darkBorder, height: 24),
+              if (user != null) ...[
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.badge_rounded, color: MerchantColors.accentTeal),
+                  title: Text(
+                    user.name,
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    '${user.role} • هاتف: ${user.phone}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.verified_user_rounded, color: MerchantColors.readyGreen),
+                title: const Text('نطاق المتجر معزول ومحمي', style: TextStyle(color: Colors.white, fontSize: 13)),
+                subtitle: const Text('جميع الطلبات والواصلات والجرد تتبع هذا الفرع حصراً', style: TextStyle(color: Colors.white54, fontSize: 11)),
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: MerchantColors.rejectedRed.withValues(alpha: 0.15),
+                  foregroundColor: MerchantColors.rejectedRed,
+                  side: const BorderSide(color: MerchantColors.rejectedRed),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  widget.onLogout();
+                },
+                icon: const Icon(Icons.logout_rounded, size: 20),
+                label: const Text(
+                  'تسجيل الخروج من المتجر 🚪',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = [
+      // 1. سير الطلبات والمطبخ
       _currentStore.mode == PartnerAppMode.kitchen
           ? KdsScreen(
               orders: _orders,
@@ -283,10 +472,20 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
               onOrderUpdated: _onOrderUpdated,
               store: _currentStore,
             ),
-      CatalogScreen(
+
+      // 2. الواصلات والحسابات
+      MerchantReceiptsScreen(
+        store: _currentStore,
+      ),
+
+      // 3. الجرد والمخزون
+      MerchantInventoryScreen(
         catalog: _catalog,
+        store: _currentStore,
         onProductUpdated: _onProductUpdated,
       ),
+
+      // 4. تقارير المبيعات والأرباح
       SalesAnalyticsScreen(
         orders: _orders,
         store: _currentStore,
@@ -295,7 +494,6 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
 
     return Scaffold(
       backgroundColor: MerchantColors.darkBg,
-      // Top Store Header Banner with Store Switcher
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(64),
         child: Container(
@@ -309,172 +507,105 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Store Title & Interactive Switcher
-              PopupMenuButton<PartnerStore>(
-                initialValue: _currentStore,
-                onSelected: _switchStore,
-                color: MerchantColors.darkCard,
-                elevation: 12,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        gradient: _currentStore.mode == PartnerAppMode.kitchen
-                            ? MerchantColors.primaryGradient
-                            : const LinearGradient(
-                                colors: [MerchantColors.accentTeal, Color(0xFF0F766E)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                            color: (_currentStore.mode == PartnerAppMode.kitchen
-                                    ? MerchantColors.primary
-                                    : MerchantColors.accentTeal)
-                                .withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(_currentStore.icon, color: Colors.white, size: 22),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              _currentStore.name,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white70, size: 18),
-                          ],
-                        ),
-                        Row(
-                          children: [
-                            Text(
-                              _currentStore.district,
-                              style: const TextStyle(fontSize: 10, color: Colors.white54),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                              decoration: BoxDecoration(
-                                color: _currentStore.mode == PartnerAppMode.kitchen
-                                    ? MerchantColors.primary.withValues(alpha: 0.2)
-                                    : MerchantColors.accentTeal.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                _currentStore.mode == PartnerAppMode.kitchen ? 'مطبخ 👨‍🍳' : 'تجزئة 🛒',
-                                style: TextStyle(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  color: _currentStore.mode == PartnerAppMode.kitchen
-                                      ? MerchantColors.primaryLight
-                                      : MerchantColors.accentTeal,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                itemBuilder: (ctx) => PartnerStore.nalutStores.map((s) {
-                  final isSelected = s.id == _currentStore.id;
-                  final isKitchen = s.mode == PartnerAppMode.kitchen;
-                  return PopupMenuItem<PartnerStore>(
-                    value: s,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: (isKitchen ? MerchantColors.primary : MerchantColors.accentTeal)
-                                  .withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              s.icon,
-                              color: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal,
-                              size: 18,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  s.name,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.normal,
-                                    color: isSelected ? MerchantColors.primary : Colors.white,
-                                  ),
-                                ),
-                                Text(
-                                  '${s.district} • ${isKitchen ? "شاشة مطبخ KDS" : "تجميع سلة 🛒"}',
-                                  style: const TextStyle(fontSize: 10, color: Colors.white54),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (isSelected)
-                            const Icon(Icons.check_circle_rounded, color: MerchantColors.readyGreen, size: 18),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-
-              // Store Status Quick Toggle Popup
-              PopupMenuButton<StoreStatus>(
-                initialValue: _storeStatus,
-                onSelected: _toggleStoreStatus,
-                color: MerchantColors.darkCard,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: _storeStatus == StoreStatus.open
-                        ? MerchantColors.readyGreen.withValues(alpha: 0.2)
-                        : (_storeStatus == StoreStatus.rushHour
-                            ? MerchantColors.accentAmber.withValues(alpha: 0.2)
-                            : MerchantColors.rejectedRed.withValues(alpha: 0.2)),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: _storeStatus == StoreStatus.open
-                          ? MerchantColors.readyGreen
-                          : (_storeStatus == StoreStatus.rushHour
-                              ? MerchantColors.accentAmber
-                              : MerchantColors.rejectedRed),
-                    ),
-                  ),
+              // Locked Store Identity (No dropdown switcher!)
+              InkWell(
+                onTap: _showStoreProfileModal,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Row(
                     children: [
                       Container(
-                        width: 8,
-                        height: 8,
+                        width: 40,
+                        height: 40,
                         decoration: BoxDecoration(
-                          shape: BoxShape.circle,
+                          gradient: _currentStore.mode == PartnerAppMode.kitchen
+                              ? MerchantColors.primaryGradient
+                              : const LinearGradient(
+                                  colors: [MerchantColors.accentTeal, Color(0xFF0F766E)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: (_currentStore.mode == PartnerAppMode.kitchen
+                                      ? MerchantColors.primary
+                                      : MerchantColors.accentTeal)
+                                  .withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Icon(_currentStore.icon, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            _currentStore.name,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Text(
+                                _currentStore.district,
+                                style: const TextStyle(fontSize: 10, color: Colors.white54),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: _currentStore.mode == PartnerAppMode.kitchen
+                                      ? MerchantColors.primary.withValues(alpha: 0.2)
+                                      : MerchantColors.accentTeal.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  _currentStore.mode == PartnerAppMode.kitchen ? 'مطبخ 🍳' : 'سوبرماركت 🛒',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: _currentStore.mode == PartnerAppMode.kitchen
+                                        ? MerchantColors.primary
+                                        : MerchantColors.accentTeal,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+              // Store Status Quick Toggle & Logout Icon
+              Row(
+                children: [
+                  PopupMenuButton<StoreStatus>(
+                    initialValue: _storeStatus,
+                    onSelected: _toggleStoreStatus,
+                    color: MerchantColors.darkCard,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: _storeStatus == StoreStatus.open
+                            ? MerchantColors.readyGreen.withValues(alpha: 0.2)
+                            : (_storeStatus == StoreStatus.rushHour
+                                ? MerchantColors.accentAmber.withValues(alpha: 0.2)
+                                : MerchantColors.rejectedRed.withValues(alpha: 0.2)),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
                           color: _storeStatus == StoreStatus.open
                               ? MerchantColors.readyGreen
                               : (_storeStatus == StoreStatus.rushHour
@@ -482,47 +613,69 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
                                   : MerchantColors.rejectedRed),
                         ),
                       ),
-                      const SizedBox(width: 6),
-                      Text(
-                        _storeStatus == StoreStatus.open
-                            ? 'مفتوح 🟢'
-                            : (_storeStatus == StoreStatus.rushHour ? 'ذروة 🟡' : 'مغلق 🔴'),
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: _storeStatus == StoreStatus.open
+                                  ? MerchantColors.readyGreen
+                                  : (_storeStatus == StoreStatus.rushHour
+                                      ? MerchantColors.accentAmber
+                                      : MerchantColors.rejectedRed),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            _storeStatus == StoreStatus.open
+                                ? 'مفتوح 🟢'
+                                : (_storeStatus == StoreStatus.rushHour ? 'ذروة 🟡' : 'مغلق 🔴'),
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          const Icon(Icons.arrow_drop_down_rounded, size: 18, color: Colors.white70),
+                        ],
                       ),
-                      const Icon(Icons.arrow_drop_down_rounded, size: 18, color: Colors.white70),
+                    ),
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: StoreStatus.open,
+                        child: Row(
+                          children: [
+                            Icon(Icons.check_circle_rounded, color: MerchantColors.readyGreen, size: 18),
+                            SizedBox(width: 8),
+                            Text('مفتوح ونستقبل الطلبات 🟢', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: StoreStatus.rushHour,
+                        child: Row(
+                          children: [
+                            Icon(Icons.access_time_filled_rounded, color: MerchantColors.accentAmber, size: 18),
+                            SizedBox(width: 8),
+                            Text('ساعة ذروة ضغط (+15 دقيقة) 🟡', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: StoreStatus.closed,
+                        child: Row(
+                          children: [
+                            Icon(Icons.cancel_rounded, color: MerchantColors.rejectedRed, size: 18),
+                            SizedBox(width: 8),
+                            Text('مغلق حالياً 🔴', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-                itemBuilder: (ctx) => [
-                  const PopupMenuItem(
-                    value: StoreStatus.open,
-                    child: Row(
-                      children: [
-                        Icon(Icons.check_circle_rounded, color: MerchantColors.readyGreen, size: 18),
-                        SizedBox(width: 8),
-                        Text('مفتوح ونستقبل الطلبات 🟢', style: TextStyle(color: Colors.white, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: StoreStatus.rushHour,
-                    child: Row(
-                      children: [
-                        Icon(Icons.access_time_filled_rounded, color: MerchantColors.accentAmber, size: 18),
-                        SizedBox(width: 8),
-                        Text('ساعة ذروة ضغط (+15 دقيقة) 🟡', style: TextStyle(color: Colors.white, fontSize: 12)),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: StoreStatus.closed,
-                    child: Row(
-                      children: [
-                        Icon(Icons.cancel_rounded, color: MerchantColors.rejectedRed, size: 18),
-                        SizedBox(width: 8),
-                        Text('مغلق حالياً 🔴', style: TextStyle(color: Colors.white, fontSize: 12)),
-                      ],
-                    ),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(Icons.account_circle_outlined, color: Colors.white70, size: 26),
+                    tooltip: 'بيانات المتجر وتسجيل الخروج',
+                    onPressed: _showStoreProfileModal,
                   ),
                 ],
               ),
@@ -568,17 +721,22 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
                     : MerchantColors.accentTeal,
               ),
             ),
-            label: _currentStore.mode == PartnerAppMode.kitchen ? 'الطلبات والتحضير' : 'تجهيز الطلبات 📦',
+            label: _currentStore.mode == PartnerAppMode.kitchen ? 'الطلبات' : 'التجهيز 📦',
           ),
           const NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined, color: Colors.white70),
-            selectedIcon: Icon(Icons.menu_book_rounded, color: MerchantColors.primary),
-            label: 'قائمة الأصناف',
+            icon: Icon(Icons.receipt_outlined, color: Colors.white70),
+            selectedIcon: Icon(Icons.receipt_rounded, color: MerchantColors.primary),
+            label: 'الواصلات',
+          ),
+          const NavigationDestination(
+            icon: Icon(Icons.inventory_2_outlined, color: Colors.white70),
+            selectedIcon: Icon(Icons.inventory_2_rounded, color: MerchantColors.primary),
+            label: 'الجرد',
           ),
           const NavigationDestination(
             icon: Icon(Icons.analytics_outlined, color: Colors.white70),
             selectedIcon: Icon(Icons.analytics_rounded, color: MerchantColors.primary),
-            label: 'المبيعات والأرباح',
+            label: 'الأرباح',
           ),
         ],
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'merchant_theme.dart';
 import 'merchant_models.dart';
 import 'thermal_receipt_dialog.dart';
+import 'widgets/merchant_motion_widgets.dart';
 
 /// ============================================================================
 /// KITCHEN DISPLAY SYSTEM (KDS) SCREEN
@@ -29,7 +30,7 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
     });
@@ -50,6 +51,9 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
 
   List<KdsOrder> get _readyOrders =>
       widget.orders.where((o) => o.status == KdsTicketStatus.readyForPickup).toList();
+
+  List<KdsOrder> get _completedOrders =>
+      widget.orders.where((o) => o.status == KdsTicketStatus.completed).toList();
 
   void _acceptOrder(KdsOrder order, int prepMinutes) {
     setState(() {
@@ -118,8 +122,13 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
       totalAmountLyd: 42.00,
       paymentMethod: 'كاش عند الاستلام (COD)',
       items: [
+        KdsOrderItem(
+          name: 'سندوتش شاورما دجاج (دبل)',
+          quantity: 2,
+          priceLyd: 14.00,
+          notes: '🌶️ زيادة هريسة (حارة هلبا) • 🚫 بدون كاتشب، بدون بصل • ✨ كثر بطاطا 🍟',
+        ),
         KdsOrderItem(name: 'صحن مشويات مشكل قصر نالوت', quantity: 1, priceLyd: 28.00, notes: 'سلطة مشوية زيادة'),
-        KdsOrderItem(name: 'فطيرة قصر نالوت بالجبنة والزعتر', quantity: 1, priceLyd: 12.00),
         KdsOrderItem(name: 'عصير ليمون ونعناع طبيعي', quantity: 1, priceLyd: 5.50),
       ],
     );
@@ -216,6 +225,26 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                 ],
               ),
             ),
+            Tab(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('المكتملة', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _completedOrders.isNotEmpty ? Colors.white24 : Colors.white12,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${_completedOrders.length}',
+                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -225,6 +254,7 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
           _buildOrderList(_newOrders, isNew: true),
           _buildOrderList(_prepOrders, isPrep: true),
           _buildOrderList(_readyOrders, isReady: true),
+          _buildOrderList(_completedOrders, isCompleted: true),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -237,20 +267,28 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
     );
   }
 
-  Widget _buildOrderList(List<KdsOrder> orders, {bool isNew = false, bool isPrep = false, bool isReady = false}) {
+  Widget _buildOrderList(List<KdsOrder> orders, {bool isNew = false, bool isPrep = false, bool isReady = false, bool isCompleted = false}) {
     if (orders.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isNew ? Icons.notifications_none_rounded : (isPrep ? Icons.soup_kitchen_rounded : Icons.check_circle_outline_rounded),
+              isNew
+                  ? Icons.notifications_none_rounded
+                  : (isPrep
+                      ? Icons.soup_kitchen_rounded
+                      : (isReady ? Icons.check_circle_outline_rounded : Icons.task_alt_rounded)),
               size: 64,
               color: Colors.white24,
             ),
             const SizedBox(height: 12),
             Text(
-              isNew ? 'لا توجد طلبات جديدة حالياً' : (isPrep ? 'لا توجد وجبات قيد الطهي' : 'لا توجد طلبات جاهزة للاستلام'),
+              isNew
+                  ? 'لا توجد طلبات جديدة حالياً'
+                  : (isPrep
+                      ? 'لا توجد وجبات قيد الطهي'
+                      : (isReady ? 'لا توجد طلبات جاهزة للاستلام' : 'لا توجد طلبات مكتملة اليوم')),
               style: const TextStyle(color: Colors.white54, fontSize: 15),
             ),
           ],
@@ -263,7 +301,7 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
       itemCount: orders.length,
       itemBuilder: (context, index) {
         final order = orders[index];
-        return Container(
+        final card = Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
             color: MerchantColors.darkCard,
@@ -274,15 +312,6 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                   : (isPrep ? MerchantColors.prepBlue : MerchantColors.readyGreen),
               width: isNew ? 2.0 : 1.2,
             ),
-            boxShadow: isNew
-                ? [
-                    BoxShadow(
-                      color: MerchantColors.newOrderAmber.withValues(alpha: 0.15),
-                      blurRadius: 16,
-                      spreadRadius: 2,
-                    )
-                  ]
-                : null,
           ),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -365,28 +394,62 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
 
                 // Items list
                 ...order.items.map((item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 3),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: MerchantColors.primary.withValues(alpha: 0.2),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Text(
-                              '${item.quantity}x',
-                              style: const TextStyle(color: MerchantColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: MerchantColors.primary.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  '${item.quantity}x',
+                                  style: const TextStyle(color: MerchantColors.primary, fontWeight: FontWeight.bold, fontSize: 12),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(item.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                            ],
                           ),
-                          const SizedBox(width: 8),
-                          Text(item.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                          Text('${item.totalLyd.toStringAsFixed(2)} د.ل', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
                         ],
                       ),
-                      Text('${item.totalLyd.toStringAsFixed(2)} د.ل', style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 12)),
+                      if (item.notes != null && item.notes!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          margin: const EdgeInsets.only(right: 28),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.tune_rounded, size: 13, color: Colors.amber),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  item.notes!,
+                                  style: const TextStyle(
+                                    color: Colors.amber,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 )),
@@ -590,6 +653,16 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
             ),
           ),
         );
+
+        if (isNew) {
+          return WaselPulseGlow(
+            glowColor: MerchantColors.newOrderAmber,
+            shape: BoxShape.rectangle,
+            borderRadius: MerchantRadius.lg,
+            child: card,
+          );
+        }
+        return card;
       },
     );
   }

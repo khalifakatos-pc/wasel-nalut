@@ -39,6 +39,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
   OrderStatus? _lastNotifiedTrackingStatus;
   Timer? _pollingTimer;
   final MapController _mapController = MapController();
+  bool _isSatelliteMap = true;
 
   // Order Details from Supabase
   String _orderNum = 'WAS-9831';
@@ -481,8 +482,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
           ),
           children: [
             TileLayer(
-              urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              urlTemplate: _isSatelliteMap
+                  ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+                  : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
               userAgentPackageName: 'com.wasel.customer.wasel_customer_app',
+              maxZoom: 19,
             ),
             PolylineLayer(
               polylines: [
@@ -566,52 +570,69 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
           ],
         ),
 
-        // Live GPS Status Badge
+        // Live Satellite / Street Map Toggle Badge
         Positioned(
           left: 16,
           top: 16,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black87,
-              borderRadius: AppRadius.radiusFull,
-              boxShadow: AppShadows.sm,
-            ),
-            child: Row(
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
+          child: GestureDetector(
+            onTap: () => setState(() => _isSatelliteMap = !_isSatelliteMap),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: AppRadius.radiusFull,
+                boxShadow: AppShadows.sm,
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _isSatelliteMap ? Icons.satellite_alt_rounded : Icons.map_rounded,
+                    color: _isSatelliteMap ? Colors.greenAccent : Colors.cyanAccent,
+                    size: 16,
                   ),
-                ),
-                const SizedBox(width: 6),
-                const Text(
-                  'خريطة نالوت الحية • OpenStreetMap',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(width: 6),
+                  Text(
+                    _isSatelliteMap ? 'قمر صناعي مباشر • نالوت' : 'خريطة الشوارع • نالوت',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  const Icon(Icons.swap_horiz_rounded, color: Colors.white70, size: 14),
+                ],
+              ),
             ),
           ),
         ),
 
-        // Recenter Button
+        // Controls (Satellite toggle & Recenter Button)
         Positioned(
           right: 16,
           bottom: 40,
-          child: FloatingActionButton.small(
-            backgroundColor: isDark ? AppColors.darkCard : Colors.white,
-            foregroundColor: AppColors.waselPrimary,
-            onPressed: () {
-              _mapController.move(LatLng(_driverLat, _driverLng), 15.0);
-            },
-            child: const Icon(Icons.my_location_rounded),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FloatingActionButton.small(
+                heroTag: 'tracking_satellite_toggle',
+                backgroundColor: isDark ? AppColors.darkCard : Colors.white,
+                foregroundColor: _isSatelliteMap ? AppColors.waselPrimary : Colors.black87,
+                onPressed: () => setState(() => _isSatelliteMap = !_isSatelliteMap),
+                child: Icon(_isSatelliteMap ? Icons.satellite_alt_rounded : Icons.map_outlined),
+              ),
+              const SizedBox(height: 8),
+              FloatingActionButton.small(
+                heroTag: 'tracking_recenter',
+                backgroundColor: isDark ? AppColors.darkCard : Colors.white,
+                foregroundColor: AppColors.waselPrimary,
+                onPressed: () {
+                  _mapController.move(LatLng(_driverLat, _driverLng), 15.5);
+                },
+                child: const Icon(Icons.my_location_rounded),
+              ),
+            ],
           ),
         ),
       ],

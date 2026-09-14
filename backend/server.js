@@ -144,6 +144,14 @@ function loadSeedData() {
 
 loadSeedData();
 
+function saveSeedData() {
+  try {
+    fs.writeFileSync(SEED_DATA_PATH, JSON.stringify(db, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Database] Failed to save seed_data.json:', err.message);
+  }
+}
+
 // ----------------------------------------------------------------------------
 // 3. GEOSPATIAL & LOGISTICS UTILITIES
 // ----------------------------------------------------------------------------
@@ -750,6 +758,95 @@ app.get('/api/v1/stores/:id/menu', (req, res) => {
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+app.post('/api/v1/stores', (req, res) => {
+  try {
+    const s = req.body;
+    if (!s.name) {
+      return res.status(400).json({ success: false, error: 'Store name is required' });
+    }
+    const newStore = {
+      id: s.id || `store_nalut_${Date.now()}`,
+      name: s.name,
+      name_en: s.name_en || s.name,
+      type: s.type || 'restaurant',
+      district: s.district || 'نالوت',
+      city: 'nalut',
+      phone: s.phone || '',
+      pin: s.pin || '1234',
+      app_mode: s.app_mode || ((s.type === 'grocery' || s.type === 'pharmacy') ? 'retail' : 'kitchen'),
+      commission_rate: s.commission_rate || 10.0,
+      rating: 5.0,
+      review_count: 0,
+      delivery_time_min: s.delivery_time_min || 20,
+      delivery_time_max: s.delivery_time_max || 35,
+      min_order_lyd: s.min_order_lyd || 10.0,
+      base_delivery_fee_lyd: s.base_delivery_fee_lyd || 4.0,
+      latitude: s.latitude || 31.8686,
+      longitude: s.longitude || 10.9818,
+      is_open: s.is_open !== false,
+      is_featured: s.is_featured !== false,
+      created_at: new Date().toISOString()
+    };
+    db.stores.unshift(newStore);
+    saveSeedData();
+    res.status(201).json({ success: true, data: newStore });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/v1/stores/:id', (req, res) => {
+  db.stores = db.stores.filter(s => s.id !== req.params.id);
+  db.products = db.products.filter(p => p.store_id !== req.params.id);
+  saveSeedData();
+  res.json({ success: true, message: 'Store deleted' });
+});
+
+app.post('/api/v1/drivers', (req, res) => {
+  try {
+    const d = req.body;
+    const newDriver = {
+      id: d.id || `drv_${Date.now()}`,
+      full_name: d.full_name || d.name || 'كابتن واصل',
+      phone: d.phone || '',
+      pin: d.pin || '1234',
+      vehicle_type: d.vehicle_type || 'سيارة',
+      plate_number: d.plate_number || 'نالوت 14-',
+      status: 'available',
+      rating: 5.0,
+      total_trips: 0,
+      wallet_balance_lyd: 0.0,
+      max_cod_limit_lyd: d.max_cod_limit_lyd || 250.0,
+      created_at: new Date().toISOString()
+    };
+    db.drivers.unshift(newDriver);
+    saveSeedData();
+    res.status(201).json({ success: true, data: newDriver });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/v1/drivers/:id', (req, res) => {
+  db.drivers = db.drivers.filter(d => d.id !== req.params.id);
+  saveSeedData();
+  res.json({ success: true, message: 'Driver deleted' });
+});
+
+app.post('/api/v1/admin/purge', (req, res) => {
+  const { admin_pin } = req.body;
+  if (admin_pin !== '9832') {
+    return res.status(403).json({ success: false, error: 'Invalid admin PIN' });
+  }
+  db.stores = [];
+  db.products = [];
+  db.drivers = [];
+  db.orders = [];
+  db.wallet_transactions = [];
+  saveSeedData();
+  res.json({ success: true, message: 'All test stores, products, drivers, and orders purged successfully!' });
 });
 
 app.get('/api/v1/categories', (req, res) => {

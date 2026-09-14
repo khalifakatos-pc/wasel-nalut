@@ -3,14 +3,15 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'design_system.dart';
 import 'order_tracking_screen.dart';
-import 'product_detail_sheet.dart';
 import 'satellite_location_picker.dart';
 import 'store_menu_screen.dart';
 import 'cart_checkout_screen.dart';
 import 'services/api_service.dart';
 import 'services/customer_notification_service.dart';
+import 'widgets/motion_widgets.dart';
 
 /// ============================================================================
 /// WASEL SUPER-APP HOME SCREEN (واصل نالوت والجبل الغربي)
@@ -33,20 +34,40 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _hasActiveOrder = false;
   Map<String, dynamic>? _activeOrder;
   List<Map<String, dynamic>> _liveStores = [];
-  bool _isLoadingStores = true;
+  bool _isLoadingStores = false;
   int _userLoyaltyPoints = 140;
   Timer? _orderWatchTimer;
+  bool _isCheckingOrder = false;
   String? _lastNotifiedStatus;
 
   @override
   void initState() {
     super.initState();
+    _cartItemCount = CartService.count;
+    CartService.cartCountNotifier.addListener(_onCartCountChanged);
     _fetchLiveStores();
     _checkActiveOrder();
     _loadLoyaltyAndReferral();
-    _orderWatchTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    _orderWatchTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       _checkActiveOrder();
     });
+  }
+
+  @override
+  void dispose() {
+    CartService.cartCountNotifier.removeListener(_onCartCountChanged);
+    _searchController.dispose();
+    _bannerController.dispose();
+    _orderWatchTimer?.cancel();
+    super.dispose();
+  }
+
+  void _onCartCountChanged() {
+    if (mounted) {
+      setState(() {
+        _cartItemCount = CartService.count;
+      });
+    }
   }
 
   Future<void> _loadLoyaltyAndReferral() async {
@@ -59,73 +80,51 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _fetchLiveStores() async {
-    setState(() => _isLoadingStores = true);
-    final res = await ApiService.getStores();
-    if (mounted) {
-      if (res.isSuccess && res.data != null && res.data['data'] != null) {
+    if (mounted) setState(() => _isLoadingStores = true);
+    try {
+      final res = await ApiService.getStores();
+      if (mounted && res.isSuccess && res.data != null && res.data['data'] != null) {
         final List<dynamic> list = res.data['data'];
-        if (list.isNotEmpty) {
-          setState(() {
-            _liveStores = List<Map<String, dynamic>>.from(list);
-            _isLoadingStores = false;
-          });
-          return;
-        }
+        setState(() {
+          _liveStores = List<Map<String, dynamic>>.from(list);
+          _isLoadingStores = false;
+        });
+      } else {
+        if (mounted) setState(() => _isLoadingStores = false);
       }
-
-      // Authentic Nalut stores fallback
-      setState(() {
-        _liveStores = [
-          {
-            'id': 'store_nalut_01',
-            'name': 'مطعم قصر نالوت للمشويات',
-            'name_en': 'Nalut Palace Grills',
-            'type': 'restaurant',
-            'rating': '4.9',
-            'cuisine': 'مشويات ليبية • مأكولات الجبل',
-            'time': '25-40 دقيقة',
-            'fee': '5.00 د.ل',
-            'color': AppColors.waselPrimary,
-            'district': 'الشارع الرئيسي - نالوت',
-          },
-          {
-            'id': 'store_nalut_02',
-            'name': 'بيتزا ومعجنات القلعة نالوت',
-            'name_en': 'Al-Qalaa Pizza & Bakery',
-            'type': 'restaurant',
-            'rating': '4.8',
-            'cuisine': 'بيتزا إيطالية • فطائر وشاورما',
-            'time': '20-35 دقيقة',
-            'fee': '5.00 د.ل',
-            'color': AppColors.waselSecondary,
-            'district': 'طريق القلعة الأثرية',
-          },
-          {
-            'id': 'store_nalut_03',
-            'name': 'أسواق نالوت المركزية للمواد الغذائية',
-            'name_en': 'Nalut Central Supermarket',
-            'type': 'grocery',
-            'rating': '4.7',
-            'cuisine': 'تموينات • ألبان ومياه • خضار طازج',
-            'time': '15-30 دقيقة',
-            'fee': '5.00 د.ل',
-            'color': AppColors.jetPrimary,
-            'district': 'السوق المركزي - نالوت',
-          },
-        ];
-        _isLoadingStores = false;
-      });
+    } catch (_) {
+      if (mounted) setState(() => _isLoadingStores = false);
     }
   }
 
   Future<void> _checkActiveOrder() async {
+    if (_isCheckingOrder) return;
+    _isCheckingOrder = true;
+    try {
+      final String? activeId = ApiService.activeOrderId;
+      final String phone = ApiService.userPhone.trim();
+
+      // If guest and has no active order placed in this session, do not poll other people's orders
+      if (activeId == null && phone.isEmpty) {
+        if (_hasActiveOrder && mounted) {
+          setState(() {
+            _hasActiveOrder = false;
+            _activeOrder = null;
+          });
+        }
+        return;
+      }
+
     try {
       List<dynamic> list = [];
 
       // 1. Try Live Unified Backend First (24/7 Cloud or Local)
       try {
+        final queryParam = activeId != null
+            ? 'id=$activeId'
+            : 'customer_phone=${Uri.encodeComponent(phone)}&status=placed,preparing,ready_for_pickup,out_for_delivery';
         final res = await http
-            .get(Uri.parse('${ApiService.baseUrl}/orders?status=placed,preparing,ready_for_pickup,out_for_delivery,delivered'))
+            .get(Uri.parse('${ApiService.baseUrl}/orders?$queryParam'))
             .timeout(const Duration(seconds: 3));
 
         if (res.statusCode == 200) {
@@ -139,10 +138,13 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       // 2. Fallback to Supabase Cloud if unified backend is offline
-      if (list.isEmpty) {
+      if (list.isEmpty && (activeId != null || phone.isNotEmpty)) {
         try {
+          final filter = activeId != null
+              ? 'id=eq.$activeId'
+              : 'customer_phone=eq.${Uri.encodeComponent(phone)}&status=in.(placed,preparing,ready_for_pickup,out_for_delivery)';
           final res = await http.get(
-            Uri.parse('${ApiService.supabaseUrl}/orders?status=in.(placed,preparing,ready_for_pickup,out_for_delivery,delivered)&order=created_at.desc&limit=1'),
+            Uri.parse('${ApiService.supabaseUrl}/orders?$filter&order=created_at.desc&limit=1'),
             headers: {
               'apikey': ApiService.supabaseApiKey,
               'Authorization': 'Bearer ${ApiService.supabaseApiKey}',
@@ -156,9 +158,9 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (list.isNotEmpty && mounted) {
-          final ord = Map<String, dynamic>.from(list.first);
-          final String status = ord['status']?.toString() ?? 'placed';
-          final String orderNum = ord['order_number']?.toString() ?? '#W-100';
+        final ord = Map<String, dynamic>.from(list.first);
+        final String status = ord['status']?.toString() ?? 'placed';
+        final String orderNum = ord['order_number']?.toString() ?? '#W-100';
 
           // Trigger Heads-Up Pop-up Notification on status change
           if (_lastNotifiedStatus != null && _lastNotifiedStatus != status) {
@@ -192,28 +194,28 @@ class _HomeScreenState extends State<HomeScreen> {
 
           final bool isOngoing = status == 'placed' || status == 'preparing' || status == 'ready_for_pickup' || status == 'out_for_delivery';
 
+          if (!isOngoing) {
+            ApiService.clearActiveOrderId();
+          }
+
           setState(() {
             _activeOrder = ord;
             _hasActiveOrder = isOngoing;
           });
+          _isCheckingOrder = false;
           return;
         }
-    } catch (_) {}
+      } catch (_) {}
 
-    if (mounted) {
-      setState(() {
-        _hasActiveOrder = false;
-        _activeOrder = null;
-      });
+      if (mounted) {
+        setState(() {
+          _hasActiveOrder = false;
+          _activeOrder = null;
+        });
+      }
+    } finally {
+      _isCheckingOrder = false;
     }
-  }
-
-  @override
-  void dispose() {
-    _orderWatchTimer?.cancel();
-    _searchController.dispose();
-    _bannerController.dispose();
-    super.dispose();
   }
 
   Color get _activeBrandColor {
@@ -247,49 +249,6 @@ class _HomeScreenState extends State<HomeScreen> {
       case WaselTab.marketplace:
         return 'ابحث عن زيت زيتون نالوت، هواتف، عسل الجبل...';
     }
-  }
-
-  void _openProductDetail({
-    required String title,
-    required double price,
-    required String category,
-    required bool isFood,
-  }) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ProductDetailSheet(
-        title: title,
-        basePrice: price,
-        category: category,
-        isFood: isFood,
-        onAddToCart: (itemDetails) {
-          setState(() {
-            _cartItemCount++;
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: _activeBrandColor,
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle_rounded, color: Colors.white),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      'تمت إضافة $title إلى سلة واصل!',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              ),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-        },
-      ),
-    );
   }
 
   @override
@@ -450,12 +409,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
 
-          // Cart Button with live Badge
-          GestureDetector(
+          // Cart Button with live Badge & WaselBouncyPressable
+          WaselBouncyPressable(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const CartCheckoutScreen(initialCartItems: [])),
+                MaterialPageRoute(builder: (_) => CartCheckoutScreen(initialCartItems: CartService.items)),
               );
             },
             child: Container(
@@ -634,7 +594,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final isSelected = _activeTab == tab;
 
     return Expanded(
-      child: GestureDetector(
+      child: WaselBouncyPressable(
+        behavior: HitTestBehavior.opaque,
+        pressedScale: 0.95,
         onTap: () {
           setState(() {
             _activeTab = tab;
@@ -807,67 +769,95 @@ class _HomeScreenState extends State<HomeScreen> {
               final banner = banners[index];
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
-                child: Container(
-                  padding: const EdgeInsets.all(16.0),
-                  decoration: BoxDecoration(
-                    gradient: banner['gradient'] as LinearGradient,
-                    borderRadius: AppRadius.radiusXl,
-                    boxShadow: [
-                      BoxShadow(
-                        color: (banner['gradient'] as LinearGradient).colors.first.withValues(alpha: 0.3),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
+                child: WaselBouncyPressable(
+                  behavior: HitTestBehavior.opaque,
+                  pressedScale: AppMotion.pressScaleCard,
+                  onTap: () {
+                    final code = banner['code'] as String;
+                    Clipboard.setData(ClipboardData(text: code));
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        behavior: SnackBarBehavior.floating,
+                        backgroundColor: _activeBrandColor,
+                        duration: const Duration(seconds: 2),
+                        content: Row(
                           children: [
-                            Text(
-                              banner['title'] as String,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              banner['subtitle'] as String,
-                              style: const TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.2),
-                                borderRadius: AppRadius.radiusSm,
-                              ),
+                            const Icon(Icons.check_circle_rounded, color: Colors.white),
+                            const SizedBox(width: 8),
+                            Expanded(
                               child: Text(
-                                'كود: ${banner['code']}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                'تم نسخ كود الخصم ($code) بنجاح!',
+                                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      Icon(
-                        banner['icon'] as IconData,
-                        size: 48,
-                        color: Colors.white.withValues(alpha: 0.8),
-                      ),
-                    ],
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(16.0),
+                    decoration: BoxDecoration(
+                      gradient: banner['gradient'] as LinearGradient,
+                      borderRadius: AppRadius.radiusXl,
+                      boxShadow: [
+                        BoxShadow(
+                          color: (banner['gradient'] as LinearGradient).colors.first.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                banner['title'] as String,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                banner['subtitle'] as String,
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  borderRadius: AppRadius.radiusSm,
+                                ),
+                                child: Text(
+                                  'كود: ${banner['code']}',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          banner['icon'] as IconData,
+                          size: 48,
+                          color: Colors.white.withValues(alpha: 0.8),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -936,33 +926,52 @@ class _HomeScreenState extends State<HomeScreen> {
             final cat = categories[index];
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
-              child: Column(
-                children: [
-                  Container(
-                    width: 54,
-                    height: 54,
-                    decoration: BoxDecoration(
-                      color: isDark ? AppColors.darkCard : Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: _activeBrandColor.withValues(alpha: 0.2),
+              child: WaselBouncyPressable(
+                behavior: HitTestBehavior.opaque,
+                pressedScale: 0.92,
+                onTap: () {
+                  final catName = cat['name'] as String;
+                  ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      behavior: SnackBarBehavior.floating,
+                      backgroundColor: _activeBrandColor,
+                      duration: const Duration(seconds: 1),
+                      content: Text(
+                        'تصنيف: $catName (متاح في نالوت)',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      boxShadow: AppShadows.subtle,
                     ),
-                    child: Center(
-                      child: Text(cat['icon'] as String, style: const TextStyle(fontSize: 24)),
+                  );
+                },
+                child: Column(
+                  children: [
+                    Container(
+                      width: 54,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: isDark ? AppColors.darkCard : Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _activeBrandColor.withValues(alpha: 0.2),
+                        ),
+                        boxShadow: AppShadows.subtle,
+                      ),
+                      child: Center(
+                        child: Text(cat['icon'] as String, style: const TextStyle(fontSize: 24)),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    cat['name'] as String,
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    const SizedBox(height: 6),
+                    Text(
+                      cat['name'] as String,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -987,7 +996,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
-      child: GestureDetector(
+      child: WaselBouncyPressable(
+        pressedScale: AppMotion.pressScaleCard,
         onTap: () {
           Navigator.push(
             context,
@@ -1017,14 +1027,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: AppColors.waselPrimary.withValues(alpha: 0.2),
-                  borderRadius: AppRadius.radiusMd,
+              WaselPulseGlow(
+                glowColor: AppColors.waselPrimary,
+                shape: BoxShape.rectangle,
+                borderRadius: AppRadius.radiusMd,
+                child: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppColors.waselPrimary.withValues(alpha: 0.2),
+                    borderRadius: AppRadius.radiusMd,
+                  ),
+                  child: const Icon(Icons.delivery_dining_rounded, color: AppColors.waselPrimary),
                 ),
-                child: const Icon(Icons.delivery_dining_rounded, color: AppColors.waselPrimary),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1074,14 +1089,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildReferralAndLoyaltyBanner(bool isDark) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-      child: InkWell(
+      child: WaselBouncyPressable(
+        pressedScale: AppMotion.pressScaleCard,
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const ReferralScreen()),
           );
         },
-        borderRadius: AppRadius.radiusLg,
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
@@ -1136,8 +1151,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          '$_userLoyaltyPoints نقطة ولاء',
+                        WaselNumberOdometer(
+                          value: _userLoyaltyPoints.toDouble(),
+                          decimalPlaces: 0,
+                          suffix: ' نقطة ولاء',
                           style: TextStyle(
                             color: isDark ? Colors.white : AppColors.lightTextPrimary,
                             fontWeight: FontWeight.bold,
@@ -1238,10 +1255,57 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 12),
           if (_isLoadingStores)
-            const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()))
+            _buildShimmerStoreLoading(isDark)
+          else if (foodStores.isEmpty)
+            _buildEmptyStoresCard(isDark, 'لا توجد مطاعم مسجلة حالياً في نالوت', Icons.restaurant_rounded)
           else
             ...foodStores.map((store) => _buildStoreCard(store, isDark)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildShimmerStoreLoading(bool isDark) {
+    return WaselShimmer(
+      child: Column(
+        children: List.generate(
+          3,
+          (index) => Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkCard : Colors.white,
+              borderRadius: AppRadius.radiusLg,
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
+            ),
+            child: const Row(
+              children: [
+                WaselShimmerBox(width: 70, height: 70),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      WaselShimmerBox(width: 160, height: 16),
+                      SizedBox(height: 8),
+                      WaselShimmerBox(width: 110, height: 12),
+                      SizedBox(height: 10),
+                      Row(
+                        children: [
+                          WaselShimmerBox(width: 60, height: 12),
+                          SizedBox(width: 12),
+                          WaselShimmerBox(width: 50, height: 12),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -1254,33 +1318,26 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'واصل فوري ⚡ تموينات وسوبرماركت نالوت خلال 15 دقيقة',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-          ),
-          const SizedBox(height: 12),
-          if (groceryStores.isNotEmpty)
-            ...groceryStores.map((s) => _buildStoreCard(s, isDark)),
-          const SizedBox(height: 12),
-          const Text(
-            'أصناف سريعة الطلب في نالوت',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 0.9,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildItemCard(title: 'صندوق مياه نالوت 12 قارورة', price: 12.00, category: 'مشروبات', isDark: isDark, isFood: false),
-              _buildItemCard(title: 'كرتونة حليب معقم كامل الدسم', price: 18.00, category: 'ألبان', isDark: isDark, isFood: false),
-              _buildItemCard(title: 'سلة خضار مشكلة طازجة 4 كجم', price: 15.00, category: 'خضار وفواكه', isDark: isDark, isFood: false),
-              _buildItemCard(title: 'شاي أخضر جبلي نخب أول 500 جم', price: 9.00, category: 'تموينات', isDark: isDark, isFood: false),
+              const Text(
+                'واصل فوري ⚡ تموينات وسوبرماركت نالوت',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              Text(
+                '${groceryStores.length} متجر',
+                style: TextStyle(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
             ],
           ),
+          const SizedBox(height: 12),
+          if (_isLoadingStores)
+            _buildShimmerStoreLoading(isDark)
+          else if (groceryStores.isEmpty)
+            _buildEmptyStoresCard(isDark, 'لا توجد تموينات أو أسواق مضافة حالياً في نالوت', Icons.shopping_basket_rounded)
+          else
+            ...groceryStores.map((s) => _buildStoreCard(s, isDark)),
         ],
       ),
     );
@@ -1294,27 +1351,64 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'سوق واصل 🛍️ منتجات نالوت والجبل الأصيلة',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'سوق واصل 🛍️ منتجات ومحلات نالوت',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+              Text(
+                '${marketStores.length} متجر',
+                style: TextStyle(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          if (marketStores.isNotEmpty)
+          if (_isLoadingStores)
+            _buildShimmerStoreLoading(isDark)
+          else if (marketStores.isEmpty)
+            _buildEmptyStoresCard(isDark, 'سوق واصل شاغر حالياً - بانتظار إدراج المحلات الحرفية', Icons.storefront_rounded)
+          else
             ...marketStores.map((s) => _buildStoreCard(s, isDark)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyStoresCard(bool isDark, String message, IconData icon) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkCard : Colors.white,
+        borderRadius: AppRadius.radiusLg,
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 48, color: isDark ? Colors.white38 : Colors.grey.shade400),
           const SizedBox(height: 12),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            childAspectRatio: 0.9,
-            crossAxisSpacing: 10,
-            mainAxisSpacing: 10,
-            children: [
-              _buildItemCard(title: 'زيت زيتون نالوت بكر 5 لتر', price: 135.00, category: 'منتجات الجبل', isDark: isDark, isFood: false),
-              _buildItemCard(title: 'عسل سدر الجبل الأصلي 1 كجم', price: 90.00, category: 'عسل طبيعي', isDark: isDark, isFood: false),
-              _buildItemCard(title: 'سماعات بلوتوث لاسلكية Pro', price: 65.00, category: 'إلكترونيات', isDark: isDark, isFood: false),
-              _buildItemCard(title: 'شاحن سيارة سريع 45W أصلي', price: 35.00, category: 'إلكترونيات', isDark: isDark, isFood: false),
-            ],
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              color: isDark ? Colors.white70 : Colors.black87,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'يمكن للمدير إضافة المتاجر والمنتجات الحقيقية عبر تطبيق Wasel Admin',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: isDark ? Colors.white38 : Colors.grey.shade600,
+            ),
           ),
         ],
       ),
@@ -1331,7 +1425,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final feeStr = store['fee']?.toString() ?? '${store['base_delivery_fee_lyd'] ?? 5.00} د.ل';
     final isGrocery = store['type'] == 'grocery';
 
-    return GestureDetector(
+    return WaselBouncyPressable(
+      pressedScale: AppMotion.pressScaleCard,
       onTap: () {
         Navigator.push(
           context,
@@ -1438,86 +1533,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildItemCard({
-    required String title,
-    required double price,
-    required String category,
-    required bool isDark,
-    required bool isFood,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
-        borderRadius: AppRadius.radiusLg,
-        border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-        ),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: _activeBrandColor.withValues(alpha: 0.08),
-                borderRadius: AppRadius.radiusMd,
-              ),
-              child: Center(
-                child: Icon(
-                  _activeTab == WaselTab.fastGrocery
-                      ? Icons.shopping_basket_rounded
-                      : Icons.inventory_2_rounded,
-                  size: 36,
-                  color: _activeBrandColor,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                '$price د.ل',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
-                  color: _activeBrandColor,
-                ),
-              ),
-              GestureDetector(
-                onTap: () => _openProductDetail(
-                  title: title,
-                  price: price,
-                  category: category,
-                  isFood: isFood,
-                ),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: _activeBrandColor,
-                    borderRadius: AppRadius.radiusSm,
-                  ),
-                  child: const Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

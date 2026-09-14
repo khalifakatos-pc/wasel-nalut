@@ -105,19 +105,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           _profile = p;
           final double balance = (p['wallet_balance_lyd'] is num)
               ? (p['wallet_balance_lyd'] as num).toDouble()
-              : 120.0;
-          final int trips = (p['total_trips'] is int) ? (p['total_trips'] as int) : 14;
-          final double rating = (p['rating'] is num) ? (p['rating'] as num).toDouble() : 4.9;
+              : 0.0;
+          final int trips = (p['total_trips'] is int) ? (p['total_trips'] as int) : 0;
+          final double rating = (p['rating'] is num) ? (p['rating'] as num).toDouble() : 5.0;
           _stats = DriverStats(
             netEarningsTodayLyd: trips * 6.5,
-            netEarningsYesterdayLyd: 45.0,
+            netEarningsYesterdayLyd: 0.0,
             completedTripsToday: trips,
             cashInHandCodLyd: balance,
             rating: rating,
-            totalReviews: 68,
-            acceptanceRate: 0.98,
-            onTimeRate: 0.99,
-            onlineDurationSeconds: 14400,
+            totalReviews: trips,
+            acceptanceRate: 1.0,
+            onTimeRate: 1.0,
+            onlineDurationSeconds: 0,
           );
         });
       }
@@ -360,12 +360,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        '${_profile['full_name'] ?? 'طارق النالوتي'} ⭐ ${(_profile['rating'] ?? 4.9).toString()}',
+                        '${_profile['full_name'] ?? 'كابتن واصل'} ⭐ ${(_profile['rating'] ?? 5.0).toString()}',
                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${_profile['vehicle_type'] ?? 'سيارة'} • ${_profile['plate_number'] ?? 'نالوت 14-88492'}',
+                        '${_profile['vehicle_type'] ?? 'سيارة'} • ${_profile['plate_number'] ?? 'نالوت'}',
                         style: const TextStyle(fontSize: 12, color: DriverColors.darkTextMuted),
                       ),
                     ],

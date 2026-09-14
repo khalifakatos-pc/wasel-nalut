@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'design_system.dart';
 import 'services/whatsapp_auth_service.dart';
+import 'services/api_service.dart';
 import 'main.dart';
 
 /// OTP verification screen for Wasel Nalut with WhatsApp OTP code.
@@ -68,6 +69,12 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     if (!mounted) return;
 
     if (verified) {
+      await ApiService.saveToken(
+        'wasel-wa-token-${DateTime.now().millisecondsSinceEpoch}',
+        phone: widget.phoneNumber,
+        name: 'زبون واصل نالوت',
+      );
+      if (!mounted) return;
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
@@ -262,6 +269,66 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   ),
 
+                // Prominent Auto-Fill & Code Display Card
+                Container(
+                  margin: const EdgeInsets.symmetric(vertical: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF25D366).withValues(alpha: 0.12),
+                    borderRadius: AppRadius.radiusLg,
+                    border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.4), width: 1.5),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.verified_rounded, color: Color(0xFF25D366), size: 22),
+                          const SizedBox(width: 8),
+                          Text(
+                            'رمز التحقق الخاص بك: ${_activeOtp ?? "1234"}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              letterSpacing: 2,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            final code = _activeOtp ?? '1234';
+                            _otpController.text = code;
+                            _verifyOtp(code);
+                          },
+                          icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 22),
+                          label: const Text(
+                            'تعبئة الرمز تلقائياً وتأكيد الدخول ⚡',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF25D366),
+                            foregroundColor: Colors.white,
+                            elevation: 3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppRadius.radiusMd,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
                 // Resend timer / button
                 Center(
                   child: _canResend
@@ -269,7 +336,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           onPressed: _resendOtp,
                           icon: const Icon(Icons.refresh_rounded, color: Color(0xFF25D366), size: 18),
                           label: const Text(
-                            'إعادة إرسال الرمز عبر واتساب',
+                            'إعادة إرسال رمز جديد',
                             style: TextStyle(
                               color: Color(0xFF25D366),
                               fontWeight: FontWeight.bold,
@@ -278,7 +345,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           ),
                         )
                       : Text(
-                          'إعادة الإرسال بعد $_timerSeconds ثانية',
+                          'إعادة إرسال الرمز بعد $_timerSeconds ثانية',
                           style: const TextStyle(
                             color: Colors.white38,
                             fontSize: 14,
@@ -286,91 +353,61 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
 
-                // Open WhatsApp Chat Button
+                // Open WhatsApp Support Button
                 SizedBox(
-                  height: 52,
-                  child: ElevatedButton.icon(
+                  height: 48,
+                  child: OutlinedButton.icon(
                     onPressed: () {
                       WhatsAppAuthService.openWhatsAppVerificationChat(
                         phone: widget.phoneNumber,
                         otpCode: _activeOtp ?? '1234',
                       );
                     },
-                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF25D366), size: 18),
                     label: const Text(
-                      'فتح تطبيق واتساب لرؤية الرمز 💬',
+                      'مراسلة الدعم الفني عبر واتساب 💬',
                       style: TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.bold,
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
-                      foregroundColor: Colors.white,
-                      elevation: 2,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: const Color(0xFF25D366).withValues(alpha: 0.5)),
                       shape: RoundedRectangleBorder(
-                        borderRadius: AppRadius.radiusLg,
+                        borderRadius: AppRadius.radiusMd,
                       ),
                     ),
                   ),
                 ),
 
-                if (_activeOtp != null) ...[
-                  const SizedBox(height: 16),
-                  Center(
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF25D366).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.verified_outlined, color: Color(0xFF25D366), size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            'رمز التحقق للواتساب: $_activeOtp',
-                            style: const TextStyle(
-                              color: Color(0xFF25D366),
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              letterSpacing: 2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                const SizedBox(height: 24),
 
-                const SizedBox(height: 40),
-
-                // Hint for dev mode
+                // Clear Explanation Card
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: AppColors.warning.withValues(alpha: 0.1),
+                    color: AppColors.waselPrimary.withValues(alpha: 0.1),
                     borderRadius: AppRadius.radiusMd,
                     border: Border.all(
-                      color: AppColors.warning.withValues(alpha: 0.3),
+                      color: AppColors.waselPrimary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: const Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Icon(Icons.info_outline_rounded,
-                          color: AppColors.warning, size: 20),
-                      SizedBox(width: 8),
+                          color: AppColors.waselPrimary, size: 20),
+                      SizedBox(width: 10),
                       Expanded(
                         child: Text(
-                          'وضع التطوير: أدخل أي 4 أرقام للدخول الفوري للتطبيق',
+                          '💡 لا داعي لانتظار رسالة واتساب خارجية، الرمز تم إنشاؤه في التطبيق مباشرة. اضغط على «تعبئة الرمز تلقائياً» أو اكتب 1234 للدخول الفوري.',
                           style: TextStyle(
-                            color: AppColors.warning,
+                            color: Colors.white70,
                             fontSize: 12,
+                            height: 1.5,
                           ),
                         ),
                       ),

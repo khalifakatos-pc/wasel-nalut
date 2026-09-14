@@ -6,7 +6,11 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 @pragma('vm:entry-point')
 Future<void> _customerFirebaseBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+  } catch (_) {}
   debugPrint('Customer background notification: ${message.messageId}');
 }
 
@@ -15,7 +19,14 @@ class CustomerNotificationService {
   factory CustomerNotificationService() => _instance;
   CustomerNotificationService._internal();
 
-  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  FirebaseMessaging? get _fcm {
+    try {
+      if (!kIsWeb && Firebase.apps.isNotEmpty) {
+        return FirebaseMessaging.instance;
+      }
+    } catch (_) {}
+    return null;
+  }
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   static const AndroidNotificationChannel _customerOrderChannel = AndroidNotificationChannel(
@@ -37,23 +48,8 @@ class CustomerNotificationService {
       return;
     }
 
+    // 1. Initialize local notifications first and unconditionally
     try {
-      // 1. Initialize Firebase
-      await Firebase.initializeApp();
-
-      // 2. Set background handler
-      FirebaseMessaging.onBackgroundMessage(_customerFirebaseBackgroundHandler);
-
-      // 3. Request permissions
-      NotificationSettings settings = await _fcm.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
-
-      debugPrint('Customer FCM status: ${settings.authorizationStatus}');
-
-      // 4. Setup local notifications
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
       const InitializationSettings initSettings = InitializationSettings(
@@ -70,47 +66,74 @@ class CustomerNotificationService {
         },
       );
 
-      // 5. Create Android Channel
       final AndroidFlutterLocalNotificationsPlugin? androidPlatformChannel =
           _localNotifications.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
       if (androidPlatformChannel != null) {
         await androidPlatformChannel.createNotificationChannel(_customerOrderChannel);
       }
-
-      // 6. Subscribe to General Nalut Offers Topic
-      await _fcm.subscribeToTopic('wasel_nalut_offers');
-
-      // 7. Foreground message handler
-      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        debugPrint('Customer foreground message: ${message.notification?.title}');
-        _showOrderNotification(
-          id: message.hashCode,
-          title: message.notification?.title ?? 'تحديث على طلبك - واصل',
-          body: message.notification?.body ?? 'هناك تحديث جديد على مسار وجبتك.',
-          payload: message.data.toString(),
-        );
-      });
-
-      // 8. Background launch handler
-      FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-        if (onNotificationTapped != null) {
-          onNotificationTapped(message.data);
-        }
-      });
-
       _isInitialized = true;
-      debugPrint('CustomerNotificationService initialized');
+      debugPrint('Local notifications initialized successfully');
     } catch (e) {
-      debugPrint('Error initializing CustomerNotificationService: $e');
+      debugPrint('Local notifications init error: $e');
     }
+
+    // 2. Initialize Firebase safely with timeout
+    try {
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp().timeout(const Duration(seconds: 2));
+      }
+
+      final fcm = _fcm;
+      if (fcm != null) {
+        // Background message handler
+        FirebaseMessaging.onBackgroundMessage(_customerFirebaseBackgroundHandler);
+
+        // Request permissions
+        final settings = await fcm.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+        debugPrint('Customer FCM status: ${settings.authorizationStatus}');
+
+        // Subscribe to Nalut general offers
+        await fcm.subscribeToTopic('wasel_nalut_offers');
+
+        // Foreground message handler
+        FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+          debugPrint('Customer foreground message: ${message.notification?.title}');
+          _showOrderNotification(
+            id: message.hashCode,
+            title: message.notification?.title ?? 'تحديث على طلبك - واصل',
+            body: message.notification?.body ?? 'هناك تحديث جديد على مسار وجبتك.',
+            payload: message.data.toString(),
+          );
+        });
+
+        // Background launch handler
+        FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+          if (onNotificationTapped != null) {
+            onNotificationTapped(message.data);
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('FCM safe init error: $e');
+    }
+
+    _isInitialized = true;
+    debugPrint('CustomerNotificationService initialized');
   }
 
   Future<void> subscribeToOrder(String orderId) async {
     try {
-      final topic = 'order_${orderId.replaceAll('-', '_')}';
-      await _fcm.subscribeToTopic(topic);
-      debugPrint('Subscribed to order topic: $topic');
+      final fcm = _fcm;
+      if (fcm != null) {
+        final topic = 'order_${orderId.replaceAll('-', '_')}';
+        await fcm.subscribeToTopic(topic);
+        debugPrint('Subscribed to order topic: $topic');
+      }
     } catch (e) {
       debugPrint('Error subscribing to order topic: $e');
     }
@@ -118,9 +141,12 @@ class CustomerNotificationService {
 
   Future<void> unsubscribeFromOrder(String orderId) async {
     try {
-      final topic = 'order_${orderId.replaceAll('-', '_')}';
-      await _fcm.unsubscribeFromTopic(topic);
-      debugPrint('Unsubscribed from order topic: $topic');
+      final fcm = _fcm;
+      if (fcm != null) {
+        final topic = 'order_${orderId.replaceAll('-', '_')}';
+        await fcm.unsubscribeFromTopic(topic);
+        debugPrint('Unsubscribed from order topic: $topic');
+      }
     } catch (e) {
       debugPrint('Error unsubscribing from order topic: $e');
     }

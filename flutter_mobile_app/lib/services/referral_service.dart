@@ -182,17 +182,28 @@ class ReferralService {
       expiresAt: DateTime.now().add(const Duration(days: 12)),
       discountLyd: 5.00,
     );
-    await addVoucher(initialVoucher);
+    try {
+      await prefs.setString('wasel_user_vouchers', jsonEncode([initialVoucher.toJson()]));
+    } catch (_) {}
     return [initialVoucher];
   }
 
   /// Add a new earned voucher
   static Future<void> addVoucher(FreeDeliveryVoucher voucher) async {
     final prefs = await SharedPreferences.getInstance();
-    final vouchers = await getActiveVouchers();
+    List<FreeDeliveryVoucher> vouchers = [];
+    final raw = prefs.getString('wasel_user_vouchers');
+    if (raw != null && raw.isNotEmpty) {
+      try {
+        final List<dynamic> list = jsonDecode(raw);
+        vouchers = list
+            .map((item) => FreeDeliveryVoucher.fromJson(Map<String, dynamic>.from(item)))
+            .toList();
+      } catch (_) {}
+    }
     vouchers.insert(0, voucher);
-    final raw = jsonEncode(vouchers.map((v) => v.toJson()).toList());
-    await prefs.setString('wasel_user_vouchers', raw);
+    final updatedRaw = jsonEncode(vouchers.map((v) => v.toJson()).toList());
+    await prefs.setString('wasel_user_vouchers', updatedRaw);
   }
 
   /// Redeem voucher on checkout

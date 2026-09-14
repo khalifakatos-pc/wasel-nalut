@@ -24,26 +24,88 @@ class ApiService {
   static String? _authToken;
 
   // -------------------------------------------------------------------------
-  // TOKEN MANAGEMENT
+  // TOKEN & USER MANAGEMENT
   // -------------------------------------------------------------------------
+  static bool _isGuest = false;
+  static String? _userPhone;
+  static String? _userName;
+  static String? activeOrderId;
+
+  static bool get isGuest => _isGuest;
+  static String get userPhone => _userPhone ?? '';
+  static String get userName => _userName ?? (_isGuest ? 'زائر واصل نالوت' : 'زبون نالوت');
+
   static Future<void> loadToken() async {
     final prefs = await SharedPreferences.getInstance();
     _authToken = prefs.getString('auth_token');
+    _isGuest = prefs.getBool('is_guest') ?? false;
+    _userPhone = prefs.getString('user_phone');
+    _userName = prefs.getString('user_name');
+    activeOrderId = prefs.getString('active_order_id');
   }
 
-  static Future<void> saveToken(String token) async {
+  static Future<void> setGuestMode(bool guest) async {
+    _isGuest = guest;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_guest', guest);
+    if (guest) {
+      _userName = 'زائر واصل نالوت';
+      _userPhone = '';
+    }
+  }
+
+  static Future<void> setGuestPhoneAndName(String phone, String name) async {
+    _userPhone = phone;
+    _userName = name.trim().isNotEmpty ? name.trim() : 'زائر واصل نالوت';
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_phone', phone);
+    await prefs.setString('user_name', _userName!);
+  }
+
+  static Future<void> saveToken(String token, {String? phone, String? name}) async {
     _authToken = token;
+    _isGuest = false;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('auth_token', token);
+    await prefs.setBool('is_guest', false);
+    if (phone != null) {
+      _userPhone = phone;
+      await prefs.setString('user_phone', phone);
+    }
+    if (name != null) {
+      _userName = name;
+      await prefs.setString('user_name', name);
+    }
+  }
+
+  static Future<void> saveActiveOrderId(String orderId) async {
+    activeOrderId = orderId;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('active_order_id', orderId);
+  }
+
+  static Future<void> clearActiveOrderId() async {
+    activeOrderId = null;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('active_order_id');
   }
 
   static Future<void> clearToken() async {
     _authToken = null;
+    _isGuest = false;
+    _userPhone = null;
+    _userName = null;
+    activeOrderId = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
+    await prefs.remove('is_guest');
+    await prefs.remove('user_phone');
+    await prefs.remove('user_name');
+    await prefs.remove('active_order_id');
   }
 
   static bool get isLoggedIn => _authToken != null && _authToken!.isNotEmpty;
+  static bool get hasActiveSession => isLoggedIn || _isGuest;
 
   static Map<String, String> get _headers => {
         'Content-Type': 'application/json',
@@ -95,91 +157,11 @@ class ApiService {
   // STORES & CATALOG
   // -------------------------------------------------------------------------
 
+  /// Authentic Nalut stores available offline/cached on frame 0
+  static const List<Map<String, dynamic>> realNalutStores = [];
+
   /// Fetch stores by type: 'restaurant', 'grocery', 'marketplace', or all.
   static Future<ApiResult> getStores({String? type}) async {
-    final List<Map<String, dynamic>> realNalutStores = [
-      {
-        'id': 'store_nalut_alhanaa',
-        'name': 'صيدلية الهناء',
-        'name_en': 'Al-Hanaa Pharmacy',
-        'type': 'pharmacy',
-        'rating': 4.9,
-        'review_count': 94,
-        'delivery_time_min': 15,
-        'delivery_time_max': 30,
-        'min_order_lyd': 10.0,
-        'base_delivery_fee_lyd': 5.0,
-        'latitude': 31.877755,
-        'longitude': 10.978004,
-        'city': 'nalut',
-        'district': 'مقابل جزيرة مصرف الجمهورية، نالوت',
-        'logo_url': 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=400&q=80',
-        'banner_url': 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80',
-        'is_open': true,
-        'is_featured': true,
-      },
-      {
-        'id': 'store_nalut_ranchello',
-        'name': 'مطعم ومقهى رانشيلو',
-        'name_en': 'Ranchello Restaurant & Cafe',
-        'type': 'restaurant',
-        'rating': 4.8,
-        'review_count': 165,
-        'delivery_time_min': 25,
-        'delivery_time_max': 45,
-        'min_order_lyd': 15.0,
-        'base_delivery_fee_lyd': 5.0,
-        'latitude': 31.862130,
-        'longitude': 10.986878,
-        'city': 'nalut',
-        'district': 'شارع أفريقيا، نالوت',
-        'logo_url': 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=400&q=80',
-        'banner_url': 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-        'is_open': true,
-        'is_featured': true,
-      },
-      {
-        'id': 'store_nalut_akakus',
-        'name': 'بيتزا أكاكوس',
-        'name_en': 'Pizza Akakus',
-        'type': 'restaurant',
-        'rating': 4.7,
-        'review_count': 142,
-        'delivery_time_min': 20,
-        'delivery_time_max': 35,
-        'min_order_lyd': 15.0,
-        'base_delivery_fee_lyd': 5.0,
-        'latitude': 31.881501,
-        'longitude': 10.975753,
-        'city': 'nalut',
-        'district': 'شارع تونس، نالوت',
-        'logo_url': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80',
-        'banner_url': 'https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=800&q=80',
-        'is_open': true,
-        'is_featured': true,
-      },
-      {
-        'id': 'store_nalut_rixos',
-        'name': 'ريكسوس للتسوق',
-        'name_en': 'Rixos Shopping Market',
-        'type': 'grocery',
-        'rating': 4.8,
-        'review_count': 210,
-        'delivery_time_min': 30,
-        'delivery_time_max': 50,
-        'min_order_lyd': 20.0,
-        'base_delivery_fee_lyd': 5.0,
-        'latitude': 31.892879,
-        'longitude': 10.965377,
-        'city': 'nalut',
-        'district': 'المدخل الرئيسي - نالوت',
-        'logo_url': 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
-        'banner_url': 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
-        'is_open': true,
-        'is_featured': true,
-      },
-    ];
-
     // 1. Try Live Unified Backend Server First (Cloud 24/7 / Local)
     try {
       final queryParams = type != null ? '?type=$type' : '';
@@ -190,10 +172,8 @@ class ApiService {
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
         final List<dynamic> list = decoded['data'] ?? (decoded is List ? decoded : []);
-        if (list.isNotEmpty) {
-          final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
-          return ApiResult.success({'data': combined, 'count': combined.length});
-        }
+        final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
+        return ApiResult.success({'data': combined, 'count': combined.length});
       }
     } catch (_) {
       // Offline fallback
@@ -213,13 +193,8 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
-        for (final s in realNalutStores) {
-          if ((type == null || s['type'] == type) && !combined.any((item) => item['id'] == s['id'])) {
-            combined.add(s);
-          }
-        }
-        return ApiResult.success({'data': combined, 'count': combined.length});
+        final List<Map<String, dynamic>> liveStores = List<Map<String, dynamic>>.from(list);
+        return ApiResult.success({'data': liveStores, 'count': liveStores.length});
       }
     } catch (_) {
       // Fallback
@@ -239,537 +214,19 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final decoded = jsonDecode(res.body);
-        final products = decoded['data']?['products'] ?? decoded['products'] ?? decoded['all_products'];
-        if (products != null && products is List && products.isNotEmpty) {
-          return ApiResult.success({
-            'data': {
-              'store_id': storeId,
-              'products': List<Map<String, dynamic>>.from(products),
-            }
-          });
-        }
+        final products = decoded['data']?['products'] ?? decoded['products'] ?? decoded['all_products'] ?? [];
+        return ApiResult.success({
+          'data': {
+            'store_id': storeId,
+            'products': List<Map<String, dynamic>>.from(products),
+          }
+        });
       }
     } catch (_) {
-      // Fallback to local
+      // Fallback to cloud
     }
 
-    // 2. Fallback to authentic local Nalut stores for zero-latency / offline loading
-    if (storeId == 'store_nalut_alhanaa') {
-      return ApiResult.success({
-        'data': {
-          'store_id': storeId,
-          'products': [
-            {
-              'id': 'prod_alhanaa_01',
-              'name_ar': 'بنادول إكسترا أحمر (24 قرص)',
-              'price_lyd': 5.0,
-              'desc_ar': 'مسكن للصداع والآلام وخافض حرارة سريع المفعول',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'علبة',
-            },
-            {
-              'id': 'prod_alhanaa_02',
-              'name_ar': 'فيتامين سي فوار 1000 مجم',
-              'price_lyd': 12.0,
-              'desc_ar': 'فوار لتقوية المناعة ومقاومة نزلات البرد بنكهة البرتقال',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'أنبوب',
-            },
-            {
-              'id': 'prod_alhanaa_03',
-              'name_ar': 'غسول سيرافي للبشرة CeraVe 236ml',
-              'price_lyd': 65.0,
-              'desc_ar': 'منظف ومرطب للبشرة بحمض الهيالورونيك والسيراميد',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'عبوة',
-            },
-            {
-              'id': 'prod_alhanaa_04',
-              'name_ar': 'كريم ديرميديك واقي شمس SPF 50+',
-              'price_lyd': 58.0,
-              'desc_ar': 'Dermedic حماية فائقة من أشعة الشمس للبشرة الحساسة',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'أنبوب',
-            },
-            {
-              'id': 'prod_alhanaa_05',
-              'name_ar': 'بخاخ أوتريفين للأنف للكبار 0.1%',
-              'price_lyd': 8.5,
-              'desc_ar': 'مزيل لاحتقان الأنف ومساعد على التنفس السريع',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بخاخ',
-            },
-            {
-              'id': 'prod_alhanaa_06',
-              'name_ar': 'حقيبة إسعافات أولية منزلية متكاملة',
-              'price_lyd': 35.0,
-              'desc_ar': 'تحتوي على شاش، لاصقات جروح، مطهر، قطن طبي، ومقص',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'حقيبة',
-            },
-          ]
-        }
-      });
-    }
-
-    if (storeId == 'store_nalut_ranchello') {
-      return ApiResult.success({
-        'data': {
-          'store_id': storeId,
-          'products': [
-            // --- البوكسات والوجبات العائلية ---
-            {
-              'id': 'prod_ranchello_box_big',
-              'name_ar': 'بوكس كبير',
-              'price_lyd': 140.0,
-              'desc_ar': 'بوكس رانشيلو الحجم الكبير المناسب للعزائم والجمعات العائلية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بوكس',
-            },
-            {
-              'id': 'prod_ranchello_meal_family',
-              'name_ar': 'وجبة عائلية',
-              'price_lyd': 60.0,
-              'desc_ar': 'وجبة مشويات ودجاج تكفي العائلة مع مقبلات وسلطات وبطاطا',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة عائلية',
-            },
-            {
-              'id': 'prod_ranchello_family_box',
-              'name_ar': 'فاميلي بوكس',
-              'price_lyd': 40.0,
-              'desc_ar': 'بوكس عائلي مميز بتشكيلة سندوتشات وسناكس وبطاطا مقلية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بوكس',
-            },
-            {
-              'id': 'prod_ranchello_family_mix_box',
-              'name_ar': 'بوكس عائلي مشكل',
-              'price_lyd': 40.0,
-              'desc_ar': 'تشكيلة مشاوي مشكلة وسندوتشات عائلية مع الصوصات',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بوكس',
-            },
-            {
-              'id': 'prod_ranchello_box_shish',
-              'name_ar': 'بوكس شيش',
-              'price_lyd': 32.0,
-              'desc_ar': 'بوكس شيش طاووق فاخر مع بطاطا وخبز صاج وثومية رانشيلو',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بوكس',
-            },
-            {
-              'id': 'prod_ranchello_happiness_cheese',
-              'name_ar': 'بوكس السعادة بالجبنة',
-              'price_lyd': 31.0,
-              'desc_ar': 'بوكس السعادة المميز مغطى بجبنة شيدر وموزاريلا ذائبة ومقرمشات',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بوكس',
-            },
-            {
-              'id': 'prod_ranchello_happiness_box',
-              'name_ar': 'بوكس السعادة',
-              'price_lyd': 29.0,
-              'desc_ar': 'بوكس السعادة الكلاسيكي المفضل لزبائن رانشيلو مع الصوصات الخاصة',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بوكس',
-            },
-
-            // --- الوجبات الرئيسية ---
-            {
-              'id': 'prod_ranchello_meal_chicken_full',
-              'name_ar': 'وجبة دجاجة كاملة',
-              'price_lyd': 45.0,
-              'desc_ar': 'دجاجة كاملة مشوية على الفحم مع الأرز والبطاطا والسلطة',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة',
-            },
-            {
-              'id': 'prod_ranchello_meal_half_chicken',
-              'name_ar': 'وجبة نص دجاجة',
-              'price_lyd': 25.0,
-              'desc_ar': 'نصف دجاجة مشوية متبلة تقدم مع الأرز والبطاطا والمقبلات',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة',
-            },
-            {
-              'id': 'prod_ranchello_meal_mix',
-              'name_ar': 'وجبة مشكلة',
-              'price_lyd': 23.0,
-              'desc_ar': 'تشكيلة مشاوي رانشيلو المشكلة مع الأرز والخبز والصوصات',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة',
-            },
-            {
-              'id': 'prod_ranchello_meal_shish_tawook',
-              'name_ar': 'وجبة شيش طاووق',
-              'price_lyd': 22.0,
-              'desc_ar': 'أسياخ شيش طاووق صدور دجاج متبلة مع بطاطا وثومية وخبز صاج',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة',
-            },
-            {
-              'id': 'prod_ranchello_meal_shawarma',
-              'name_ar': 'وجبة شاورما',
-              'price_lyd': 22.0,
-              'desc_ar': 'وجبة شاورما عربي مقطعة مع بطاطا مقلية وثومية ومخللات',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة',
-            },
-            {
-              'id': 'prod_ranchello_meal_kebab',
-              'name_ar': 'وجبة كباب',
-              'price_lyd': 21.0,
-              'desc_ar': 'وجبة كباب لحم مشوي على الفحم تقدم مع الأرز والسلطة المشوية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'وجبة',
-            },
-            {
-              'id': 'prod_ranchello_half_chicken_plain',
-              'name_ar': 'نص دجاجة حاف',
-              'price_lyd': 15.0,
-              'desc_ar': 'نصف دجاجة مشوية حاف بدون أرز أو إضافات جانبية',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'وجبة',
-            },
-
-            // --- السندوتشات والشاورما والفطائر ---
-            {
-              'id': 'prod_ranchello_scallop_fatira_big',
-              'name_ar': 'سكالوب فطيرة كبير',
-              'price_lyd': 23.0,
-              'desc_ar': 'سكالوب دجاج مقرمش في خبز الفطيرة الليبية الطازجة بالحجم الكبير',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'فطيرة',
-            },
-            {
-              'id': 'prod_ranchello_scallop_fatira_small',
-              'name_ar': 'سكالوب فطيرة صغير',
-              'price_lyd': 19.0,
-              'desc_ar': 'سكالوب دجاج في خبز الفطيرة الليبية الساخنة بحجم فردي',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'فطيرة',
-            },
-            {
-              'id': 'prod_ranchello_shawarma_double',
-              'name_ar': 'شاورما دبل',
-              'price_lyd': 18.0,
-              'desc_ar': 'سندوتش شاورما بحجم مضاعف وإضافات غنية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_scallop_regular',
-              'name_ar': 'سكالوب',
-              'price_lyd': 16.0,
-              'desc_ar': 'سندوتش سكالوب دجاج مقرمش كلاسيكي مع البطاطا والسلطات',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_burger_double',
-              'name_ar': 'همبورغر دبل',
-              'price_lyd': 16.0,
-              'desc_ar': 'همبورغر قطعتين لحم طازج مع شرائح الجبن والخس وصوص البرجر',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_fajita_regular',
-              'name_ar': 'فاهيتا عادية',
-              'price_lyd': 12.0,
-              'desc_ar': 'سندوتش فاهيتا دجاج متبلة مع الفلفل الرومي والبصل والبهارات',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_shish_cheese',
-              'name_ar': 'شيش بالجبنة',
-              'price_lyd': 12.0,
-              'desc_ar': 'سندوتش شيش طاووق مع جبنة موزاريلا ذائبة',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_scallop_manwi',
-              'name_ar': 'سكالوب مانوي',
-              'price_lyd': 11.0,
-              'desc_ar': 'سندوتش سكالوب دجاج خفيف مع صوص المايونيز والماسترد',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_shawarma_cheese',
-              'name_ar': 'شاورما بالجبنة',
-              'price_lyd': 11.0,
-              'desc_ar': 'سندوتش شاورما دجاج مع جبنة ذائبة وثومية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_diwan_regular',
-              'name_ar': 'ديوان عادي',
-              'price_lyd': 11.0,
-              'desc_ar': 'سندوتش ديوان رانشيلو المتبل الشهير',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_shawarma_regular',
-              'name_ar': 'شاورما',
-              'price_lyd': 10.0,
-              'desc_ar': 'سندوتش شاورما دجاج كلاسيك بالثومية والمخلل والبطاطا',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_burger_regular',
-              'name_ar': 'همبورغر عادية',
-              'price_lyd': 9.0,
-              'desc_ar': 'همبورغر لحم فردي كلاسيكي مع الطماطم والخس والمايونيز',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_burger_chicken',
-              'name_ar': 'همبورغر دجاج',
-              'price_lyd': 8.0,
-              'desc_ar': 'برجر صدر دجاج مقرمش مع صوص المايونيز والخس',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'سندوتش',
-            },
-            {
-              'id': 'prod_ranchello_eggs_cheese',
-              'name_ar': 'دحي بالجبنة',
-              'price_lyd': 4.0,
-              'desc_ar': 'سندوتش بيض مقلي بالجبنة الطازجة',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'سندوتش',
-            },
-
-            // --- الصحون والمقبلات والشوربة ---
-            {
-              'id': 'prod_ranchello_plate_kebab',
-              'name_ar': 'كباب صحن',
-              'price_lyd': 18.0,
-              'desc_ar': 'صحن كباب لحم مشوي على الفحم مع الطماطم والفلفل المشوي والخبز',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'صحن',
-            },
-            {
-              'id': 'prod_ranchello_shish_rice',
-              'name_ar': 'شيش أرز',
-              'price_lyd': 17.0,
-              'desc_ar': 'قطع شيش طاووق متبلة فوق طبق الأرز البسمتي المفلفل',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'صحن',
-            },
-            {
-              'id': 'prod_ranchello_rice_fries_plate',
-              'name_ar': 'صحن رز وبطاطا',
-              'price_lyd': 15.0,
-              'desc_ar': 'صحن أرز بالخلطة مع بطاطا مقلية مقرمشة',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'صحن',
-            },
-            {
-              'id': 'prod_ranchello_plate_shish',
-              'name_ar': 'شيش صحن',
-              'price_lyd': 13.0,
-              'desc_ar': 'صحن شيش طاووق مفرد مع الصوص والسلطات والخبز',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'صحن',
-            },
-            {
-              'id': 'prod_ranchello_lentil_soup',
-              'name_ar': 'شوربة عدس',
-              'price_lyd': 5.0,
-              'desc_ar': 'شوربة عدس دافئة ومغذية مع الخبز المحمص والليمون',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'صحن',
-            },
-          ]
-        }
-      });
-    }
-
-    if (storeId == 'store_nalut_akakus') {
-      return ApiResult.success({
-        'data': {
-          'store_id': storeId,
-          'products': [
-            {
-              'id': 'prod_akakus_01',
-              'name_ar': 'بيتزا أكاكوس الخاصة (كبير)',
-              'price_lyd': 30.0,
-              'desc_ar': 'صلصة خاصة، دجاج، لحم، فطر، زيتون، وموزاريلا غنية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بيتزا',
-            },
-            {
-              'id': 'prod_akakus_02',
-              'name_ar': 'بيتزا تونة ليبية بالزيتون',
-              'price_lyd': 24.0,
-              'desc_ar': 'تونة فاخرة، بصل، فلفل أخضر، زيتون أسود، وموزاريلا',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بيتزا',
-            },
-            {
-              'id': 'prod_akakus_03',
-              'name_ar': 'بيتزا باربيكيو تشيكن',
-              'price_lyd': 26.0,
-              'desc_ar': 'قطع دجاج متبلة بصوص الباربيكيو المدخن مع الموزاريلا',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'بيتزا',
-            },
-            {
-              'id': 'prod_akakus_04',
-              'name_ar': 'بيتزا مارغريتا كلاسيك',
-              'price_lyd': 20.0,
-              'desc_ar': 'صلصة الطماطم الإيطالية، ريحان طازج، وموزاريلا أصلية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'بيتزا',
-            },
-            {
-              'id': 'prod_akakus_05',
-              'name_ar': 'أصابع جبنة الموزاريلا المقلية (5 قطع)',
-              'price_lyd': 12.0,
-              'desc_ar': 'أصابع موزاريلا مقرمشة مع صلصة المارينارا الإيطالية',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'علبة',
-            },
-            {
-              'id': 'prod_akakus_06',
-              'name_ar': 'كالزوني إيطالي محشي لحم وجبن',
-              'price_lyd': 18.0,
-              'desc_ar': 'فطيرة كالزوني مخبوزة على الحجر محشية لحم وموزاريلا',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'قطعة',
-            },
-          ]
-        }
-      });
-    }
-
-    if (storeId == 'store_nalut_rixos') {
-      return ApiResult.success({
-        'data': {
-          'store_id': storeId,
-          'products': [
-            {
-              'id': 'prod_rixos_01',
-              'name_ar': 'زيت زيتون جبل نفوسة البكر الممتاز (1 لتر)',
-              'price_lyd': 25.0,
-              'desc_ar': 'زيت زيتون طبيعي معصور على البارد من مزارع الجبل',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'قارورة',
-            },
-            {
-              'id': 'prod_rixos_02',
-              'name_ar': 'كرتونة حليب المعمورة كامل الدسم (12 عبوة)',
-              'price_lyd': 45.0,
-              'desc_ar': 'حليب معقم ومبستر كامل الدسم عالي الجودة',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'كرتونة',
-            },
-            {
-              'id': 'prod_rixos_03',
-              'name_ar': 'طماطم معجون البستان (باكت 10 علب)',
-              'price_lyd': 22.0,
-              'desc_ar': 'معجون طماطم مركز للمأكولات الليبية اليومية',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'باكيت',
-            },
-            {
-              'id': 'prod_rixos_04',
-              'name_ar': 'سكر الأسرة ناعم (كيس 5 كجم)',
-              'price_lyd': 18.5,
-              'desc_ar': 'سكر أبيض نقي ومصفى عالي الجودة',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'كيس',
-            },
-            {
-              'id': 'prod_rixos_05',
-              'name_ar': 'مكرونة ليبية مشكلة (باكت 10 أكياس)',
-              'price_lyd': 17.5,
-              'desc_ar': 'تشكيلة مكرونة خرز وريشة وسباغيتي من القمح الصلب',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'باكيت',
-            },
-            {
-              'id': 'prod_rixos_06',
-              'name_ar': 'باكيت مياه نالوت المعدنية النقية (6 قوارير)',
-              'price_lyd': 6.5,
-              'desc_ar': 'مياه شرب طبيعية نقية ومعقمة من ينابيع الجبل',
-              'in_stock': true,
-              'is_popular': true,
-              'unit': 'باكيت',
-            },
-            {
-              'id': 'prod_rixos_07',
-              'name_ar': 'مسحوق غسيل أوتوماتيك أومو (3 كجم)',
-              'price_lyd': 26.0,
-              'desc_ar': 'تنظيف قوي وإزالة أصعب البقع برائحة الانتعاش',
-              'in_stock': true,
-              'is_popular': false,
-              'unit': 'كيس',
-            },
-          ]
-        }
-      });
-    }
-
-    // 1. Try 24/7 Supabase Cloud First
+    // 2. Try Supabase Cloud products table (Live Menu created via Admin App)
     try {
       final res = await http.get(
         Uri.parse('$_supabaseUrl/products?store_id=eq.$storeId&select=*'),
@@ -782,32 +239,21 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          return ApiResult.success({
-            'data': {
-              'store_id': storeId,
-              'products': list,
-            }
-          });
-        }
+        return ApiResult.success({
+          'data': {
+            'store_id': storeId,
+            'products': List<Map<String, dynamic>>.from(list),
+          }
+        });
       }
-    } catch (_) {
-      // Fallback
-    }
+    } catch (_) {}
 
-    // 2. Fallback to local server
-    try {
-      final res = await http.get(
-        Uri.parse('$_baseUrl/stores/$storeId/menu'),
-        headers: _headers,
-      );
-      if (res.statusCode == 200) {
-        return ApiResult.success(jsonDecode(res.body));
+    return ApiResult.success({
+      'data': {
+        'store_id': storeId,
+        'products': <Map<String, dynamic>>[],
       }
-      return ApiResult.error('فشل تحميل قائمة الطعام');
-    } catch (e) {
-      return ApiResult.error('تعذر الاتصال بالخادم.');
-    }
+    });
   }
 
   // -------------------------------------------------------------------------
@@ -822,6 +268,9 @@ class ApiService {
     required String paymentMethod,
     String? couponCode,
   }) async {
+    final effectivePhone = _userPhone?.trim().isNotEmpty == true ? _userPhone!.trim() : '0910000000';
+    final effectiveName = _userName?.trim().isNotEmpty == true ? _userName!.trim() : (_isGuest ? 'زائر واصل نالوت' : 'زبون نالوت');
+
     // 1. Try Live Unified Backend Server First (Instant Socket.io notification)
     try {
       final res = await http
@@ -830,6 +279,8 @@ class ApiService {
             headers: _headers,
             body: jsonEncode({
               'store_id': storeId,
+              'customer_name': effectiveName,
+              'customer_phone': effectivePhone,
               'items': items,
               'delivery_location': deliveryLocation,
               'payment_method': paymentMethod,
@@ -840,7 +291,12 @@ class ApiService {
 
       final data = jsonDecode(res.body);
       if (res.statusCode == 200 || res.statusCode == 201) {
-        return ApiResult.success(data['data'] ?? data);
+        final payloadData = data['data'] ?? data;
+        final String? resOrderId = payloadData['order_id'] ?? payloadData['id'];
+        if (resOrderId != null) {
+          await saveActiveOrderId(resOrderId);
+        }
+        return ApiResult.success(payloadData);
       }
     } catch (_) {
       // Fallback
@@ -857,8 +313,8 @@ class ApiService {
       final orderPayload = {
         'id': orderId,
         'order_number': orderNum,
-        'customer_name': 'زبون نالوت',
-        'customer_phone': '0910000000',
+        'customer_name': effectiveName,
+        'customer_phone': effectivePhone,
         'store_id': storeId,
         'status': 'placed',
         'payment_method': paymentMethod,
@@ -883,6 +339,7 @@ class ApiService {
       ).timeout(const Duration(seconds: 3));
 
       if (res.statusCode == 200 || res.statusCode == 201) {
+        await saveActiveOrderId(orderId);
         return ApiResult.success({
           'order_id': orderId,
           'order_number': orderNum,
@@ -898,6 +355,7 @@ class ApiService {
     final orderNum = 'WAS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
     final orderId = 'ord_${DateTime.now().millisecondsSinceEpoch}';
     final subtotal = items.fold<double>(0.0, (sum, i) => sum + ((i['price'] ?? 0.0) * (i['quantity'] ?? 1)));
+    await saveActiveOrderId(orderId);
     return ApiResult.success({
       'order_id': orderId,
       'order_number': orderNum,

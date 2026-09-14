@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'design_system.dart';
 import 'home_screen.dart';
 import 'cart_checkout_screen.dart';
@@ -7,20 +9,48 @@ import 'orders_history_screen.dart';
 import 'wallet_screen.dart';
 import 'profile_screen.dart';
 import 'driver_radar_sheet.dart';
-import 'order_tracking_screen.dart';
 import 'splash_screen.dart';
 import 'onboarding_screen.dart';
 import 'services/api_service.dart';
 import 'services/socket_service.dart';
 import 'services/customer_notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Configure global error handlers
+  FlutterError.onError = (details) {
+    FlutterError.presentError(details);
+    debugPrint('Wasel FlutterError: ${details.exceptionAsString()}');
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    debugPrint('Wasel PlatformDispatcher Error: $error\n$stack');
+    return true; // prevent unhandled crash
+  };
+
+  // Guard Firebase initialization
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 1));
+  } catch (e) {
+    debugPrint('Firebase init bypassed: $e');
+  }
+
+  // Await ApiService.loadToken() so session state is known before building widget tree
+  try {
+    await ApiService.loadToken().timeout(const Duration(seconds: 2));
+  } catch (e) {
+    debugPrint('ApiService.loadToken error: $e');
+  }
+
   runApp(const WaselCustomerApp());
 }
 
 /// Unified Single-MaterialApp Root
 class WaselCustomerApp extends StatefulWidget {
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   const WaselCustomerApp({super.key});
 
   @override
@@ -38,14 +68,9 @@ class _WaselCustomerAppState extends State<WaselCustomerApp> {
 
   Future<void> _initServicesAsync() async {
     try {
-      await ApiService.loadToken().timeout(const Duration(seconds: 2));
+      await CustomerNotificationService().initialize().timeout(const Duration(seconds: 2));
     } catch (_) {}
-    try {
-      await CustomerNotificationService().initialize().timeout(const Duration(seconds: 3));
-    } catch (_) {}
-    try {
-      SocketService.connect(authToken: null);
-    } catch (_) {}
+    // Background service initialized cleanly without triggering a rebuild race condition.
   }
 
   @override
@@ -63,7 +88,9 @@ class _WaselCustomerAppState extends State<WaselCustomerApp> {
 
   @override
   Widget build(BuildContext context) {
+    final navigatorKey = WaselCustomerApp.navigatorKey;
     return MaterialApp(
+      navigatorKey: navigatorKey,
       title: 'واصل نالوت | Wasel Super-App',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
@@ -80,11 +107,14 @@ class _WaselCustomerAppState extends State<WaselCustomerApp> {
         GlobalCupertinoLocalizations.delegate,
       ],
       home: SplashScreen(
-        isLoggedIn: ApiService.isLoggedIn,
+        isLoggedIn: ApiService.hasActiveSession,
+        homeScreen: MainNavigationShell(
+          onToggleTheme: toggleTheme,
+          isDark: _themeMode == ThemeMode.dark,
+        ),
         nextScreen: OnboardingScreen(
           onComplete: () {
-            Navigator.pushReplacement(
-              context,
+            navigatorKey.currentState?.pushReplacement(
               MaterialPageRoute(
                 builder: (_) => MainNavigationShell(
                   onToggleTheme: toggleTheme,
@@ -115,30 +145,16 @@ class MainNavigationShell extends StatefulWidget {
 
 class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
+  final Set<int> _loadedTabs = {0};
 
   void _triggerDriverRadar() {
     showDialog(
       context: context,
       builder: (ctx) => DriverRadarSheet(
         onAccept: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                  '✅ تم قبول الطلب! جاري توجيهك إلى مطعم قصر نالوت للمشويات.'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const OrderTrackingScreen()),
-          );
-        },
-        onDecline: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content:
-                    Text('تم تفويت الطلب والبحث عن أقرب كابتن آخر.')),
-          );
+          setState(() {
+            _currentIndex = 0;
+          });
         },
       ),
     );
@@ -148,14 +164,22 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       const HomeScreen(),
-      CartCheckoutScreen(
-          onBackToHome: () => setState(() => _currentIndex = 0)),
-      const OrdersHistoryScreen(),
-      const WalletScreen(),
-      ProfileScreen(
-        onToggleTheme: widget.onToggleTheme,
-        isDark: widget.isDark,
-      ),
+      _loadedTabs.contains(1)
+          ? CartCheckoutScreen(
+              onBackToHome: () => setState(() => _currentIndex = 0))
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(2)
+          ? const OrdersHistoryScreen()
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(3)
+          ? const WalletScreen()
+          : const SizedBox.shrink(),
+      _loadedTabs.contains(4)
+          ? ProfileScreen(
+              onToggleTheme: widget.onToggleTheme,
+              isDark: widget.isDark,
+            )
+          : const SizedBox.shrink(),
     ];
 
     return Scaffold(
@@ -176,8 +200,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
-        onDestinationSelected: (index) =>
-            setState(() => _currentIndex = index),
+        onDestinationSelected: (index) => setState(() {
+          _currentIndex = index;
+          _loadedTabs.add(index);
+        }),
         elevation: 8,
         destinations: const [
           NavigationDestination(

@@ -8,13 +8,14 @@ import 'merchant_models.dart';
 
 class ThermalReceiptDialog extends StatelessWidget {
   final KdsOrder order;
+  final PartnerStore? store;
 
-  const ThermalReceiptDialog({super.key, required this.order});
+  const ThermalReceiptDialog({super.key, required this.order, this.store});
 
-  static void show(BuildContext context, KdsOrder order) {
+  static void show(BuildContext context, KdsOrder order, [PartnerStore? store]) {
     showDialog(
       context: context,
-      builder: (_) => ThermalReceiptDialog(order: order),
+      builder: (_) => ThermalReceiptDialog(order: order, store: store),
     );
   }
 
@@ -35,18 +36,18 @@ class ThermalReceiptDialog extends StatelessWidget {
               // Store Header
               const Icon(Icons.receipt_long_rounded, size: 36, color: Colors.black87),
               const SizedBox(height: 6),
-              const Text(
-                'مطعم قصر نالوت للمشويات',
-                style: TextStyle(
+              Text(
+                store?.name ?? 'متجر واصل نالوت',
+                style: const TextStyle(
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
                   color: Colors.black87,
                 ),
               ),
-              const Text(
-                'نالوت - بالقرب من القصر الأثري\nهاتف: 091-2345678',
+              Text(
+                '${store?.district ?? "نالوت"}\nهاتف: ${store?.phone ?? "091-0000000"}',
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 11, color: Colors.black54, height: 1.3),
+                style: const TextStyle(fontSize: 11, color: Colors.black54, height: 1.3),
               ),
               const SizedBox(height: 12),
               const Divider(color: Colors.black26, thickness: 1),

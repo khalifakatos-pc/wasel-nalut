@@ -39,14 +39,14 @@ class DriverSupabaseService {
           final profile = Map<String, dynamic>.from(data['data']);
           return {
             'id': profile['id'] ?? id,
-            'full_name': profile['full_name'] ?? profile['name'] ?? 'طارق النالوتي',
-            'phone': profile['phone'] ?? '091-5544332',
+            'full_name': profile['full_name'] ?? profile['name'] ?? 'كابتن واصل',
+            'phone': profile['phone'] ?? '',
             'vehicle_type': profile['vehicle_type'] ?? profile['vehicle_model'] ?? 'سيارة',
-            'plate_number': profile['license_plate'] ?? profile['plate_number'] ?? '14-88492',
+            'plate_number': profile['license_plate'] ?? profile['plate_number'] ?? 'نالوت',
             'status': profile['status'] ?? 'available',
-            'rating': (profile['rating'] as num?)?.toDouble() ?? 4.9,
-            'total_trips': profile['total_trips'] ?? 68,
-            'wallet_balance_lyd': (profile['wallet_balance_lyd'] as num?)?.toDouble() ?? 120.00,
+            'rating': (profile['rating'] as num?)?.toDouble() ?? 5.0,
+            'total_trips': profile['total_trips'] ?? 0,
+            'wallet_balance_lyd': (profile['wallet_balance_lyd'] as num?)?.toDouble() ?? 0.0,
           };
         }
       }
@@ -69,14 +69,14 @@ class DriverSupabaseService {
     // 3. Fallback baseline
     return {
       'id': id,
-      'full_name': 'طارق النالوتي',
-      'phone': '091-5544332',
+      'full_name': 'كابتن واصل',
+      'phone': '',
       'vehicle_type': 'سيارة',
-      'plate_number': '14-88492',
+      'plate_number': 'نالوت',
       'status': 'available',
-      'rating': 4.9,
-      'total_trips': 68,
-      'wallet_balance_lyd': 120.00,
+      'rating': 5.0,
+      'total_trips': 0,
+      'wallet_balance_lyd': 0.0,
     };
   }
 
@@ -325,5 +325,24 @@ class DriverSupabaseService {
       'captain_daily_target': 8,
       'captain_daily_bonus_lyd': 15.0,
     };
+  }
+
+  /// Log security or operational audit event to Cloud
+  static Future<bool> logAudit({required String action, required Map<String, dynamic> details}) async {
+    try {
+      await http.post(
+        Uri.parse('$backendBaseUrl/audit'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'action': action,
+          'driver_id': activeDriverId,
+          'timestamp': DateTime.now().toIso8601String(),
+          'details': details,
+        }),
+      ).timeout(const Duration(seconds: 3));
+      return true;
+    } catch (_) {
+      return true;
+    }
   }
 }

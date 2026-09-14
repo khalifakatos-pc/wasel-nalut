@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'design_system.dart';
 import 'order_tracking_screen.dart';
+import 'services/api_service.dart';
+import 'services/cart_service.dart';
 
 class OrderHistoryModel {
   final String orderId;
@@ -51,10 +53,10 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
     setState(() => _isLoading = true);
     try {
       final res = await http.get(
-        Uri.parse('https://yfhvuatssuylrkbthosa.supabase.co/rest/v1/orders?select=*&order=created_at.desc'),
+        Uri.parse('${ApiService.supabaseUrl}/orders?select=*&order=created_at.desc'),
         headers: {
-          'apikey': 'sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD',
-          'Authorization': 'Bearer sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD',
+          'apikey': ApiService.supabaseApiKey,
+          'Authorization': 'Bearer ${ApiService.supabaseApiKey}',
         },
       ).timeout(const Duration(seconds: 4));
 
@@ -230,7 +232,12 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (_) => const OrderTrackingScreen()),
+                          MaterialPageRoute(
+                            builder: (_) => OrderTrackingScreen(
+                              orderId: order.orderId,
+                              orderNumber: order.orderNumber.replaceAll('#', ''),
+                            ),
+                          ),
                         );
                       },
                       icon: const Icon(Icons.location_searching_rounded, size: 18),
@@ -303,8 +310,21 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                     children: [
                       TextButton.icon(
                         onPressed: () {
+                          CartService.addItem(
+                            CartItem(
+                              id: 'reorder_${order.orderId}',
+                              title: 'وجبة سابقة (${order.storeName})',
+                              storeName: order.storeName,
+                              price: order.totalAmount > 5 ? (order.totalAmount - 4.0) : order.totalAmount,
+                              quantity: 1,
+                            ),
+                          );
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('تمت إضافة أصناف الوجبة إلى سلة المشتريات!')),
+                            SnackBar(
+                              behavior: SnackBarBehavior.floating,
+                              backgroundColor: AppColors.waselPrimary,
+                              content: Text('✅ تمت إضافة وجبة من ${order.storeName} إلى السلة!'),
+                            ),
                           );
                         },
                         icon: const Icon(Icons.replay_rounded, size: 16),

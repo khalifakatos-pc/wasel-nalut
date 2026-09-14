@@ -420,3 +420,32 @@ class AppTheme {
     );
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// 7. MOTION & ANIMATION TOKENS (60 / 120 FPS HIGH PERFORMANCE)
+/// ---------------------------------------------------------------------------
+class AppMotion {
+  // Standard Duration Tokens
+  static const Duration fast = Duration(milliseconds: 150);      // Micro-interactions, button presses, toggles
+  static const Duration normal = Duration(milliseconds: 300);    // Card expansions, dialogs, sheet presentations
+  static const Duration slow = Duration(milliseconds: 500);      // Page transitions, layout morphing, radar sweeps
+  static const Duration relaxed = Duration(milliseconds: 800);   // Ambient breathing, pulsing beacons
+  static const Duration extended = Duration(milliseconds: 1200); // Circular radars, celebration bloom
+  static const Duration shimmer = Duration(milliseconds: 1500);  // Skeleton loading shimmer cycle
+
+  // Physics & Easing Curves
+  static const Curve easeOutCubic = Curves.easeOutCubic;         // Natural friction deceleration
+  static const Curve easeInOutCubic = Curves.easeInOutCubic;     // Smooth state-to-state transitions
+  static const Curve elasticOut = Curves.elasticOut;             // Bouncy physical feedback
+  static const Curve springSnappy = Cubic(0.175, 0.885, 0.32, 1.275); // Subtle bounce overshoot without oscillation
+  static const Curve decelerate = Curves.decelerate;             // Settling incoming elements
+  static const Curve pulseCurve = Curves.easeInOutSine;          // Organic breathing for glowing radar/beacons
+  static const Curve linear = Curves.linear;                     // Continuous steady radar rotation
+
+  // Tactile Scale Ratios
+  static const double pressScaleButton = 0.96;                   // Primary / elevated button press scale
+  static const double pressScaleCard = 0.97;                     // Large card / restaurant tile press scale
+  static const double pressScaleIcon = 0.90;                     // Floating icon / favorite button press scale
+  static const double bounceOvershoot = 1.04;                    // Micro overshoot on release
+}
+

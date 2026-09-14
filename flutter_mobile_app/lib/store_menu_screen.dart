@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'design_system.dart';
 import 'cart_checkout_screen.dart';
+import 'product_detail_sheet.dart';
 import 'services/api_service.dart';
+import 'widgets/motion_widgets.dart';
 
 /// ============================================================================
 /// WASEL STORE & RESTAURANT MENU SCREEN (قائمة المتجر الحقيقية - نالوت)
@@ -18,12 +20,22 @@ class StoreMenuScreen extends StatefulWidget {
 class _StoreMenuScreenState extends State<StoreMenuScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _products = [];
-  final List<CartItem> _cartItems = [];
 
   @override
   void initState() {
     super.initState();
+    CartService.cartCountNotifier.addListener(_onCartUpdated);
     _loadMenu();
+  }
+
+  @override
+  void dispose() {
+    CartService.cartCountNotifier.removeListener(_onCartUpdated);
+    super.dispose();
+  }
+
+  void _onCartUpdated() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadMenu() async {
@@ -182,48 +194,64 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     ];
   }
 
-  void _addToCart(Map<String, dynamic> product) {
-    final existingIndex = _cartItems.indexWhere((i) => i.id == product['id']);
-    setState(() {
-      if (existingIndex != -1) {
-        _cartItems[existingIndex].quantity++;
-      } else {
-        _cartItems.add(
-          CartItem(
-            id: product['id']?.toString() ?? 'item_${DateTime.now().millisecondsSinceEpoch}',
-            title: product['name_ar'] ?? product['name'] ?? 'صنف',
-            storeName: widget.store['name'] ?? 'متجر واصل',
-            price: (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 10.0,
-            quantity: 1,
-            selectedAddons: [],
-          ),
-        );
-      }
-    });
+  void _openProductCustomization(Map<String, dynamic> product) {
+    final title = product['name_ar'] ?? product['name'] ?? 'صنف';
+    final price = (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 10.0;
+    final cat = product['category'] ?? 'سندوتشات ووجبات';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.waselPrimary,
-        duration: const Duration(seconds: 2),
-        content: Row(
-          children: [
-            const Icon(Icons.check_circle_rounded, color: Colors.white),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'تمت إضافة ${product['name_ar'] ?? 'الصنف'} إلى السلة!',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => ProductDetailSheet(
+        title: title,
+        basePrice: price,
+        category: cat,
+        isFood: true,
+        onAddToCart: (itemDetails) {
+          final item = CartItem(
+            id: itemDetails['id']?.toString() ?? product['id']?.toString() ?? 'item_${DateTime.now().millisecondsSinceEpoch}',
+            title: itemDetails['title']?.toString() ?? title,
+            storeName: widget.store['name'] ?? 'متجر واصل',
+            price: (itemDetails['totalPrice'] as num?)?.toDouble() ?? (itemDetails['price'] as num?)?.toDouble() ?? price,
+            quantity: (itemDetails['quantity'] as num?)?.toInt() ?? 1,
+            selectedAddons: (itemDetails['selectedAddons'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+            spiceLevel: itemDetails['spiceLevel']?.toString(),
+            exclusions: (itemDetails['exclusions'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+            notes: itemDetails['notes']?.toString(),
+          );
+          CartService.addItem(item);
+          setState(() {});
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: AppColors.waselPrimary,
+              duration: const Duration(seconds: 2),
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: Colors.white),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'تمت إضافة $title بتخصيصاتك إلى السلة!',
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ),
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
 
-  double get _cartTotal => _cartItems.fold(0.0, (sum, i) => sum + i.total);
-  int get _cartCount => _cartItems.fold(0, (sum, i) => sum + i.quantity);
+  void _addToCart(Map<String, dynamic> product) {
+    _openProductCustomization(product);
+  }
+
+  double get _cartTotal => CartService.subtotal;
+  int get _cartCount => CartService.count;
 
   @override
   Widget build(BuildContext context) {
@@ -401,7 +429,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
         ),
 
         // Bottom Floating Cart Bar
-        bottomNavigationBar: _cartItems.isNotEmpty
+        bottomNavigationBar: _cartCount > 0
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
@@ -457,7 +485,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                             context,
                             MaterialPageRoute(
                               builder: (_) => CartCheckoutScreen(
-                                initialCartItems: _cartItems,
+                                initialCartItems: CartService.items,
                                 storeId: widget.store['id']?.toString() ?? 'store_nalut_01',
                                 storeName: storeName,
                               ),
@@ -519,18 +547,22 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     final inStock = product['in_stock'] != false;
     final isPopular = product['is_popular'] == true;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
-        borderRadius: AppRadius.radiusLg,
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-        boxShadow: AppShadows.subtle,
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return WaselBouncyPressable(
+      behavior: HitTestBehavior.opaque,
+      pressedScale: 0.98,
+      onTap: inStock ? () => _addToCart(product) : null,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.darkCard : Colors.white,
+          borderRadius: AppRadius.radiusLg,
+          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+          boxShadow: AppShadows.subtle,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -597,6 +629,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'design_system.dart';
+import 'services/api_service.dart';
+import 'login_screen.dart';
+import 'satellite_location_picker.dart';
 
 class ProfileScreen extends StatelessWidget {
   final VoidCallback? onToggleTheme;
@@ -13,6 +16,10 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isGuest = ApiService.isGuest;
+    final String displayName = isGuest ? 'حساب زائر (Guest)' : (ApiService.userName.isNotEmpty ? ApiService.userName : 'خليفة محمد');
+    final String displayPhone = isGuest ? 'تصفح بدون تسجيل دخول' : (ApiService.userPhone.isNotEmpty ? ApiService.userPhone : '+218 91 234 5678');
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('الملف الشخصي والإعدادات'),
@@ -29,65 +36,103 @@ class ProfileScreen extends StatelessWidget {
               borderRadius: AppRadius.radiusXl,
               border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
-            child: Row(
+            child: Column(
               children: [
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.waselPrimary, AppColors.waselPurple],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+                Row(
+                  children: [
+                    Container(
+                      width: 60,
+                      height: 60,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: isGuest
+                              ? [Colors.blueGrey.shade700, Colors.blueGrey.shade900]
+                              : [AppColors.waselPrimary, AppColors.waselPurple],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: AppRadius.radiusLg,
+                      ),
+                      child: Center(
+                        child: Icon(
+                          isGuest ? Icons.person_outline_rounded : Icons.verified_user_rounded,
+                          color: Colors.white,
+                          size: 30,
+                        ),
+                      ),
                     ),
-                    borderRadius: AppRadius.radiusLg,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      'خ',
-                      style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Row(
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'خليفة محمد',
-                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          Row(
+                            children: [
+                              Text(
+                                displayName,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                isGuest ? Icons.explore_rounded : Icons.verified_rounded,
+                                color: isGuest ? AppColors.waselPrimary : AppColors.info,
+                                size: 18,
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 6),
-                          Icon(Icons.verified_rounded, color: AppColors.info, size: 18),
+                          const SizedBox(height: 2),
+                          Text(
+                            displayPhone,
+                            style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary, fontFamily: 'monospace'),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (isGuest ? AppColors.jetPrimary : AppColors.waselPrimary).withValues(alpha: 0.15),
+                              borderRadius: AppRadius.radiusSm,
+                            ),
+                            child: Text(
+                              isGuest ? 'وضع الاستكشاف والتصفح 🧭' : 'عميل واصل VIP الذهبي ⭐',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isGuest ? AppColors.jetPrimary : AppColors.waselPrimary,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      const Text(
-                        '+218 91 234 5678',
-                        style: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary, fontFamily: 'monospace'),
+                    ),
+                  ],
+                ),
+                if (isGuest) ...[
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 44,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => LoginScreen(
+                              onToggleTheme: onToggleTheme,
+                              isDark: isDark,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.login_rounded, size: 18),
+                      label: const Text('تسجيل الدخول / ربط رقم الهاتف 📱', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.waselPrimary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
                       ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.waselPrimary.withValues(alpha: 0.15),
-                          borderRadius: AppRadius.radiusSm,
-                        ),
-                        child: const Text(
-                          'عميل واصل VIP الذهبي ⭐',
-                          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppColors.waselPrimary),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined),
-                  onPressed: () {},
-                ),
+                ],
               ],
             ),
           ),
@@ -102,16 +147,29 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _buildSettingsTile(
             icon: Icons.home_rounded,
-            title: 'المنزل',
+            title: 'المنزل (الحوش)',
             subtitle: 'نالوت - حي الشهداء، بالقرب من قصر نالوت الأثري',
             isDark: isDark,
-            trailing: const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+            trailing: const Icon(Icons.satellite_alt_rounded, color: AppColors.waselPrimary, size: 18),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SatelliteLocationPicker()),
+              );
+            },
           ),
           _buildSettingsTile(
             icon: Icons.work_rounded,
             title: 'العمل / المتجر',
             subtitle: 'نالوت - وسط المدينة، طريق وازن الرئيسي',
             isDark: isDark,
+            trailing: const Icon(Icons.satellite_alt_rounded, color: AppColors.waselPrimary, size: 18),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SatelliteLocationPicker()),
+              );
+            },
           ),
 
           const SizedBox(height: AppSpacing.lg),
@@ -123,15 +181,16 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+          Material(
+            color: isDark ? AppColors.darkCard : AppColors.lightCard,
+            shape: RoundedRectangleBorder(
               borderRadius: AppRadius.radiusLg,
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
-            child: Column(
-              children: [
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+              child: Column(
+                children: [
                 SwitchListTile(
                   title: const Text('الوضع الداكن (Dark Mode)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
                   subtitle: const Text('راحة العين وتوفير طاقة البطارية', style: TextStyle(fontSize: 11)),
@@ -159,6 +218,7 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
+        ),
 
           const SizedBox(height: AppSpacing.lg),
 
@@ -190,9 +250,12 @@ class ProfileScreen extends StatelessWidget {
 
           // 5. LOGOUT BUTTON
           OutlinedButton.icon(
-            onPressed: () {},
+            onPressed: () => _confirmLogout(context),
             icon: const Icon(Icons.logout_rounded, color: AppColors.error),
-            label: const Text('تسجيل الخروج من الحساب', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+            label: Text(
+              isGuest ? 'إنهاء وضع الزائر والعودة للتسجيل' : 'تسجيل الخروج من الحساب',
+              style: const TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+            ),
             style: OutlinedButton.styleFrom(
               side: const BorderSide(color: AppColors.error),
               padding: const EdgeInsets.symmetric(vertical: 14),
@@ -213,6 +276,49 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _confirmLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('تسجيل الخروج'),
+        content: Text(
+          ApiService.isGuest
+              ? 'هل ترغب في إنهاء جلسة التصفح كزائر والعودة لشاشة تسجيل الدخول؟'
+              : 'هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('تأكيد الخروج'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true && context.mounted) {
+      await ApiService.clearToken();
+      if (!context.mounted) return;
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(
+          builder: (_) => LoginScreen(
+            onToggleTheme: onToggleTheme,
+            isDark: isDark,
+          ),
+        ),
+        (route) => false,
+      );
+    }
+  }
+
   Widget _buildSettingsTile({
     required IconData icon,
     required String title,
@@ -221,19 +327,22 @@ class ProfileScreen extends StatelessWidget {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.xs),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+      child: Material(
         color: isDark ? AppColors.darkCard : AppColors.lightCard,
-        borderRadius: AppRadius.radiusLg,
-        border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-      ),
-      child: ListTile(
-        leading: Icon(icon, color: AppColors.waselPrimary),
-        title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-        subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary)),
-        trailing: trailing ?? const Icon(Icons.chevron_left_rounded),
-        onTap: onTap,
+        shape: RoundedRectangleBorder(
+          borderRadius: AppRadius.radiusLg,
+          side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          leading: Icon(icon, color: AppColors.waselPrimary),
+          title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+          subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary)),
+          trailing: trailing ?? const Icon(Icons.chevron_left_rounded),
+          onTap: onTap,
+        ),
       ),
     );
   }

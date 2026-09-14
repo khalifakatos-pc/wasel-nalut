@@ -149,3 +149,27 @@ class MerchantTheme {
     );
   }
 }
+
+/// ---------------------------------------------------------------------------
+/// MOTION & ANIMATION TOKENS (60 / 120 FPS HIGH PERFORMANCE)
+/// ---------------------------------------------------------------------------
+class AppMotion {
+  static const Duration fast = Duration(milliseconds: 150);      // KDS buttons, ticket quick tap
+  static const Duration normal = Duration(milliseconds: 300);    // Ticket state transitions, dialogs
+  static const Duration slow = Duration(milliseconds: 500);      // Column slide animations
+  static const Duration relaxed = Duration(milliseconds: 800);   // Urgent ticket pulse
+  static const Duration extended = Duration(milliseconds: 1200); // Receipt print animation
+  static const Duration shimmer = Duration(milliseconds: 1500);  // Orders loading shimmer
+
+  static const Curve easeOutCubic = Curves.easeOutCubic;
+  static const Curve easeInOutCubic = Curves.easeInOutCubic;
+  static const Curve elasticOut = Curves.elasticOut;
+  static const Curve springSnappy = Cubic(0.175, 0.885, 0.32, 1.275);
+  static const Curve decelerate = Curves.decelerate;
+  static const Curve pulseCurve = Curves.easeInOutSine;
+
+  static const double pressScaleButton = 0.96;
+  static const double pressScaleCard = 0.97;
+  static const double pressScaleIcon = 0.90;
+}
+

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
 import 'store_menu_screen.dart';
@@ -145,20 +146,29 @@ class _StoresTabState extends State<StoresTab> {
                                 ),
                               ],
                             ),
-                            TextButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => StoreMenuScreen(
-                                      storeId: (store['id'] ?? 'store_1').toString(),
-                                      storeName: store['name']?.toString() ?? 'المتجر',
-                                    ),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.menu_book, size: 16, color: AdminColors.primaryGold),
-                              label: const Text('عرض المنيو', style: TextStyle(color: AdminColors.primaryGold)),
+                            Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.key_rounded, size: 18, color: AdminColors.primaryGold),
+                                  tooltip: 'بيانات دخول التاجر',
+                                  onPressed: () => _showMerchantCredentialsDialog(store),
+                                ),
+                                TextButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => StoreMenuScreen(
+                                          storeId: (store['id'] ?? 'store_1').toString(),
+                                          storeName: store['name']?.toString() ?? 'المتجر',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(Icons.menu_book, size: 16, color: AdminColors.primaryGold),
+                                  label: const Text('عرض المنيو', style: TextStyle(color: AdminColors.primaryGold)),
+                                ),
+                              ],
                             ),
                           ],
                         ),
@@ -172,16 +182,99 @@ class _StoresTabState extends State<StoresTab> {
         backgroundColor: AdminColors.primaryGold,
         foregroundColor: Colors.black,
         icon: const Icon(Icons.add_business),
-        label: const Text('إضافة مطعم جديد', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text('إضافة متجر جديد', style: TextStyle(fontWeight: FontWeight.bold)),
         onPressed: _showAddStoreDialog,
+      ),
+    );
+  }
+
+  void _showMerchantCredentialsDialog(Map<String, dynamic> store) {
+    final phone = store['phone'] ?? '0910000000';
+    final pin = store['pin'] ?? '1234';
+    final appMode = (store['type'] == 'grocery' || store['type'] == 'pharmacy') ? 'شاشة تجزئة Pick & Pack' : 'شاشة مطبخ KDS';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: AdminColors.surfaceElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.verified_user_rounded, color: AdminColors.primaryGold),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'بيانات دخول: ${store['name']}',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('يستخدم التاجر هذه البيانات لفتح تطبيق التاجر (Wasel Merchant):', style: TextStyle(color: AdminColors.textSecondary, fontSize: 13)),
+              const SizedBox(height: 14),
+              _buildCredentialRow('📞 رقم هاتف الدخول', phone),
+              const SizedBox(height: 8),
+              _buildCredentialRow('🔑 رمز PIN السري', pin),
+              const SizedBox(height: 8),
+              _buildCredentialRow('📱 نمط الواجهة', appMode),
+            ],
+          ),
+          actions: [
+            TextButton.icon(
+              icon: const Icon(Icons.copy, size: 16),
+              label: const Text('نسخ البيانات'),
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: 'بيانات دخول متجر ${store['name']}:\nالهاتف: $phone\nرمز PIN: $pin\nالنمط: $appMode'));
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('📋 تم نسخ بيانات الدخول إلى الحافظة')),
+                );
+              },
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AdminColors.primaryGold, foregroundColor: Colors.black),
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('تم'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCredentialRow(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AdminColors.surface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AdminColors.divider),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: AdminColors.textSecondary)),
+          Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: AdminColors.primaryGold)),
+        ],
       ),
     );
   }
 
   void _showAddStoreDialog() {
     final nameCtrl = TextEditingController();
-    final districtCtrl = TextEditingController(text: 'نالوت - الحي المركزي');
+    final nameEnCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController(text: '091');
+    final pinCtrl = TextEditingController(text: '1234');
+    final districtCtrl = TextEditingController(text: 'نالوت - شارع أفريقيا');
     final feeCtrl = TextEditingController(text: '5.0');
+    final commissionCtrl = TextEditingController(text: '10.0');
+    final minOrderCtrl = TextEditingController(text: '10.0');
     String selectedType = 'restaurant';
 
     showDialog(
@@ -191,57 +284,118 @@ class _StoresTabState extends State<StoresTab> {
           textDirection: TextDirection.rtl,
           child: AlertDialog(
             backgroundColor: AdminColors.surfaceElevated,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             title: const Row(
               children: [
-                Icon(Icons.storefront, color: AdminColors.primaryGold),
+                Icon(Icons.add_business_rounded, color: AdminColors.primaryGold),
                 SizedBox(width: 8),
-                Text('إضافة متجر جديد في نالوت'),
+                Text('إضافة متجر وتوليد حساب تاجر'),
               ],
             ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: nameCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'اسم المطعم أو المحل',
-                      prefixIcon: Icon(Icons.business),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'اسم المطعم أو المحل (بالعربية)*',
+                        prefixIcon: Icon(Icons.store),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedType,
-                    dropdownColor: AdminColors.surfaceElevated,
-                    decoration: const InputDecoration(
-                      labelText: 'نوع النشاط',
-                      prefixIcon: Icon(Icons.category),
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: nameEnCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'الاسم بالإنجليزية (اختياري)',
+                        prefixIcon: Icon(Icons.translate),
+                      ),
                     ),
-                    items: const [
-                      DropdownMenuItem(value: 'restaurant', child: Text('مطعم / كافيه')),
-                      DropdownMenuItem(value: 'grocery', child: Text('سوبرماركت / بقالة')),
-                      DropdownMenuItem(value: 'bakery', child: Text('مخبز ومعجنات')),
-                    ],
-                    onChanged: (val) => setDialogState(() => selectedType = val ?? 'restaurant'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: districtCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'الحي / الشارع في نالوت',
-                      prefixIcon: Icon(Icons.location_city),
+                    const SizedBox(height: 10),
+                    DropdownButtonFormField<String>(
+                      initialValue: selectedType,
+                      dropdownColor: AdminColors.surfaceElevated,
+                      decoration: const InputDecoration(
+                        labelText: 'تصنيف النشاط ونمط العمل',
+                        prefixIcon: Icon(Icons.category),
+                      ),
+                      items: const [
+                        DropdownMenuItem(value: 'restaurant', child: Text('مطعم / كافيه (شاشة مطبخ KDS)')),
+                        DropdownMenuItem(value: 'pizza', child: Text('بيتزا ومعجنات (شاشة مطبخ KDS)')),
+                        DropdownMenuItem(value: 'grocery', child: Text('سوبرماركت وبقالة (تجميع Pick & Pack)')),
+                        DropdownMenuItem(value: 'pharmacy', child: Text('صيدلية (تجميع Pick & Pack)')),
+                        DropdownMenuItem(value: 'bakery', child: Text('مخبز وحلويات')),
+                      ],
+                      onChanged: (val) => setDialogState(() => selectedType = val ?? 'restaurant'),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: feeCtrl,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      labelText: 'سعر التوصيل الأساسي (د.ل)',
-                      prefixIcon: Icon(Icons.delivery_dining),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: TextField(
+                            controller: phoneCtrl,
+                            keyboardType: TextInputType.phone,
+                            decoration: const InputDecoration(
+                              labelText: 'هاتف التاجر (للدخول)*',
+                              prefixIcon: Icon(Icons.phone_android),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 1,
+                          child: TextField(
+                            controller: pinCtrl,
+                            keyboardType: TextInputType.number,
+                            maxLength: 4,
+                            decoration: const InputDecoration(
+                              labelText: 'رمز PIN*',
+                              counterText: '',
+                              prefixIcon: Icon(Icons.lock_outline),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: districtCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'الحي / الشارع في نالوت',
+                        prefixIcon: Icon(Icons.location_on_outlined),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: feeCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'توصيل (د.ل)',
+                              prefixIcon: Icon(Icons.delivery_dining),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: commissionCtrl,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(
+                              labelText: 'عمولة واصل %',
+                              prefixIcon: Icon(Icons.percent),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
             actions: [
@@ -255,25 +409,30 @@ class _StoresTabState extends State<StoresTab> {
                   foregroundColor: Colors.white,
                 ),
                 onPressed: () async {
-                  if (nameCtrl.text.isNotEmpty) {
-                    Navigator.pop(dialogCtx);
-                    await AdminSupabaseService.addStore(
-                      name: nameCtrl.text.trim(),
-                      type: selectedType,
-                      district: districtCtrl.text.trim(),
-                      baseDeliveryFee: double.tryParse(feeCtrl.text.trim()) ?? 5.0,
-                    );
-                    _loadStores();
-                    if (!mounted) return;
+                  if (nameCtrl.text.trim().isEmpty) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: AdminColors.emeraldGreen,
-                        content: Text('✅ تم إضافة ${nameCtrl.text} إلى سحابة نالوت بنجاح!'),
-                      ),
+                      const SnackBar(content: Text('يرجى كتابة اسم المتجر')),
                     );
+                    return;
+                  }
+                  Navigator.pop(dialogCtx);
+                  final storeResult = await AdminSupabaseService.addStore(
+                    name: nameCtrl.text.trim(),
+                    nameEn: nameEnCtrl.text.trim(),
+                    type: selectedType,
+                    district: districtCtrl.text.trim(),
+                    baseDeliveryFee: double.tryParse(feeCtrl.text.trim()) ?? 5.0,
+                    phone: phoneCtrl.text.trim(),
+                    pin: pinCtrl.text.trim(),
+                    commissionRate: double.tryParse(commissionCtrl.text.trim()) ?? 10.0,
+                    minOrderLyd: double.tryParse(minOrderCtrl.text.trim()) ?? 10.0,
+                  );
+                  _loadStores();
+                  if (storeResult != null && mounted) {
+                    _showMerchantCredentialsDialog(storeResult);
                   }
                 },
-                child: const Text('حفظ وإضافة إلى نالوت'),
+                child: const Text('حفظ وتوليد الحساب'),
               ),
             ],
           ),

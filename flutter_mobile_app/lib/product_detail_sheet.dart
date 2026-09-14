@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'design_system.dart';
+import 'widgets/motion_widgets.dart';
 
 /// ============================================================================
 /// WASEL SUPER-APP PRODUCT DETAIL & VARIANT MODAL SHEET
@@ -43,20 +44,41 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
     {'name': 'حجم عائلي كبير (جامبو)', 'detail': 'وجبة كاملة تكفي شخصين مع مشروب وبطاطا', 'extra': 12.0},
   ];
 
+  // --- SPICE & HARISSA STATE ---
+  String _selectedSpiceLevel = 'هريسة عادية موزونة 🌶️🌶️';
+  final List<Map<String, String>> _spiceOptions = [
+    {'name': 'بدون هريسة ⚪ (بارد)'},
+    {'name': 'هريسة خفيفة 🌶️'},
+    {'name': 'هريسة عادية موزونة 🌶️🌶️'},
+    {'name': 'زيادة هريسة (حارة هلبا) 🔥'},
+  ];
+
+  // --- EXCLUSIONS STATE ---
+  final Set<String> _selectedExclusions = {};
+  final List<String> _exclusionOptions = [
+    'بدون كاتشب',
+    'بدون مايونيز',
+    'بدون بصل',
+    'بدون طماطم',
+    'بدون مخلل',
+  ];
+
   final Map<String, bool> _selectedAddons = {
+    'كثر البطاطا داخل السندوتش 🍟': true,
+    'حمّر الخبزة هلبا (مقرمشة) 🥖': false,
     'صلصة ثومية ليبية حارة (+1.50 د.ل)': true,
     'شريحة جبنة شيدر مدخنة (+2.00 د.ل)': false,
-    'بطاطا مقلية مقرمشة إضافية (+3.50 د.ل)': true,
-    'مخلل فلفل حار وزيتون نالوتي (+1.00 د.ل)': false,
-    'خبز تنور ليبي طازج (+1.50 د.ل)': false,
+    'بطاطا مقلية مقرمشة إضافية (+3.50 د.ل)': false,
+    'دحي مقلي (بيضة) (+1.00 د.ل)': false,
   };
 
   final Map<String, double> _addonPrices = {
+    'كثر البطاطا داخل السندوتش 🍟': 0.0,
+    'حمّر الخبزة هلبا (مقرمشة) 🥖': 0.0,
     'صلصة ثومية ليبية حارة (+1.50 د.ل)': 1.50,
     'شريحة جبنة شيدر مدخنة (+2.00 د.ل)': 2.00,
     'بطاطا مقلية مقرمشة إضافية (+3.50 د.ل)': 3.50,
-    'مخلل فلفل حار وزيتون نالوتي (+1.00 د.ل)': 1.00,
-    'خبز تنور ليبي طازج (+1.50 د.ل)': 1.50,
+    'دحي مقلي (بيضة) (+1.00 د.ل)': 1.00,
   };
 
   // --- E-COMMERCE STATE ---
@@ -137,6 +159,14 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                 if (widget.isFood) ...[
                   // Food Size Selection (Required Single Choice)
                   _buildSizeSection(isDark),
+                  const SizedBox(height: 20),
+
+                  // 1. Spice & Harissa Level (Single Choice)
+                  _buildSpiceLevelSection(isDark),
+                  const SizedBox(height: 20),
+
+                  // 2. Exclusions (بدون...) (Multi Choice)
+                  _buildExclusionsSection(isDark),
                   const SizedBox(height: 20),
 
                   // Food Addons Selection (Multi Choice)
@@ -484,6 +514,146 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
   }
 
   /// ---------------------------------------------------------------------------
+  /// FOOD MODE: SPICE & HARISSA LEVEL (Single Choice)
+  /// ---------------------------------------------------------------------------
+  Widget _buildSpiceLevelSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.local_fire_department_rounded, color: Colors.deepOrange, size: 20),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'مستوى الهريسة والشطة 🌶️',
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.deepOrange.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Text(
+                'اختيار أساسي',
+                style: TextStyle(color: Colors.deepOrange, fontSize: 10, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _spiceOptions.map((opt) {
+            final isSelected = _selectedSpiceLevel == opt['name'];
+            return ChoiceChip(
+              selected: isSelected,
+              label: Text(
+                opt['name']!,
+                style: TextStyle(
+                  color: isSelected ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+              selectedColor: Colors.deepOrange,
+              backgroundColor: isDark ? AppColors.darkCard : const Color(0xFFF1F5F9),
+              side: BorderSide(
+                color: isSelected ? Colors.deepOrange : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              ),
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedSpiceLevel = opt['name']!);
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// ---------------------------------------------------------------------------
+  /// FOOD MODE: EXCLUSIONS (بدون...) (Multi Choice)
+  /// ---------------------------------------------------------------------------
+  Widget _buildExclusionsSection(bool isDark) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.do_not_disturb_on_rounded, color: AppColors.error, size: 20),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                'استثناءات سريعة (بدون...) 🚫',
+                style: AppTypography.titleMedium.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'انقر للاستبعاد ❌',
+              style: AppTypography.labelSmall.copyWith(
+                color: AppColors.error,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _exclusionOptions.map((item) {
+            final isExcluded = _selectedExclusions.contains(item);
+            return FilterChip(
+              selected: isExcluded,
+              avatar: isExcluded
+                  ? const Icon(Icons.close_rounded, size: 16, color: Colors.white)
+                  : null,
+              label: Text(
+                item,
+                style: TextStyle(
+                  color: isExcluded ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                  fontWeight: isExcluded ? FontWeight.bold : FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+              selectedColor: AppColors.error,
+              backgroundColor: isDark ? AppColors.darkCard : const Color(0xFFF1F5F9),
+              side: BorderSide(
+                color: isExcluded ? AppColors.error : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              ),
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedExclusions.add(item);
+                  } else {
+                    _selectedExclusions.remove(item);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  /// ---------------------------------------------------------------------------
   /// FOOD MODE: ADDONS SELECTION (Multi-Choice)
   /// ---------------------------------------------------------------------------
   Widget _buildAddonsSection(bool isDark) {
@@ -527,27 +697,30 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                 width: isChecked ? 1.5 : 1,
               ),
             ),
-            child: CheckboxListTile(
-              value: isChecked,
-              activeColor: _themeColor,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
-              onChanged: (val) {
-                setState(() {
-                  _selectedAddons[addon] = val ?? false;
-                });
-              },
-              title: Text(
-                addon.split(' (').first,
-                style: AppTypography.titleSmall.copyWith(
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                  fontWeight: isChecked ? FontWeight.w700 : FontWeight.w500,
+            child: Material(
+              color: Colors.transparent,
+              child: CheckboxListTile(
+                value: isChecked,
+                activeColor: _themeColor,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
+                onChanged: (val) {
+                  setState(() {
+                    _selectedAddons[addon] = val ?? false;
+                  });
+                },
+                title: Text(
+                  addon.split(' (').first,
+                  style: AppTypography.titleSmall.copyWith(
+                    color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    fontWeight: isChecked ? FontWeight.w700 : FontWeight.w500,
+                  ),
                 ),
-              ),
-              secondary: Text(
-                '+${price.toStringAsFixed(2)} د.ل',
-                style: AppTypography.labelSmall.copyWith(
-                  color: _themeColor,
-                  fontWeight: FontWeight.w700,
+                secondary: Text(
+                  '+${price.toStringAsFixed(2)} د.ل',
+                  style: AppTypography.labelSmall.copyWith(
+                    color: _themeColor,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -628,6 +801,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
             final isSelected = _selectedColorIndex == index;
 
             return GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 setState(() => _selectedColorIndex = index);
               },
@@ -685,6 +859,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
             final extraPrice = variant['extra'] as double;
 
             return GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 setState(() => _selectedVariantIndex = index);
               },
@@ -846,13 +1021,32 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                   elevation: 2,
                 ),
                 onPressed: () {
+                  final selectedAddonList = <String>[];
+                  if (widget.isFood) {
+                    // Include spice level
+                    selectedAddonList.add(_selectedSpiceLevel);
+                    // Include exclusions
+                    for (var ex in _selectedExclusions) {
+                      selectedAddonList.add(ex);
+                    }
+                    // Include selected addons
+                    _selectedAddons.forEach((addon, selected) {
+                      if (selected) {
+                        selectedAddonList.add(addon);
+                      }
+                    });
+                  }
+
                   final result = {
                     'title': widget.title,
                     'quantity': _quantity,
                     'unitPrice': _calculatedUnitPrice,
                     'totalPrice': _totalPrice,
                     'isFood': widget.isFood,
-                    'notes': _notesController.text,
+                    'spiceLevel': widget.isFood ? _selectedSpiceLevel : null,
+                    'exclusions': widget.isFood ? _selectedExclusions.toList() : <String>[],
+                    'selectedAddons': selectedAddonList,
+                    'notes': _notesController.text.trim(),
                   };
                   widget.onAddToCart?.call(result);
                   Navigator.of(context).pop();
@@ -881,20 +1075,29 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
     required VoidCallback onTap,
     required bool isDark,
   }) {
-    return GestureDetector(
+    return WaselBouncyPressable(
+      behavior: HitTestBehavior.opaque,
+      pressedScale: 0.88,
       onTap: onTap,
       child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : Colors.white,
-          shape: BoxShape.circle,
-          boxShadow: AppShadows.sm,
-        ),
-        child: Icon(
-          icon,
-          size: 16,
-          color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+        width: 48,
+        height: 48,
+        alignment: Alignment.center,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkSurface : Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: AppShadows.sm,
+          ),
+          child: Center(
+            child: Icon(
+              icon,
+              size: 18,
+              color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+            ),
+          ),
         ),
       ),
     );
