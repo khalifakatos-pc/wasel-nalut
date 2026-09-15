@@ -21,6 +21,7 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
+const { Pool } = require('pg');
 
 // Load environment variables from .env if present
 const envPath = path.join(__dirname, '.env');
@@ -97,7 +98,7 @@ setInterval(() => {
 }, 300000);
 
 // ----------------------------------------------------------------------------
-// 2. IN-MEMORY DATABASE & DATA SEEDING
+// 2. IN-MEMORY CACHE & POSTGRESQL PERSISTENCE ENGINE
 // ----------------------------------------------------------------------------
 let db = {
   system_config: {},
@@ -108,8 +109,27 @@ let db = {
   stores: [],
   products: [],
   orders: [],
-  wallet_transactions: []
+  wallet_transactions: [],
+  vouchers: [],
+  audit_logs: []
 };
+
+// PostgreSQL Connection Pool
+let pgPool = null;
+const DATABASE_URL = process.env.DATABASE_URL;
+if (DATABASE_URL) {
+  try {
+    pgPool = new Pool({
+      connectionString: DATABASE_URL,
+      ssl: DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000
+    });
+    console.log('[PostgreSQL] Initialized pg pool with cloud database');
+  } catch (err) {
+    console.error('[PostgreSQL] Pool initialization error:', err.message);
+  }
+}
 
 function loadSeedData() {
   try {
@@ -125,7 +145,9 @@ function loadSeedData() {
         stores: parsed.stores || [],
         products: parsed.products || [],
         orders: parsed.orders || [],
-        wallet_transactions: parsed.wallet_transactions || []
+        wallet_transactions: parsed.wallet_transactions || [],
+        vouchers: parsed.vouchers || [],
+        audit_logs: parsed.audit_logs || []
       };
       console.log(`[Database] Loaded seed data successfully:`);
       console.log(` - Stores: ${db.stores.length}`);
@@ -151,6 +173,308 @@ function saveSeedData() {
     console.error('[Database] Failed to save seed_data.json:', err.message);
   }
 }
+
+// PostgreSQL Async Helper Functions
+async function saveStoreToPg(s) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO stores (id, name, name_en, type, district, city, phone, pin, app_mode, commission_rate, rating, review_count, delivery_time_min, delivery_time_max, min_order_lyd, base_delivery_fee_lyd, latitude, longitude, logo_url, banner_url, badge, is_open, is_featured)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        name_en = EXCLUDED.name_en,
+        type = EXCLUDED.type,
+        district = EXCLUDED.district,
+        city = EXCLUDED.city,
+        phone = EXCLUDED.phone,
+        pin = EXCLUDED.pin,
+        app_mode = EXCLUDED.app_mode,
+        commission_rate = EXCLUDED.commission_rate,
+        rating = EXCLUDED.rating,
+        review_count = EXCLUDED.review_count,
+        delivery_time_min = EXCLUDED.delivery_time_min,
+        delivery_time_max = EXCLUDED.delivery_time_max,
+        min_order_lyd = EXCLUDED.min_order_lyd,
+        base_delivery_fee_lyd = EXCLUDED.base_delivery_fee_lyd,
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude,
+        logo_url = EXCLUDED.logo_url,
+        banner_url = EXCLUDED.banner_url,
+        badge = EXCLUDED.badge,
+        is_open = EXCLUDED.is_open,
+        is_featured = EXCLUDED.is_featured
+    `, [
+      s.id, s.name, s.name_en || s.name, s.type || 'restaurant', s.district || 'نالوت', s.city || 'nalut',
+      s.phone || '', s.pin || '1234', s.app_mode || 'kitchen', s.commission_rate || 10.0, s.rating || 5.0,
+      s.review_count || 0, s.delivery_time_min || 20, s.delivery_time_max || 35, s.min_order_lyd || 10.0,
+      s.base_delivery_fee_lyd || 4.0, s.latitude || 31.8686, s.longitude || 10.9818, s.logo_url || '',
+      s.banner_url || '', s.badge || '', s.is_open !== false, s.is_featured !== false
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveStore error]:', err.message);
+  }
+}
+
+async function deleteStoreFromPg(id) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query('DELETE FROM stores WHERE id = $1', [id]);
+  } catch (err) {
+    console.error('[PostgreSQL deleteStore error]:', err.message);
+  }
+}
+
+async function saveProductToPg(p) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO products (id, store_id, name, name_ar, price, price_lyd, category, category_id, description, desc_ar, image_url, in_stock, is_available, is_popular, unit)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        name_ar = EXCLUDED.name_ar,
+        price = EXCLUDED.price,
+        price_lyd = EXCLUDED.price_lyd,
+        category = EXCLUDED.category,
+        category_id = EXCLUDED.category_id,
+        description = EXCLUDED.description,
+        desc_ar = EXCLUDED.desc_ar,
+        image_url = EXCLUDED.image_url,
+        in_stock = EXCLUDED.in_stock,
+        is_available = EXCLUDED.is_available,
+        is_popular = EXCLUDED.is_popular,
+        unit = EXCLUDED.unit
+    `, [
+      p.id, p.store_id, p.name || p.name_ar || 'صنف', p.name_ar || p.name || 'صنف',
+      p.price || p.price_lyd || 0, p.price_lyd || p.price || 0,
+      p.category || 'عام', p.category_id || '', p.description || '', p.desc_ar || '', p.image_url || '',
+      p.in_stock !== false, p.is_available !== false, p.is_popular === true, p.unit || 'قطعة'
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveProduct error]:', err.message);
+  }
+}
+
+async function deleteProductFromPg(id) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query('DELETE FROM products WHERE id = $1', [id]);
+  } catch (err) {
+    console.error('[PostgreSQL deleteProduct error]:', err.message);
+  }
+}
+
+async function saveDriverToPg(d) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO drivers (id, user_id, full_name, phone, vehicle_type, vehicle_plate, license_number, national_id, rating, total_deliveries, is_approved, is_active, status, wallet_balance_lyd, cod_balance_lyd, latitude, longitude)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+      ON CONFLICT (id) DO UPDATE SET
+        full_name = EXCLUDED.full_name,
+        phone = EXCLUDED.phone,
+        vehicle_type = EXCLUDED.vehicle_type,
+        vehicle_plate = EXCLUDED.vehicle_plate,
+        rating = EXCLUDED.rating,
+        total_deliveries = EXCLUDED.total_deliveries,
+        is_approved = EXCLUDED.is_approved,
+        is_active = EXCLUDED.is_active,
+        status = EXCLUDED.status,
+        wallet_balance_lyd = EXCLUDED.wallet_balance_lyd,
+        cod_balance_lyd = EXCLUDED.cod_balance_lyd,
+        latitude = EXCLUDED.latitude,
+        longitude = EXCLUDED.longitude
+    `, [
+      d.id, d.user_id || '', d.full_name, d.phone, d.vehicle_type || 'motorcycle', d.vehicle_plate || d.plate_number || '',
+      d.license_number || '', d.national_id || '', d.rating || 5.0, d.total_deliveries || d.total_trips || 0,
+      d.is_approved !== false, d.is_active !== false, d.status || 'online_idle', d.wallet_balance_lyd || 0,
+      d.cod_balance_lyd || 0, d.latitude || 31.8686, d.longitude || 10.9818
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveDriver error]:', err.message);
+  }
+}
+
+async function deleteDriverFromPg(id) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query('DELETE FROM drivers WHERE id = $1', [id]);
+  } catch (err) {
+    console.error('[PostgreSQL deleteDriver error]:', err.message);
+  }
+}
+
+async function saveOrderToPg(o) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO orders (id, order_number, customer_id, customer_name, customer_phone, store_id, store_name, driver_id, status, subtotal_lyd, delivery_fee_lyd, total_amount_lyd, payment_method, delivery_address, delivery_lat, delivery_lng, items, notes)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      ON CONFLICT (id) DO UPDATE SET
+        driver_id = EXCLUDED.driver_id,
+        status = EXCLUDED.status,
+        notes = EXCLUDED.notes
+    `, [
+      o.id, o.order_number, o.customer_id, o.customer_name, o.customer_phone,
+      o.store_id, o.store_name, o.driver_id || null, o.status || 'placed',
+      o.subtotal_lyd || 0, o.delivery_fee_lyd || 0, o.total_amount_lyd || 0,
+      o.payment_method || 'wallet', o.delivery_address || '', o.delivery_latitude || 31.8686,
+      o.delivery_longitude || 10.9818, JSON.stringify(o.items || []), o.notes || ''
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveOrder error]:', err.message);
+  }
+}
+
+async function initPgTables(forceSeed = false) {
+  if (!pgPool) return;
+  try {
+    console.log('[PostgreSQL] Initializing tables and checking migrations...');
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS stores (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        name_en VARCHAR(255),
+        type VARCHAR(50) DEFAULT 'restaurant',
+        district VARCHAR(255),
+        city VARCHAR(100) DEFAULT 'nalut',
+        phone VARCHAR(50),
+        pin VARCHAR(20) DEFAULT '1234',
+        app_mode VARCHAR(50) DEFAULT 'kitchen',
+        commission_rate NUMERIC DEFAULT 10.0,
+        rating NUMERIC DEFAULT 5.0,
+        review_count INT DEFAULT 0,
+        delivery_time_min INT DEFAULT 20,
+        delivery_time_max INT DEFAULT 35,
+        min_order_lyd NUMERIC DEFAULT 10.0,
+        base_delivery_fee_lyd NUMERIC DEFAULT 4.0,
+        latitude NUMERIC DEFAULT 31.8686,
+        longitude NUMERIC DEFAULT 10.9818,
+        logo_url TEXT,
+        banner_url TEXT,
+        badge VARCHAR(100),
+        is_open BOOLEAN DEFAULT true,
+        is_featured BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS products (
+        id VARCHAR(100) PRIMARY KEY,
+        store_id VARCHAR(100) NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        name_ar VARCHAR(255),
+        price NUMERIC NOT NULL,
+        price_lyd NUMERIC NOT NULL,
+        category VARCHAR(100) DEFAULT 'عام',
+        category_id VARCHAR(100),
+        description TEXT,
+        desc_ar TEXT,
+        image_url TEXT,
+        in_stock BOOLEAN DEFAULT true,
+        is_available BOOLEAN DEFAULT true,
+        is_popular BOOLEAN DEFAULT false,
+        unit VARCHAR(50) DEFAULT 'قطعة',
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS drivers (
+        id VARCHAR(100) PRIMARY KEY,
+        user_id VARCHAR(100),
+        full_name VARCHAR(255) NOT NULL,
+        phone VARCHAR(50) NOT NULL,
+        vehicle_type VARCHAR(50) DEFAULT 'motorcycle',
+        vehicle_plate VARCHAR(50),
+        license_number VARCHAR(50),
+        national_id VARCHAR(50),
+        rating NUMERIC DEFAULT 5.0,
+        total_deliveries INT DEFAULT 0,
+        is_approved BOOLEAN DEFAULT true,
+        is_active BOOLEAN DEFAULT true,
+        status VARCHAR(50) DEFAULT 'online_idle',
+        wallet_balance_lyd NUMERIC DEFAULT 0.0,
+        cod_balance_lyd NUMERIC DEFAULT 0.0,
+        latitude NUMERIC,
+        longitude NUMERIC,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS orders (
+        id VARCHAR(100) PRIMARY KEY,
+        order_number VARCHAR(50),
+        customer_id VARCHAR(100),
+        customer_name VARCHAR(255),
+        customer_phone VARCHAR(50),
+        store_id VARCHAR(100) REFERENCES stores(id) ON DELETE SET NULL,
+        store_name VARCHAR(255),
+        driver_id VARCHAR(100),
+        status VARCHAR(50) DEFAULT 'placed',
+        subtotal_lyd NUMERIC DEFAULT 0.0,
+        delivery_fee_lyd NUMERIC DEFAULT 0.0,
+        total_amount_lyd NUMERIC DEFAULT 0.0,
+        payment_method VARCHAR(50) DEFAULT 'wallet',
+        delivery_address TEXT,
+        delivery_lat NUMERIC,
+        delivery_lng NUMERIC,
+        items JSONB DEFAULT '[]'::jsonb,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    const countRes = await pgPool.query('SELECT COUNT(*) FROM stores');
+    const storeCount = parseInt(countRes.rows[0].count, 10);
+
+    if (storeCount === 0 || forceSeed) {
+      console.log(`[PostgreSQL] Seeding ${db.stores.length} authentic stores into PostgreSQL...`);
+      for (const s of db.stores) {
+        await saveStoreToPg(s);
+      }
+      for (const p of db.products) {
+        await saveProductToPg(p);
+      }
+      for (const d of db.drivers) {
+        await saveDriverToPg(d);
+      }
+      console.log('[PostgreSQL] Seeding completed successfully.');
+    } else {
+      console.log(`[PostgreSQL] Hydrating memory cache from PostgreSQL (${storeCount} stores)...`);
+      const storesRes = await pgPool.query('SELECT * FROM stores ORDER BY is_open DESC, is_featured DESC');
+      db.stores = storesRes.rows.map(r => ({
+        ...r,
+        rating: parseFloat(r.rating) || 5.0,
+        latitude: parseFloat(r.latitude) || 31.8686,
+        longitude: parseFloat(r.longitude) || 10.9818,
+        min_order_lyd: parseFloat(r.min_order_lyd) || 10.0,
+        base_delivery_fee_lyd: parseFloat(r.base_delivery_fee_lyd) || 4.0,
+        commission_rate: parseFloat(r.commission_rate) || 10.0
+      }));
+
+      const productsRes = await pgPool.query('SELECT * FROM products ORDER BY name ASC');
+      db.products = productsRes.rows.map(r => ({
+        ...r,
+        price: parseFloat(r.price) || 0,
+        price_lyd: parseFloat(r.price_lyd) || parseFloat(r.price) || 0
+      }));
+
+      const driversRes = await pgPool.query('SELECT * FROM drivers');
+      db.drivers = driversRes.rows.map(r => ({
+        ...r,
+        rating: parseFloat(r.rating) || 5.0,
+        wallet_balance_lyd: parseFloat(r.wallet_balance_lyd) || 0,
+        cod_balance_lyd: parseFloat(r.cod_balance_lyd) || 0,
+        latitude: parseFloat(r.latitude) || 31.8686,
+        longitude: parseFloat(r.longitude) || 10.9818
+      }));
+      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers.`);
+    }
+  } catch (err) {
+    console.error('[PostgreSQL] Table initialization/hydration error:', err.message);
+  }
+}
+
+// Call initPgTables on startup
+initPgTables();
 
 // ----------------------------------------------------------------------------
 // 3. GEOSPATIAL & LOGISTICS UTILITIES
@@ -284,6 +608,28 @@ const io = new Server(server, {
 // Attach io to request for route handlers
 app.use((req, res, next) => {
   req.io = io;
+  next();
+});
+
+// Universal API Route Aliasing Middleware
+// Automatically proxies root API calls (e.g. /stores, /products, /drivers, /orders, /admin/*)
+// to /api/v1/* so Flutter apps and MCP tools work with or without the prefix seamlessly!
+app.use((req, res, next) => {
+  if (
+    !req.url.startsWith('/api/v1') &&
+    !req.url.startsWith('/app') &&
+    !req.url.startsWith('/web') &&
+    !req.url.startsWith('/admin-assets') &&
+    req.path !== '/admin' &&
+    req.path !== '/merchant' &&
+    req.path !== '/' &&
+    req.path !== '/health'
+  ) {
+    const apiRoots = ['/stores', '/products', '/drivers', '/orders', '/admin', '/vouchers', '/audit', '/auth', '/config', '/wallet', '/categories'];
+    if (apiRoots.some(prefix => req.path === prefix || req.path.startsWith(prefix + '/'))) {
+      req.url = '/api/v1' + req.url;
+    }
+  }
   next();
 });
 
@@ -791,7 +1137,29 @@ app.post('/api/v1/stores', (req, res) => {
     };
     db.stores.unshift(newStore);
     saveSeedData();
+    saveStoreToPg(newStore);
+    if (req.io) {
+      req.io.emit('store:created', newStore);
+    }
     res.status(201).json({ success: true, data: newStore });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/v1/stores/:id', (req, res) => {
+  try {
+    const store = db.stores.find(s => s.id === req.params.id);
+    if (!store) {
+      return res.status(404).json({ success: false, error: 'Store not found' });
+    }
+    Object.assign(store, req.body);
+    saveSeedData();
+    saveStoreToPg(store);
+    if (req.io) {
+      req.io.emit('store:updated', store);
+    }
+    res.json({ success: true, data: store });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -801,6 +1169,10 @@ app.delete('/api/v1/stores/:id', (req, res) => {
   db.stores = db.stores.filter(s => s.id !== req.params.id);
   db.products = db.products.filter(p => p.store_id !== req.params.id);
   saveSeedData();
+  deleteStoreFromPg(req.params.id);
+  if (req.io) {
+    req.io.emit('store:deleted', { id: req.params.id });
+  }
   res.json({ success: true, message: 'Store deleted' });
 });
 
@@ -823,6 +1195,10 @@ app.post('/api/v1/drivers', (req, res) => {
     };
     db.drivers.unshift(newDriver);
     saveSeedData();
+    saveDriverToPg(newDriver);
+    if (req.io) {
+      req.io.emit('driver:added', newDriver);
+    }
     res.status(201).json({ success: true, data: newDriver });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -832,10 +1208,33 @@ app.post('/api/v1/drivers', (req, res) => {
 app.delete('/api/v1/drivers/:id', (req, res) => {
   db.drivers = db.drivers.filter(d => d.id !== req.params.id);
   saveSeedData();
+  deleteDriverFromPg(req.params.id);
+  if (req.io) {
+    req.io.emit('driver:deleted', { id: req.params.id });
+  }
   res.json({ success: true, message: 'Driver deleted' });
 });
 
-app.post('/api/v1/admin/purge', (req, res) => {
+app.post('/api/v1/drivers/:id/settle', (req, res) => {
+  const driver = db.drivers.find(d => d.id === req.params.id);
+  if (!driver) {
+    return res.status(404).json({ success: false, error: 'Driver not found' });
+  }
+  driver.wallet_balance_lyd = 0.0;
+  saveSeedData();
+  saveDriverToPg(driver);
+  if (req.io) {
+    req.io.emit('driver:settled', { driver_id: driver.id, balance: 0.0 });
+  }
+  res.json({ success: true, message: 'Driver cash settled successfully', data: driver });
+});
+
+app.patch('/api/v1/drivers/:id/settle', (req, res, next) => {
+  req.method = 'POST';
+  app._router.handle(req, res, next);
+});
+
+app.post('/api/v1/admin/purge', async (req, res) => {
   const { admin_pin } = req.body;
   if (admin_pin !== '9832') {
     return res.status(403).json({ success: false, error: 'Invalid admin PIN' });
@@ -846,6 +1245,13 @@ app.post('/api/v1/admin/purge', (req, res) => {
   db.orders = [];
   db.wallet_transactions = [];
   saveSeedData();
+  if (pgPool) {
+    try {
+      await pgPool.query('TRUNCATE stores, products, drivers, orders CASCADE');
+    } catch (e) {
+      console.error('[PostgreSQL purge error]:', e.message);
+    }
+  }
   res.json({ success: true, message: 'All test stores, products, drivers, and orders purged successfully!' });
 });
 
@@ -860,6 +1266,34 @@ app.get('/api/v1/categories', (req, res) => {
     count: categories.length,
     data: categories
   });
+});
+
+app.get('/api/v1/products', (req, res) => {
+  try {
+    const { store_id, category_id, search } = req.query;
+    let products = [...db.products];
+    if (store_id) {
+      products = products.filter(p => p.store_id === store_id);
+    }
+    if (category_id) {
+      products = products.filter(p => p.category_id === category_id);
+    }
+    if (search) {
+      const q = search.toLowerCase();
+      products = products.filter(p =>
+        (p.name && p.name.toLowerCase().includes(q)) ||
+        (p.name_ar && p.name_ar.toLowerCase().includes(q)) ||
+        (p.description && p.description.toLowerCase().includes(q))
+      );
+    }
+    res.json({
+      success: true,
+      count: products.length,
+      data: products
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 app.get('/api/v1/products/:id', (req, res) => {
@@ -1549,7 +1983,42 @@ app.patch('/api/v1/drivers/:id', (req, res) => {
       recorded_at: new Date().toISOString()
     });
   }
+  saveSeedData();
+  saveDriverToPg(driver);
   res.json({ success: true, data: driver });
+});
+
+app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
+  const driver = db.drivers.find(d => d.id === req.params.id);
+  if (!driver) {
+    return res.status(404).json({ success: false, error: 'Driver not found' });
+  }
+  const { latitude, longitude, heading = 0, speed_kmh = 0, order_id } = req.body;
+  if (latitude !== undefined) driver.latitude = parseFloat(latitude);
+  if (longitude !== undefined) driver.longitude = parseFloat(longitude);
+  if (heading !== undefined) driver.heading = parseFloat(heading);
+  if (speed_kmh !== undefined) driver.speed_kmh = parseFloat(speed_kmh);
+
+  const telemetryData = {
+    driver_id: driver.id,
+    order_id: order_id || null,
+    latitude: driver.latitude,
+    longitude: driver.longitude,
+    heading: driver.heading,
+    speed_kmh: driver.speed_kmh,
+    recorded_at: new Date().toISOString()
+  };
+
+  if (req.io) {
+    req.io.to(`driver:${driver.id}`).emit('driver:location_changed', telemetryData);
+    req.io.to('admin:fleet').emit('admin:driver_moved', telemetryData);
+    if (order_id) {
+      req.io.to(`order:${order_id}`).emit('order:driver_location', telemetryData);
+    }
+  }
+  saveSeedData();
+  saveDriverToPg(driver);
+  res.json({ success: true, data: telemetryData });
 });
 
 app.get('/api/v1/drivers', (req, res) => {
@@ -1567,6 +2036,7 @@ app.patch('/api/v1/products/:id', (req, res) => {
   Object.assign(product, req.body);
   if (req.body.price !== undefined) {
     product.price_lyd = parseFloat(req.body.price);
+    product.price = parseFloat(req.body.price);
   }
   if (req.body.is_available !== undefined) {
     product.is_available = Boolean(req.body.is_available);
@@ -1575,6 +2045,7 @@ app.patch('/api/v1/products/:id', (req, res) => {
     req.io.emit('catalog:product_updated', product);
   }
   saveSeedData();
+  saveProductToPg(product);
   res.json({ success: true, data: product });
 });
 
@@ -1584,15 +2055,20 @@ app.post('/api/v1/products', (req, res) => {
     store_id: req.body.store_id || 'store_default',
     name_ar: req.body.name_ar || req.body.name || 'صنف جديد',
     name_en: req.body.name_en || req.body.name || 'New Item',
+    name: req.body.name || req.body.name_ar || 'صنف جديد',
     category_id: req.body.category_id || 'cat_food',
     category: req.body.category || 'وجبات',
+    price: parseFloat(req.body.price || req.body.price_lyd || 20.0),
     price_lyd: parseFloat(req.body.price || req.body.price_lyd || 20.0),
     description: req.body.description || '',
+    desc_ar: req.body.desc_ar || req.body.description || '',
     is_available: req.body.is_available !== undefined ? req.body.is_available : true,
+    in_stock: req.body.in_stock !== undefined ? req.body.in_stock : true,
     created_at: new Date().toISOString()
   };
   db.products.push(newProduct);
   saveSeedData();
+  saveProductToPg(newProduct);
   if (req.io) {
     req.io.emit('catalog:product_added', newProduct);
   }
@@ -1603,6 +2079,7 @@ app.delete('/api/v1/products/:id', (req, res) => {
   const initialLen = db.products.length;
   db.products = db.products.filter(p => p.id !== req.params.id);
   saveSeedData();
+  deleteProductFromPg(req.params.id);
   if (req.io) {
     req.io.emit('catalog:product_deleted', { id: req.params.id });
   }
@@ -1706,7 +2183,45 @@ app.post('/api/v1/vouchers', (req, res) => {
     created_at: req.body.created_at || new Date().toISOString()
   };
   db.vouchers.push(voucher);
+  saveSeedData();
   res.status(201).json({ success: true, data: voucher });
+});
+
+// ----------------------------------------------------------------------------
+// AUDIT & SETTLEMENT LEDGER
+// ----------------------------------------------------------------------------
+app.get('/api/v1/audit', (req, res) => {
+  const logs = db.audit_logs || [];
+  res.json({ success: true, count: logs.length, data: logs });
+});
+
+app.post('/api/v1/audit', (req, res) => {
+  if (!db.audit_logs) db.audit_logs = [];
+  const entry = {
+    id: req.body.id || `audit_${Date.now()}`,
+    ...req.body,
+    created_at: req.body.created_at || new Date().toISOString()
+  };
+  db.audit_logs.unshift(entry);
+  saveSeedData();
+  res.status(201).json({ success: true, data: entry });
+});
+
+app.post('/api/v1/admin/seed', async (req, res) => {
+  const { admin_pin } = req.body || {};
+  const masterPin = process.env.ADMIN_DEFAULT_PIN || '9832';
+  if (admin_pin !== '9832' && admin_pin !== masterPin) {
+    return res.status(403).json({ success: false, error: 'رمز الحماية الإداري غير صحيح' });
+  }
+  loadSeedData();
+  await initPgTables(true);
+  res.json({
+    success: true,
+    message: 'تمت إعادة مزامنة وزرع كافة المتاجر والأصناف الحقيقية لنالوت في قاعدة البيانات بنجاح!',
+    stores_count: db.stores.length,
+    products_count: db.products.length,
+    drivers_count: db.drivers.length
+  });
 });
 
 // ----------------------------------------------------------------------------

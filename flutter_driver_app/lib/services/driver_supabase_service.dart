@@ -28,45 +28,35 @@ class DriverSupabaseService {
     final id = driverId ?? activeDriverId;
 
     // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/drivers/$id'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/drivers/$id'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        if (data is Map && data['data'] != null) {
-          final profile = Map<String, dynamic>.from(data['data']);
-          return {
-            'id': profile['id'] ?? id,
-            'full_name': profile['full_name'] ?? profile['name'] ?? 'كابتن واصل',
-            'phone': profile['phone'] ?? '',
-            'vehicle_type': profile['vehicle_type'] ?? profile['vehicle_model'] ?? 'سيارة',
-            'plate_number': profile['license_plate'] ?? profile['plate_number'] ?? 'نالوت',
-            'status': profile['status'] ?? 'available',
-            'rating': (profile['rating'] as num?)?.toDouble() ?? 5.0,
-            'total_trips': profile['total_trips'] ?? 0,
-            'wallet_balance_lyd': (profile['wallet_balance_lyd'] as num?)?.toDouble() ?? 0.0,
-          };
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          if (data is Map && data['data'] != null) {
+            final profile = Map<String, dynamic>.from(data['data']);
+            return {
+              'id': profile['id'] ?? id,
+              'full_name': profile['full_name'] ?? profile['name'] ?? 'كابتن واصل',
+              'phone': profile['phone'] ?? '',
+              'vehicle_type': profile['vehicle_type'] ?? profile['vehicle_model'] ?? 'سيارة',
+              'plate_number': profile['license_plate'] ?? profile['plate_number'] ?? 'نالوت',
+              'status': profile['status'] ?? 'available',
+              'rating': (profile['rating'] as num?)?.toDouble() ?? 5.0,
+              'total_trips': profile['total_trips'] ?? 0,
+              'wallet_balance_lyd': (profile['wallet_balance_lyd'] as num?)?.toDouble() ?? 0.0,
+            };
+          }
         }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
+    }
 
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http
-          .get(Uri.parse('$supabaseUrl/drivers?id=eq.$id&select=*'), headers: _headers)
-          .timeout(const Duration(seconds: 3));
-
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          return Map<String, dynamic>.from(list.first);
-        }
-      }
-    } catch (_) {}
-
-    // 3. Fallback baseline
+    // 2. Fallback baseline
     return {
       'id': id,
       'full_name': 'كابتن واصل',
@@ -83,22 +73,26 @@ class DriverSupabaseService {
   /// Fetch active and available orders in Nalut
   static Future<List<Map<String, dynamic>>> fetchAvailableOrders() async {
     // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/orders?status=placed,preparing,ready_for_pickup,out_for_delivery'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/orders?status=placed,preparing,ready_for_pickup,out_for_delivery'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        final List<dynamic> list = (data is Map && data['data'] is List)
-            ? data['data']
-            : (data is List ? data : []);
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          final List<dynamic> list = (data is Map && data['data'] is List)
+              ? data['data']
+              : (data is List ? data : []);
 
-        if (list.isNotEmpty) {
-          return list.map((o) => Map<String, dynamic>.from(o as Map)).toList();
+          if (list.isNotEmpty) {
+            return list.map((o) => Map<String, dynamic>.from(o as Map)).toList();
+          }
         }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
+    }
 
     // 2. Fallback to Supabase Cloud
     try {

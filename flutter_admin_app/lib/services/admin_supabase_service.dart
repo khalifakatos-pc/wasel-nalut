@@ -27,155 +27,84 @@ class AdminSupabaseService {
   // KPI CALCULATOR
   // --------------------------------------------------------------------------
   static Future<Map<String, dynamic>> fetchKpis() async {
-    // 1. Try Live Unified Backend First (Real-Time Cloud Overview)
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/admin/overview?admin_key=9832'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/admin/overview?admin_key=9832'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic body = jsonDecode(res.body);
-        if (body is Map && body['success'] == true && body['data'] != null) {
-          final d = body['data'];
-          final metrics = d['metrics'] ?? {};
-          final fleet = d['fleet_stats'] ?? {};
-          final totalOrders = (metrics['total_orders'] as num?)?.toInt() ?? 0;
-          final gmv = (metrics['gmv_total_lyd'] as num?)?.toDouble() ?? 0.0;
-          final platformFee = (metrics['platform_revenue_lyd'] as num?)?.toDouble() ?? (gmv * 0.10);
-          final activeOrders = (metrics['active_orders_count'] as num?)?.toInt() ?? 0;
-          final onlineDrivers = ((fleet['available'] as num?)?.toInt() ?? 0) + ((fleet['busy'] as num?)?.toInt() ?? 0);
+        if (res.statusCode == 200) {
+          final dynamic body = jsonDecode(res.body);
+          if (body is Map && body['success'] == true && body['data'] != null) {
+            final d = body['data'];
+            final metrics = d['metrics'] ?? {};
+            final fleet = d['fleet_stats'] ?? {};
+            final totalOrders = (metrics['total_orders'] as num?)?.toInt() ?? 0;
+            final gmv = (metrics['gmv_total_lyd'] as num?)?.toDouble() ?? 0.0;
+            final platformFee = (metrics['platform_revenue_lyd'] as num?)?.toDouble() ?? (gmv * 0.10);
+            final activeOrders = (metrics['active_orders_count'] as num?)?.toInt() ?? 0;
+            final onlineDrivers = ((fleet['available'] as num?)?.toInt() ?? 0) + ((fleet['busy'] as num?)?.toInt() ?? 0);
 
-          return {
-            'total_orders': totalOrders,
-            'gmv_lyd': gmv,
-            'platform_fee_lyd': platformFee,
-            'cod_with_drivers_lyd': (d['metrics']?['cod_pending_lyd'] as num?)?.toDouble() ?? 0.0,
-            'active_orders': activeOrders,
-            'online_drivers': onlineDrivers,
-            'open_stores': (d['metrics']?['stores_count'] as num?)?.toInt() ?? 0,
-          };
-        }
-      }
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final ordersRes = await http.get(Uri.parse('$supabaseUrl/orders?select=*'), headers: _headers).timeout(const Duration(seconds: 4));
-      final driversRes = await http.get(Uri.parse('$supabaseUrl/drivers?select=*'), headers: _headers).timeout(const Duration(seconds: 4));
-      final storesRes = await http.get(Uri.parse('$supabaseUrl/stores?select=*'), headers: _headers).timeout(const Duration(seconds: 4));
-
-      double gmv = 0.0;
-      double codWithDrivers = 0.0;
-      int activeOrdersCount = 0;
-      int onlineDriversCount = 0;
-      int openStoresCount = 0;
-
-      int totalOrdersCount = 0;
-      if (ordersRes.statusCode == 200) {
-        final List<dynamic> orders = jsonDecode(ordersRes.body);
-        totalOrdersCount = orders.length;
-        for (var o in orders) {
-          final double amount = (o['total_amount_lyd'] is num) ? (o['total_amount_lyd'] as num).toDouble() : 0.0;
-          gmv += amount;
-          final status = o['status'] ?? '';
-          if (status == 'placed' || status == 'preparing' || status == 'ready_for_pickup' || status == 'out_for_delivery') {
-            activeOrdersCount++;
+            return {
+              'total_orders': totalOrders,
+              'gmv_lyd': gmv,
+              'platform_fee_lyd': platformFee,
+              'cod_with_drivers_lyd': (d['metrics']?['cod_pending_lyd'] as num?)?.toDouble() ?? 0.0,
+              'active_orders': activeOrders,
+              'online_drivers': onlineDrivers,
+              'open_stores': (d['metrics']?['stores_count'] as num?)?.toInt() ?? 0,
+            };
           }
         }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-
-      if (driversRes.statusCode == 200) {
-        final List<dynamic> drivers = jsonDecode(driversRes.body);
-        for (var d in drivers) {
-          if (d['status'] != 'offline') onlineDriversCount++;
-          final double balance = (d['wallet_balance_lyd'] is num) ? (d['wallet_balance_lyd'] as num).toDouble() : 0.0;
-          codWithDrivers += balance;
-        }
-      }
-
-      if (storesRes.statusCode == 200) {
-        final List<dynamic> stores = jsonDecode(storesRes.body);
-        for (var s in stores) {
-          if (s['is_open'] == true) openStoresCount++;
-        }
-      }
-
-      final double platformFee = gmv * 0.10; // 10% commission
-
-      return {
-        'total_orders': totalOrdersCount,
-        'gmv_lyd': gmv,
-        'platform_fee_lyd': platformFee,
-        'cod_with_drivers_lyd': codWithDrivers,
-        'active_orders': activeOrdersCount,
-        'online_drivers': onlineDriversCount,
-        'open_stores': openStoresCount,
-      };
-    } catch (_) {
-      // Graceful zero-state fallback
-      return {
-        'total_orders': 0,
-        'gmv_lyd': 0.0,
-        'platform_fee_lyd': 0.0,
-        'cod_with_drivers_lyd': 0.0,
-        'active_orders': 0,
-        'online_drivers': 0,
-        'open_stores': 0,
-      };
     }
+
+    return {
+      'total_orders': 0,
+      'gmv_lyd': 0.0,
+      'platform_fee_lyd': 0.0,
+      'cod_with_drivers_lyd': 0.0,
+      'active_orders': 0,
+      'online_drivers': 0,
+      'open_stores': 0,
+    };
   }
 
   // --------------------------------------------------------------------------
   // STORES MANAGEMENT
   // --------------------------------------------------------------------------
   static Future<List<Map<String, dynamic>>> fetchStores() async {
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/stores'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/stores'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        final List<dynamic> list = (data is Map && data['data'] is List)
-            ? data['data']
-            : (data is List ? data : []);
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          final List<dynamic> list = (data is Map && data['data'] is List)
+              ? data['data']
+              : (data is List ? data : []);
 
-        final List<Map<String, dynamic>> combined = list.map((s) => Map<String, dynamic>.from(s as Map)).toList();
-        for (final dyn in _dynamicStores) {
-          if (!combined.any((s) => s['id'] == dyn['id'])) {
-            combined.insert(0, dyn);
-          }
+          return list.map((s) => Map<String, dynamic>.from(s as Map)).toList();
         }
-        return combined;
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
+    }
 
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http.get(Uri.parse('$supabaseUrl/stores?select=*&order=is_open.desc'), headers: _headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
-        for (final dyn in _dynamicStores) {
-          if (!combined.any((s) => s['id'] == dyn['id'])) {
-            combined.insert(0, dyn);
-          }
-        }
-        return combined;
-      }
-    } catch (_) {}
-
-    return List<Map<String, dynamic>>.from(_dynamicStores);
+    return [];
   }
 
   static Future<bool> toggleStoreOpen(String storeId, bool isOpen) async {
     try {
       final res = await http.patch(
-        Uri.parse('$supabaseUrl/stores?id=eq.$storeId'),
-        headers: _headers,
+        Uri.parse('$backendBaseUrl/stores/$storeId'),
+        headers: {'Content-Type': 'application/json'},
         body: jsonEncode({'is_open': isOpen}),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 15));
       return res.statusCode == 200 || res.statusCode == 204;
     } catch (_) {
       return false;
@@ -185,117 +114,96 @@ class AdminSupabaseService {
   // --------------------------------------------------------------------------
   // LIVE ORDERS
   // --------------------------------------------------------------------------
-  static Future<List<Map<String, dynamic>>> fetchOrders() async {
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/orders'))
-          .timeout(const Duration(seconds: 4));
+  static Future<List<Map<String, dynamic>>> fetchOrders({String? status}) async {
+    final query = status != null ? '?status=$status' : '';
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/orders$query'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        final List<dynamic> list = (data is Map && data['data'] is List)
-            ? data['data']
-            : (data is List ? data : []);
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          final List<dynamic> list = (data is Map && data['data'] is List)
+              ? data['data']
+              : (data is List ? data : []);
 
-        return list.map((o) => Map<String, dynamic>.from(o as Map)).toList();
+          return list.map((o) => Map<String, dynamic>.from(o as Map)).toList();
+        }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http.get(Uri.parse('$supabaseUrl/orders?select=*&order=created_at.desc'), headers: _headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        return List<Map<String, dynamic>>.from(list);
-      }
-    } catch (_) {}
-
+    }
     return [];
   }
 
   static Future<bool> updateOrderStatus(String orderId, String newStatus) async {
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'status': newStatus}),
-          )
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/orders/$orderId/status'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'status': newStatus}),
+            )
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200 || res.statusCode == 201) return true;
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http.patch(
-        Uri.parse('$supabaseUrl/orders?id=eq.$orderId'),
-        headers: _headers,
-        body: jsonEncode({'status': newStatus}),
-      ).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 204;
-    } catch (_) {
-      return false;
+        if (res.statusCode == 200 || res.statusCode == 201) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+    return false;
   }
 
   // --------------------------------------------------------------------------
   // DRIVERS & SETTLEMENTS
   // --------------------------------------------------------------------------
   static Future<List<Map<String, dynamic>>> fetchDrivers() async {
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/drivers'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/drivers'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        final List<dynamic> list = (data is Map && data['data'] is List)
-            ? data['data']
-            : (data is List ? data : []);
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          final List<dynamic> list = (data is Map && data['data'] is List)
+              ? data['data']
+              : (data is List ? data : []);
 
-        final combined = list.map((d) => Map<String, dynamic>.from(d as Map)).toList();
-        for (final dyn in _dynamicDrivers) {
-          if (!combined.any((d) => d['id'] == dyn['id'])) {
-            combined.insert(0, dyn);
+          final combined = list.map((d) => Map<String, dynamic>.from(d as Map)).toList();
+          for (final dyn in _dynamicDrivers) {
+            if (!combined.any((d) => d['id'] == dyn['id'])) {
+              combined.insert(0, dyn);
+            }
           }
+          return combined;
         }
-        return combined;
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http.get(Uri.parse('$supabaseUrl/drivers?select=*'), headers: _headers).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        final combined = List<Map<String, dynamic>>.from(list);
-        for (final dyn in _dynamicDrivers) {
-          if (!combined.any((d) => d['id'] == dyn['id'])) {
-            combined.insert(0, dyn);
-          }
-        }
-        return combined;
-      }
-    } catch (_) {}
+    }
 
     return List<Map<String, dynamic>>.from(_dynamicDrivers);
   }
 
   static Future<bool> settleDriverCash(String driverId) async {
-    try {
-      final res = await http.patch(
-        Uri.parse('$supabaseUrl/drivers?id=eq.$driverId'),
-        headers: _headers,
-        body: jsonEncode({'wallet_balance_lyd': 0.00}),
-      ).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 204;
-    } catch (_) {
-      return true; // Local simulation success
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/drivers/$driverId/settle'),
+              headers: {'Content-Type': 'application/json'},
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (res.statusCode == 200 || res.statusCode == 201) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+    return true; // Local simulation fallback
   }
 
   static Future<bool> addDriver({
@@ -326,41 +234,39 @@ class AdminSupabaseService {
 
     _dynamicDrivers.insert(0, driverMap);
 
-    // 1. Post to unified backend
-    try {
-      await http.post(
-        Uri.parse('$backendBaseUrl/drivers'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(driverMap),
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/drivers'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(driverMap),
+            )
+            .timeout(const Duration(seconds: 15));
 
-    // 2. Post to Supabase Cloud
-    try {
-      final res = await http.post(
-        Uri.parse('$supabaseUrl/drivers'),
-        headers: _headers,
-        body: jsonEncode(driverMap),
-      ).timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 201;
-    } catch (_) {
-      return true; // Local addition succeeded
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return true;
+        }
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+
+    return true; // Local addition succeeded
   }
 
   static Future<bool> deleteDriver(String driverId) async {
     _dynamicDrivers.removeWhere((d) => d['id'] == driverId);
-    try {
-      await http.delete(
-        Uri.parse('$backendBaseUrl/drivers/$driverId'),
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
-    try {
-      await http.delete(
-        Uri.parse('$supabaseUrl/drivers?id=eq.$driverId'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .delete(Uri.parse('$backendBaseUrl/drivers/$driverId'))
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
+    }
     return true;
   }
 
@@ -408,44 +314,39 @@ class AdminSupabaseService {
 
     _dynamicStores.insert(0, payload);
 
-    // 1. Post to unified backend
-    try {
-      await http.post(
-        Uri.parse('$backendBaseUrl/stores'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/stores'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 15));
 
-    // 2. Post to Supabase Cloud
-    try {
-      final res = await http.post(
-        Uri.parse('$supabaseUrl/stores'),
-        headers: _headers,
-        body: jsonEncode(payload),
-      ).timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        return payload;
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return payload;
+        }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
+    }
 
     return payload; // Local addition succeeded
   }
 
   static Future<bool> deleteStore(String storeId) async {
     _dynamicStores.removeWhere((s) => s['id'] == storeId);
-    try {
-      await http.delete(
-        Uri.parse('$backendBaseUrl/stores/$storeId'),
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
-    try {
-      await http.delete(
-        Uri.parse('$supabaseUrl/stores?id=eq.$storeId'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .delete(Uri.parse('$backendBaseUrl/stores/$storeId'))
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
+    }
     return true;
   }
 
@@ -1061,40 +962,27 @@ class AdminSupabaseService {
   // --------------------------------------------------------------------------
   static Future<List<Map<String, dynamic>>> fetchProductsForStore(String storeId) async {
     // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/stores/$storeId/menu'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/stores/$storeId/menu'))
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        final dynamic menuData = data['data'];
-        final List<dynamic> list = (menuData is Map && menuData['products'] is List)
-            ? menuData['products']
-            : ((menuData is Map && menuData['all_products'] is List) ? menuData['all_products'] : []);
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          final dynamic menuData = data['data'];
+          final List<dynamic> list = (menuData is Map && menuData['products'] is List)
+              ? menuData['products']
+              : ((menuData is Map && menuData['all_products'] is List) ? menuData['all_products'] : []);
 
-        if (list.isNotEmpty) {
-          return list.map((p) => Map<String, dynamic>.from(p as Map)).toList();
+          if (list.isNotEmpty) {
+            return list.map((p) => Map<String, dynamic>.from(p as Map)).toList();
+          }
         }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http
-          .get(
-            Uri.parse('$supabaseUrl/products?store_id=eq.$storeId&order=name.asc'),
-            headers: _headers,
-          )
-          .timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          return List<Map<String, dynamic>>.from(list);
-        }
-      }
-    } catch (_) {}
+    }
 
     // Authentic menus for each specific Nalut store
     if (storeId == 'store_nalut_alhanaa') {
@@ -1643,59 +1531,39 @@ class AdminSupabaseService {
   }
 
   static Future<bool> updateProductStock(String productId, bool inStock) async {
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .patch(
-            Uri.parse('$backendBaseUrl/products/$productId'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'is_available': inStock}),
-          )
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) return true;
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http
-          .patch(
-            Uri.parse('$supabaseUrl/products?id=eq.$productId'),
-            headers: _headers,
-            body: jsonEncode({'is_available': inStock}),
-          )
-          .timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 204;
-    } catch (_) {
-      return false;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .patch(
+              Uri.parse('$backendBaseUrl/products/$productId'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'is_available': inStock}),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+    return false;
   }
 
   static Future<bool> updateProductPrice(String productId, double price) async {
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .patch(
-            Uri.parse('$backendBaseUrl/products/$productId'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'price': price, 'price_lyd': price}),
-          )
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200) return true;
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http
-          .patch(
-            Uri.parse('$supabaseUrl/products?id=eq.$productId'),
-            headers: _headers,
-            body: jsonEncode({'price': price}),
-          )
-          .timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 204;
-    } catch (_) {
-      return false;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .patch(
+              Uri.parse('$backendBaseUrl/products/$productId'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'price': price, 'price_lyd': price}),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+    return false;
   }
 
   static Future<bool> addProduct({
@@ -1718,54 +1586,35 @@ class AdminSupabaseService {
       'is_available': true,
     };
 
-    // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$backendBaseUrl/products'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200 || res.statusCode == 201) return true;
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$supabaseUrl/products'),
-            headers: _headers,
-            body: jsonEncode(payload),
-          )
-          .timeout(const Duration(seconds: 4));
-      return res.statusCode == 201 || res.statusCode == 200;
-    } catch (_) {
-      return false;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/products'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode(payload),
+            )
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200 || res.statusCode == 201) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+    return false;
   }
 
   static Future<bool> deleteProduct(String productId) async {
-    // 1. Try Live Unified Backend
-    try {
-      final res = await http
-          .delete(Uri.parse('$backendBaseUrl/products/$productId'))
-          .timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200 || res.statusCode == 204) return true;
-    } catch (_) {}
-
-    // 2. Fallback to Supabase Cloud
-    try {
-      final res = await http
-          .delete(
-            Uri.parse('$supabaseUrl/products?id=eq.$productId'),
-            headers: _headers,
-          )
-          .timeout(const Duration(seconds: 4));
-      return res.statusCode == 200 || res.statusCode == 204;
-    } catch (_) {
-      return false;
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .delete(Uri.parse('$backendBaseUrl/products/$productId'))
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
     }
+    return false;
   }
 
   /// Add starter menu templates for new stores automatically

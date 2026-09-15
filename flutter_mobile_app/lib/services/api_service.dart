@@ -158,46 +158,118 @@ class ApiService {
   // -------------------------------------------------------------------------
 
   /// Authentic Nalut stores available offline/cached on frame 0
-  static const List<Map<String, dynamic>> realNalutStores = [];
+  static const List<Map<String, dynamic>> realNalutStores = [
+    {
+      'id': 'store_nalut_alhanaa',
+      'name': 'صيدلية الهناء',
+      'name_en': 'Al-Hanaa Pharmacy',
+      'type': 'pharmacy',
+      'rating': 4.9,
+      'review_count': 94,
+      'delivery_time_min': 15,
+      'delivery_time_max': 30,
+      'min_order_lyd': 10.0,
+      'base_delivery_fee_lyd': 5.0,
+      'latitude': 31.877755,
+      'longitude': 10.978004,
+      'city': 'nalut',
+      'district': 'مقابل جزيرة مصرف الجمهورية، نالوت',
+      'phone': '0912345001',
+      'logo_url': 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=400&q=80',
+      'banner_url': 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80',
+      'is_open': true,
+      'is_featured': true,
+      'badge': 'صيدلية معتمدة',
+    },
+    {
+      'id': 'store_nalut_ranchello',
+      'name': 'مطعم ومقهى رانشيلو',
+      'name_en': 'Ranchello Restaurant & Cafe',
+      'type': 'restaurant',
+      'rating': 4.8,
+      'review_count': 165,
+      'delivery_time_min': 25,
+      'delivery_time_max': 45,
+      'min_order_lyd': 15.0,
+      'base_delivery_fee_lyd': 5.0,
+      'latitude': 31.86213,
+      'longitude': 10.986878,
+      'city': 'nalut',
+      'district': 'شارع أفريقيا، نالوت',
+      'phone': '0912345002',
+      'logo_url': 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=400&q=80',
+      'banner_url': 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
+      'is_open': true,
+      'is_featured': true,
+      'badge': 'الأكثر طلباً بنالوت',
+    },
+    {
+      'id': 'store_nalut_akakus',
+      'name': 'بيتزا أكاكوس',
+      'name_en': 'Pizza Akakus',
+      'type': 'restaurant',
+      'rating': 4.7,
+      'review_count': 142,
+      'delivery_time_min': 20,
+      'delivery_time_max': 35,
+      'min_order_lyd': 15.0,
+      'base_delivery_fee_lyd': 5.0,
+      'latitude': 31.881501,
+      'longitude': 10.975753,
+      'city': 'nalut',
+      'district': 'شارع تونس، نالوت',
+      'phone': '0912345003',
+      'logo_url': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80',
+      'banner_url': 'https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=800&q=80',
+      'is_open': true,
+      'is_featured': true,
+      'badge': 'بيتزا إيطالية على الحطب',
+    },
+    {
+      'id': 'store_nalut_rixos',
+      'name': 'ريكسوس للتسوق',
+      'name_en': 'Rixos Shopping Market',
+      'type': 'grocery',
+      'rating': 4.8,
+      'review_count': 210,
+      'delivery_time_min': 30,
+      'delivery_time_max': 50,
+      'min_order_lyd': 20.0,
+      'base_delivery_fee_lyd': 5.0,
+      'latitude': 31.892879,
+      'longitude': 10.965377,
+      'city': 'nalut',
+      'district': 'المدخل الرئيسي - نالوت',
+      'phone': '0912345004',
+      'logo_url': 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
+      'banner_url': 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
+      'is_open': true,
+      'is_featured': true,
+      'badge': 'سوبرماركت متكامل',
+    },
+  ];
 
   /// Fetch stores by type: 'restaurant', 'grocery', 'marketplace', or all.
   static Future<ApiResult> getStores({String? type}) async {
     // 1. Try Live Unified Backend Server First (Cloud 24/7 / Local)
-    try {
-      final queryParams = type != null ? '?type=$type' : '';
-      final res = await http
-          .get(Uri.parse('$_baseUrl/stores$queryParams'), headers: _headers)
-          .timeout(const Duration(seconds: 4));
+    final queryParams = type != null ? '?type=$type' : '';
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$_baseUrl/stores$queryParams'), headers: _headers)
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final decoded = jsonDecode(res.body);
-        final List<dynamic> list = decoded['data'] ?? (decoded is List ? decoded : []);
-        final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
-        return ApiResult.success({'data': combined, 'count': combined.length});
+        if (res.statusCode == 200) {
+          final decoded = jsonDecode(res.body);
+          final List<dynamic> list = decoded['data'] ?? (decoded is List ? decoded : []);
+          final List<Map<String, dynamic>> combined = List<Map<String, dynamic>>.from(list);
+          if (combined.isNotEmpty) {
+            return ApiResult.success({'data': combined, 'count': combined.length});
+          }
+        }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {
-      // Offline fallback
-    }
-
-    // 2. Try 24/7 Supabase Cloud
-    try {
-      final queryParams = type != null ? '?type=eq.$type&select=*' : '?select=*';
-      final res = await http.get(
-        Uri.parse('$_supabaseUrl/stores$queryParams'),
-        headers: {
-          'apikey': _supabaseApiKey,
-          'Authorization': 'Bearer $_supabaseApiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 3));
-
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        final List<Map<String, dynamic>> liveStores = List<Map<String, dynamic>>.from(list);
-        return ApiResult.success({'data': liveStores, 'count': liveStores.length});
-      }
-    } catch (_) {
-      // Fallback
     }
 
     final filtered = type == null ? realNalutStores : realNalutStores.where((s) => s['type'] == type).toList();
@@ -207,46 +279,28 @@ class ApiService {
   /// Fetch a store's full menu (categories + products).
   static Future<ApiResult> getStoreMenu(String storeId) async {
     // 1. Try Live Unified Backend Server First (Real-Time Cloud / Local)
-    try {
-      final res = await http
-          .get(Uri.parse('$_baseUrl/stores/$storeId/menu'), headers: _headers)
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$_baseUrl/stores/$storeId/menu'), headers: _headers)
+            .timeout(const Duration(seconds: 15));
 
-      if (res.statusCode == 200) {
-        final decoded = jsonDecode(res.body);
-        final products = decoded['data']?['products'] ?? decoded['products'] ?? decoded['all_products'] ?? [];
-        return ApiResult.success({
-          'data': {
-            'store_id': storeId,
-            'products': List<Map<String, dynamic>>.from(products),
+        if (res.statusCode == 200) {
+          final decoded = jsonDecode(res.body);
+          final products = decoded['data']?['products'] ?? decoded['products'] ?? decoded['all_products'] ?? [];
+          if (products is List && products.isNotEmpty) {
+            return ApiResult.success({
+              'data': {
+                'store_id': storeId,
+                'products': List<Map<String, dynamic>>.from(products),
+              }
+            });
           }
-        });
+        }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {
-      // Fallback to cloud
     }
-
-    // 2. Try Supabase Cloud products table (Live Menu created via Admin App)
-    try {
-      final res = await http.get(
-        Uri.parse('$_supabaseUrl/products?store_id=eq.$storeId&select=*'),
-        headers: {
-          'apikey': _supabaseApiKey,
-          'Authorization': 'Bearer $_supabaseApiKey',
-          'Content-Type': 'application/json',
-        },
-      ).timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        return ApiResult.success({
-          'data': {
-            'store_id': storeId,
-            'products': List<Map<String, dynamic>>.from(list),
-          }
-        });
-      }
-    } catch (_) {}
 
     return ApiResult.success({
       'data': {
