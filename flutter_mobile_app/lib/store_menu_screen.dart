@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'design_system.dart';
 import 'cart_checkout_screen.dart';
@@ -20,16 +21,24 @@ class StoreMenuScreen extends StatefulWidget {
 class _StoreMenuScreenState extends State<StoreMenuScreen> {
   bool _isLoading = true;
   List<Map<String, dynamic>> _products = [];
+  late bool _isOpen;
+  Timer? _statusTimer;
 
   @override
   void initState() {
     super.initState();
+    final rawOpen = widget.store['is_open'];
+    _isOpen = rawOpen != false && rawOpen != 'false' && rawOpen != 0;
     CartService.cartCountNotifier.addListener(_onCartUpdated);
     _loadMenu();
+    _statusTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _refreshStoreStatus();
+    });
   }
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
     CartService.cartCountNotifier.removeListener(_onCartUpdated);
     super.dispose();
   }
@@ -38,8 +47,32 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _refreshStoreStatus() async {
+    final storeId = widget.store['id']?.toString() ?? 'store_nalut_01';
+    try {
+      final res = await ApiService.getStores();
+      if (mounted && res.isSuccess && res.data != null && res.data['data'] != null) {
+        final List<dynamic> list = res.data['data'];
+        final current = list.firstWhere(
+          (s) => s['id']?.toString() == storeId,
+          orElse: () => null,
+        );
+        if (current != null) {
+          final rawOpen = current['is_open'];
+          final isOpenNow = rawOpen != false && rawOpen != 'false' && rawOpen != 0;
+          if (isOpenNow != _isOpen) {
+            setState(() {
+              _isOpen = isOpenNow;
+            });
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
   Future<void> _loadMenu() async {
     setState(() => _isLoading = true);
+    _refreshStoreStatus();
     final storeId = widget.store['id']?.toString() ?? 'store_nalut_01';
     final res = await ApiService.getStoreMenu(storeId);
 
@@ -195,6 +228,29 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
   }
 
   void _openProductCustomization(Map<String, dynamic> product) {
+    if (!_isOpen) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 3),
+          content: const Row(
+            children: [
+              Icon(Icons.lock_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'عذراً، هذا المتجر مغلق مؤقتاً ولا يستقبل طلبات جديدة حالياً.',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
     final title = product['name_ar'] ?? product['name'] ?? 'صنف';
     final price = (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 10.0;
     final cat = product['category'] ?? 'سندوتشات ووجبات';
@@ -319,14 +375,25 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                             decoration: BoxDecoration(
-                              color: AppColors.success,
+                              color: _isOpen ? AppColors.success : Colors.red.shade700,
                               borderRadius: AppRadius.radiusSm,
                             ),
-                            child: const Text(
-                              '🟢 مفتوح ويستقبل الطلبات في نالوت',
-                              style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _isOpen ? Icons.check_circle_rounded : Icons.lock_clock_rounded,
+                                  color: Colors.white,
+                                  size: 13,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  _isOpen ? 'مفتوح ويستقبل الطلبات في نالوت 🟢' : 'مغلق مؤقتاً ولا يستقبل طلبات 🔴',
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 6),
@@ -376,6 +443,49 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                 ),
               ),
             ),
+
+            // Prominent Store Closed Warning Banner
+            if (!_isOpen)
+              SliverToBoxAdapter(
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withValues(alpha: 0.1),
+                    borderRadius: AppRadius.radiusLg,
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.4), width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.storefront_rounded, color: Colors.red, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'المتجر مغلق حالياً 🔴',
+                              style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'يمكنك تصفح قائمة الوجبات والأسعار، ولكن تم إيقاف استقبال الطلبات مؤقتاً بطلب من إدارة المتجر.',
+                              style: TextStyle(color: Colors.redAccent, fontSize: 11),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
 
             // Section Header
             SliverToBoxAdapter(
@@ -480,29 +590,45 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                       ),
                       const Spacer(),
                       ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => CartCheckoutScreen(
-                                initialCartItems: CartService.items,
-                                storeId: widget.store['id']?.toString() ?? 'store_nalut_01',
-                                storeName: storeName,
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _isOpen
+                            ? () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CartCheckoutScreen(
+                                      initialCartItems: CartService.items,
+                                      storeId: widget.store['id']?.toString() ?? 'store_nalut_01',
+                                      storeName: storeName,
+                                    ),
+                                  ),
+                                );
+                              }
+                            : () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    behavior: SnackBarBehavior.floating,
+                                    backgroundColor: Colors.red.shade700,
+                                    content: const Text(
+                                      'عذراً، هذا المتجر مغلق مؤقتاً ولا يمكن إتمام الطلب الآن.',
+                                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                );
+                              },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.waselPrimary,
+                          backgroundColor: _isOpen ? AppColors.waselPrimary : Colors.grey.shade600,
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Text('متابعة الشراء', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                            SizedBox(width: 6),
-                            Icon(Icons.arrow_forward_ios_rounded, size: 14),
+                            Text(
+                              _isOpen ? 'متابعة الشراء' : 'المتجر مغلق',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(width: 6),
+                            Icon(_isOpen ? Icons.arrow_forward_ios_rounded : Icons.lock_outline_rounded, size: 14),
                           ],
                         ),
                       ),
@@ -550,84 +676,118 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     return WaselBouncyPressable(
       behavior: HitTestBehavior.opaque,
       pressedScale: 0.98,
-      onTap: inStock ? () => _addToCart(product) : null,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : Colors.white,
-          borderRadius: AppRadius.radiusLg,
-          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-          boxShadow: AppShadows.subtle,
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (isPopular)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 4),
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: AppColors.waselPrimary.withValues(alpha: 0.15),
-                      borderRadius: AppRadius.radiusSm,
+      onTap: (_isOpen && inStock) ? () => _addToCart(product) : null,
+      child: Opacity(
+        opacity: _isOpen ? 1.0 : 0.82,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : Colors.white,
+            borderRadius: AppRadius.radiusLg,
+            border: Border.all(
+              color: !_isOpen
+                  ? Colors.red.withValues(alpha: 0.2)
+                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            ),
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (isPopular)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.waselPrimary.withValues(alpha: 0.15),
+                        borderRadius: AppRadius.radiusSm,
+                      ),
+                      child: const Text(
+                        '🔥 الأكثر طلباً في نالوت',
+                        style: TextStyle(color: AppColors.waselPrimary, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
                     ),
-                    child: const Text(
-                      '🔥 الأكثر طلباً في نالوت',
-                      style: TextStyle(color: AppColors.waselPrimary, fontSize: 10, fontWeight: FontWeight.bold),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                      color: !_isOpen ? Colors.grey.shade600 : null,
                     ),
                   ),
-                Text(
-                  title,
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                ),
-                if (desc.isNotEmpty) ...[
-                  const SizedBox(height: 4),
+                  if (desc.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      desc,
+                      style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                  const SizedBox(height: 8),
                   Text(
-                    desc,
-                    style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                    '${price.toStringAsFixed(2)} د.ل',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800,
+                      color: _isOpen ? AppColors.waselPrimary : Colors.grey,
+                    ),
                   ),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  '${price.toStringAsFixed(2)} د.ل',
-                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.waselPrimary),
+              ),
+            ),
+            const SizedBox(width: 12),
+            if (!_isOpen)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.18),
+                  borderRadius: AppRadius.radiusMd,
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (inStock)
-            ElevatedButton.icon(
-              onPressed: () => _addToCart(product),
-              icon: const Icon(Icons.add_rounded, size: 16),
-              label: const Text('إضافة'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.waselPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-                elevation: 0,
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.lock_outline_rounded, size: 14, color: Colors.grey),
+                    SizedBox(width: 4),
+                    Text(
+                      'مغلق',
+                      style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              )
+            else if (inStock)
+              ElevatedButton.icon(
+                onPressed: () => _addToCart(product),
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('إضافة'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.waselPrimary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                  elevation: 0,
+                ),
+              )
+            else
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  borderRadius: AppRadius.radiusMd,
+                ),
+                child: const Text(
+                  'نفد المخزون',
+                  style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
               ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                borderRadius: AppRadius.radiusMd,
-              ),
-              child: const Text(
-                'نفد المخزون',
-                style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-            ),
-        ],
+          ],
+        ),
       ),
     ),
   );

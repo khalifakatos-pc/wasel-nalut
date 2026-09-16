@@ -236,10 +236,15 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     try {
       final liveOrders = await MerchantSupabaseService.fetchOrders(_currentStore.id);
       final liveCatalog = await MerchantSupabaseService.fetchCatalog(_currentStore.id);
+      final liveStatus = await MerchantSupabaseService.fetchStoreStatus(_currentStore.id);
       if (mounted) {
         setState(() {
           _orders = liveOrders;
           _catalog = liveCatalog;
+          if (liveStatus != null) {
+            _storeStatus = liveStatus ? StoreStatus.open : StoreStatus.closed;
+            _currentStore = _currentStore.copyWith(isOpen: liveStatus);
+          }
         });
       }
     } catch (_) {}
@@ -334,9 +339,15 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
       _orders.where((o) => o.status == KdsTicketStatus.newOrder).length;
 
   void _toggleStoreStatus(StoreStatus newStatus) {
+    final bool isOpen = newStatus != StoreStatus.closed;
+
     setState(() {
       _storeStatus = newStatus;
+      _currentStore = _currentStore.copyWith(isOpen: isOpen);
     });
+
+    // Sync live with Unified Backend (emits store:status_changed) and Supabase
+    MerchantSupabaseService.toggleStoreStatus(_currentStore.id, isOpen);
 
     final msg = newStatus == StoreStatus.open
         ? '🟢 المتجر مفتوح ويستقبل الطلبات في نالوت'

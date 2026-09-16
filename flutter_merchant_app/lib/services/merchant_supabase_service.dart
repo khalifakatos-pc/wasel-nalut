@@ -588,4 +588,58 @@ class MerchantSupabaseService {
       return false;
     }
   }
+
+  /// Toggle store open / closed status (مفتوح / مغلق) across Unified Backend and Supabase
+  static Future<bool> toggleStoreStatus(String storeId, bool isOpen) async {
+    bool backendSuccess = false;
+
+    // 1. Try Live Unified Backend First (emits store:status_changed via WebSocket)
+    try {
+      final res = await http
+          .patch(
+            Uri.parse('$backendBaseUrl/stores/$storeId'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({'is_open': isOpen}),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        backendSuccess = true;
+      }
+    } catch (_) {}
+
+    // 2. Fallback / Sync with Supabase Cloud
+    try {
+      await http
+          .patch(
+            Uri.parse('$supabaseUrl/stores?id=eq.$storeId'),
+            headers: _headers,
+            body: jsonEncode({'is_open': isOpen}),
+          )
+          .timeout(const Duration(seconds: 4));
+    } catch (_) {}
+
+    if (activeDynamicStore != null && activeDynamicStore!.id == storeId) {
+      activeDynamicStore = activeDynamicStore!.copyWith(isOpen: isOpen);
+    }
+
+    return backendSuccess;
+  }
+
+  /// Fetch live store status (is_open) from backend
+  static Future<bool?> fetchStoreStatus(String storeId) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$backendBaseUrl/stores/$storeId'))
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map && data['data'] != null) {
+          final rawOpen = data['data']['is_open'];
+          return rawOpen != false && rawOpen != 'false' && rawOpen != 0;
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
 }

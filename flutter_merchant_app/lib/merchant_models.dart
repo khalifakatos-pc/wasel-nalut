@@ -32,6 +32,7 @@ class PartnerStore {
   final String phone;
   final PartnerAppMode mode;
   final IconData icon;
+  final bool isOpen;
 
   const PartnerStore({
     required this.id,
@@ -42,7 +43,32 @@ class PartnerStore {
     required this.phone,
     required this.mode,
     required this.icon,
+    this.isOpen = true,
   });
+
+  PartnerStore copyWith({
+    String? id,
+    String? name,
+    String? nameEn,
+    String? type,
+    String? district,
+    String? phone,
+    PartnerAppMode? mode,
+    IconData? icon,
+    bool? isOpen,
+  }) {
+    return PartnerStore(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      nameEn: nameEn ?? this.nameEn,
+      type: type ?? this.type,
+      district: district ?? this.district,
+      phone: phone ?? this.phone,
+      mode: mode ?? this.mode,
+      icon: icon ?? this.icon,
+      isOpen: isOpen ?? this.isOpen,
+    );
+  }
 
   factory PartnerStore.fromMap(Map<String, dynamic> map) {
     final type = map['category']?.toString().toLowerCase() ??
@@ -65,6 +91,9 @@ class PartnerStore {
     } else {
       icon = isRetail ? Icons.shopping_cart_rounded : Icons.storefront_rounded;
     }
+    final rawOpen = map['is_open'];
+    final isOpen = rawOpen != false && rawOpen != 'false' && rawOpen != 0;
+
     return PartnerStore(
       id: map['id']?.toString() ?? 'store_dynamic',
       name: map['name_ar']?.toString() ?? map['name']?.toString() ?? 'متجر نالوت',
@@ -74,6 +103,7 @@ class PartnerStore {
       phone: map['phone']?.toString() ?? '',
       mode: isRetail ? PartnerAppMode.retail : PartnerAppMode.kitchen,
       icon: icon,
+      isOpen: isOpen,
     );
   }
 
@@ -86,6 +116,7 @@ class PartnerStore {
     phone: '',
     mode: PartnerAppMode.kitchen,
     icon: Icons.storefront_rounded,
+    isOpen: true,
   );
 
   static const List<PartnerStore> nalutStores = [];

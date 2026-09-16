@@ -37,6 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoadingStores = false;
   int _userLoyaltyPoints = 140;
   Timer? _orderWatchTimer;
+  Timer? _storeWatchTimer;
   bool _isCheckingOrder = false;
   String? _lastNotifiedStatus;
 
@@ -51,6 +52,10 @@ class _HomeScreenState extends State<HomeScreen> {
     _orderWatchTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       _checkActiveOrder();
     });
+    // Auto-refresh stores status (e.g. open/closed) in real-time every 10 seconds
+    _storeWatchTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _fetchLiveStores(silent: true);
+    });
   }
 
   @override
@@ -59,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _searchController.dispose();
     _bannerController.dispose();
     _orderWatchTimer?.cancel();
+    _storeWatchTimer?.cancel();
     super.dispose();
   }
 
@@ -79,21 +85,21 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _fetchLiveStores() async {
-    if (mounted) setState(() => _isLoadingStores = true);
+  Future<void> _fetchLiveStores({bool silent = false}) async {
+    if (!silent && mounted) setState(() => _isLoadingStores = true);
     try {
       final res = await ApiService.getStores();
       if (mounted && res.isSuccess && res.data != null && res.data['data'] != null) {
         final List<dynamic> list = res.data['data'];
         setState(() {
           _liveStores = List<Map<String, dynamic>>.from(list);
-          _isLoadingStores = false;
+          if (!silent) _isLoadingStores = false;
         });
       } else {
-        if (mounted) setState(() => _isLoadingStores = false);
+        if (!silent && mounted) setState(() => _isLoadingStores = false);
       }
     } catch (_) {
-      if (mounted) setState(() => _isLoadingStores = false);
+      if (!silent && mounted) setState(() => _isLoadingStores = false);
     }
   }
 
@@ -272,7 +278,11 @@ class _HomeScreenState extends State<HomeScreen> {
               child: RefreshIndicator(
                 color: _activeBrandColor,
                 onRefresh: () async {
-                  await Future.delayed(const Duration(milliseconds: 500));
+                  await Future.wait([
+                    _fetchLiveStores(),
+                    _checkActiveOrder(),
+                    _loadLoyaltyAndReferral(),
+                  ]);
                 },
                 child: ListView(
                   physics: const BouncingScrollPhysics(),
@@ -1425,6 +1435,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final feeStr = store['fee']?.toString() ?? '${store['base_delivery_fee_lyd'] ?? 5.00} د.ل';
     final isGrocery = store['type'] == 'grocery';
 
+    final rawOpen = store['is_open'];
+    final bool isOpen = rawOpen != false && rawOpen != 'false' && rawOpen != 0;
+
     return WaselBouncyPressable(
       pressedScale: AppMotion.pressScaleCard,
       onTap: () {
@@ -1435,103 +1448,170 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : Colors.white,
-          borderRadius: AppRadius.radiusLg,
-          border: Border.all(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-          ),
-          boxShadow: AppShadows.subtle,
-        ),
-        child: Row(
-          children: [
-            // Store thumbnail
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                gradient: isGrocery ? AppColors.jetGradient : AppColors.waselGradient,
-                borderRadius: AppRadius.radiusMd,
-              ),
-              child: Center(
-                child: Icon(
-                  isGrocery ? Icons.shopping_basket_rounded : Icons.restaurant_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
-              ),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: isOpen ? 1.0 : 0.75,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.darkCard : Colors.white,
+            borderRadius: AppRadius.radiusLg,
+            border: Border.all(
+              color: !isOpen
+                  ? Colors.red.withValues(alpha: 0.4)
+                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              width: !isOpen ? 1.5 : 1.0,
             ),
-            const SizedBox(width: 14),
-
-            // Details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            boxShadow: AppShadows.subtle,
+          ),
+          child: Row(
+            children: [
+              // Store thumbnail with status overlay if closed
+              Stack(
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          name,
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.gold.withValues(alpha: 0.15),
-                          borderRadius: AppRadius.radiusSm,
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
-                            const SizedBox(width: 2),
-                            Text(
-                              rating,
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    cuisine,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      gradient: !isOpen
+                          ? LinearGradient(colors: [Colors.grey.shade600, Colors.grey.shade800])
+                          : (isGrocery ? AppColors.jetGradient : AppColors.waselGradient),
+                      borderRadius: AppRadius.radiusMd,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.access_time_rounded, size: 13, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        timeStr,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
+                    child: Center(
+                      child: Icon(
+                        isGrocery ? Icons.shopping_basket_rounded : Icons.restaurant_rounded,
+                        color: Colors.white,
+                        size: 32,
                       ),
-                      const SizedBox(width: 12),
-                      const Icon(Icons.delivery_dining_rounded, size: 13, color: Colors.grey),
-                      const SizedBox(width: 4),
-                      Text(
-                        feeStr,
-                        style: const TextStyle(fontSize: 11, color: Colors.grey),
-                      ),
-                    ],
+                    ),
                   ),
+                  if (!isOpen)
+                    Container(
+                      width: 70,
+                      height: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: AppRadius.radiusMd,
+                      ),
+                      child: const Center(
+                        child: Icon(
+                          Icons.lock_rounded,
+                          color: Colors.white,
+                          size: 26,
+                        ),
+                      ),
+                    ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(width: 14),
+
+              // Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: !isOpen ? (isDark ? Colors.white60 : Colors.black54) : null,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (!isOpen)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            margin: const EdgeInsets.only(right: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.15),
+                              borderRadius: AppRadius.radiusSm,
+                              border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.do_not_disturb_on_rounded, size: 11, color: Colors.red),
+                                SizedBox(width: 3),
+                                Text(
+                                  'مغلق مؤقتاً',
+                                  style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: Colors.red),
+                                ),
+                              ],
+                            ),
+                          )
+                        else
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.gold.withValues(alpha: 0.15),
+                              borderRadius: AppRadius.radiusSm,
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
+                                const SizedBox(width: 2),
+                                Text(
+                                  rating,
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      cuisine,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    if (!isOpen)
+                      const Row(
+                        children: [
+                          Icon(Icons.access_time_rounded, size: 13, color: Colors.red),
+                          SizedBox(width: 4),
+                          Text(
+                            'المتجر مغلق حالياً ولا يستقبل طلبات',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.red),
+                          ),
+                        ],
+                      )
+                    else
+                      Row(
+                        children: [
+                          const Icon(Icons.access_time_rounded, size: 13, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            timeStr,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.delivery_dining_rounded, size: 13, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            feeStr,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

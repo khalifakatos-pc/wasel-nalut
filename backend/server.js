@@ -1154,10 +1154,14 @@ app.patch('/api/v1/stores/:id', (req, res) => {
       return res.status(404).json({ success: false, error: 'Store not found' });
     }
     Object.assign(store, req.body);
+    if (req.body.is_open !== undefined) {
+      store.is_open = req.body.is_open === true || req.body.is_open === 'true' || req.body.is_open === 1;
+    }
     saveSeedData();
     saveStoreToPg(store);
     if (req.io) {
       req.io.emit('store:updated', store);
+      req.io.emit('store:status_changed', { store_id: store.id, is_open: store.is_open });
     }
     res.json({ success: true, data: store });
   } catch (err) {
