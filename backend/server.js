@@ -466,7 +466,20 @@ async function initPgTables(forceSeed = false) {
         latitude: parseFloat(r.latitude) || 31.8686,
         longitude: parseFloat(r.longitude) || 10.9818
       }));
-      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers.`);
+
+      const ordersRes = await pgPool.query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 300');
+      if (ordersRes.rows && ordersRes.rows.length > 0) {
+        db.orders = ordersRes.rows.map(r => ({
+          ...r,
+          subtotal_lyd: parseFloat(r.subtotal_lyd) || 0,
+          delivery_fee_lyd: parseFloat(r.delivery_fee_lyd) || 0,
+          total_amount_lyd: parseFloat(r.total_amount_lyd) || 0,
+          delivery_latitude: parseFloat(r.delivery_lat) || 31.8686,
+          delivery_longitude: parseFloat(r.delivery_lng) || 10.9818,
+          items: Array.isArray(r.items) ? r.items : (typeof r.items === 'string' ? JSON.parse(r.items || '[]') : [])
+        }));
+      }
+      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders.`);
     }
   } catch (err) {
     console.error('[PostgreSQL] Table initialization/hydration error:', err.message);
@@ -1778,7 +1791,11 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     // Auto-dispatch nearest available driver
     const storeCity = (store.city || 'nalut').toLowerCase();
     const availableDrivers = db.drivers.filter(d =>
-      (d.city && d.city.toLowerCase() === storeCity) || d.status === 'available' || d.id === 'drv_01'
+      d.status === 'available' ||
+      d.status === 'online_idle' ||
+      d.id === 'driver_nalut_01' ||
+      d.id === 'driver_nalut_02' ||
+      (d.city && d.city.toLowerCase() === storeCity)
     );
 
     let assignedDriver = null;
@@ -1790,22 +1807,23 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
         return distA - distB;
       });
       assignedDriver = availableDrivers[0];
-      assignedDriver.status = 'busy_delivery';
     } else if (db.drivers.length > 0) {
       assignedDriver = db.drivers[0];
-      assignedDriver.status = 'busy_delivery';
     }
 
     const orderId = `ord_${uuidv4().substring(0, 8)}`;
     const orderNumber = `ORD-2026-LY-${Math.floor(1000 + Math.random() * 9000)}`;
     const otpCode = (1000 + Math.floor(Math.random() * 9000)).toString();
 
+    const customerName = (req.body.customer_name && String(req.body.customer_name).trim().length > 0) ? String(req.body.customer_name).trim() : (customer.full_name || 'زبون واصل نالوت');
+    const customerPhone = (req.body.customer_phone && String(req.body.customer_phone).trim().length > 0) ? String(req.body.customer_phone).trim() : (customer.phone || '0910000000');
+
     const newOrder = {
       id: orderId,
       order_number: orderNumber,
       customer_id: customer.id,
-      customer_name: customer.full_name,
-      customer_phone: customer.phone,
+      customer_name: customerName,
+      customer_phone: customerPhone,
       store_id: store.id,
       store_name: store.name,
       store_latitude: store.latitude,
@@ -1832,6 +1850,7 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     };
 
     db.orders.push(newOrder);
+    saveOrderToPg(newOrder);
 
     // Deduct stock for ordered products in real-time
     for (const item of items) {
@@ -1999,10 +2018,27 @@ app.get('/api/v1/orders/:id', (req, res) => {
 
 app.get('/api/v1/orders', (req, res) => {
   try {
-    const { customer_id, driver_id, store_id, status } = req.query;
+    const { id, order_number, customer_id, customer_phone, phone, driver_id, store_id, status } = req.query;
     let orders = [...db.orders];
 
-    if (customer_id) orders = orders.filter(o => o.customer_id === customer_id);
+    if (id) {
+      orders = orders.filter(o => o.id === id || o.order_number === id);
+    }
+    if (order_number) {
+      orders = orders.filter(o => o.order_number === order_number || o.id === order_number);
+    }
+    if (customer_id) {
+      orders = orders.filter(o => o.customer_id === customer_id);
+    }
+    const targetPhone = customer_phone || phone;
+    if (targetPhone) {
+      const cleanTarget = String(targetPhone).replace(/\D/g, '');
+      orders = orders.filter(o => {
+        if (!o.customer_phone) return false;
+        const cleanCust = String(o.customer_phone).replace(/\D/g, '');
+        return cleanCust.includes(cleanTarget) || cleanTarget.includes(cleanCust);
+      });
+    }
     if (driver_id) orders = orders.filter(o => o.driver_id === driver_id);
     if (store_id) orders = orders.filter(o => o.store_id === store_id);
     if (status) {
@@ -2045,8 +2081,8 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       order.driver_id = driver_id;
       const driver = db.drivers.find(d => d.id === driver_id);
       if (driver) {
-        driver.status = 'busy_delivery';
-        driver.active_order_id = order.id;
+        driver.status = status === 'delivered' || status === 'cancelled' ? 'online_idle' : 'busy_delivery';
+        driver.active_order_id = status === 'delivered' || status === 'cancelled' ? null : order.id;
       }
     }
 
@@ -2090,7 +2126,7 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       if (order.driver_id) {
         const driver = db.drivers.find(d => d.id === order.driver_id);
         if (driver) {
-          driver.status = 'available';
+          driver.status = 'online_idle';
           driver.active_order_id = null;
           driver.total_trips = (driver.total_trips || 0) + 1;
 
@@ -2134,11 +2170,14 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       if (order.driver_id) {
         const driver = db.drivers.find(d => d.id === order.driver_id);
         if (driver) {
-          driver.status = 'available';
+          driver.status = 'online_idle';
           driver.active_order_id = null;
         }
       }
     }
+
+    // Persist in PostgreSQL
+    saveOrderToPg(order);
 
     // Socket.io Broadcasts
     const statusPayload = {
@@ -2146,10 +2185,13 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       order_number: order.order_number,
       previous_status: previousStatus,
       status: order.status,
+      driver_id: order.driver_id,
       notes,
       updated_at: order.updated_at
     };
 
+    req.io.emit('order:status_changed', statusPayload);
+    req.io.emit('order:updated', order);
     req.io.to(`order:${order.id}`).emit('order:status_changed', statusPayload);
     req.io.to(`user:${order.customer_id}`).emit('order:status_changed', statusPayload);
     req.io.to(`store:${order.store_id}`).emit('order:status_changed', statusPayload);

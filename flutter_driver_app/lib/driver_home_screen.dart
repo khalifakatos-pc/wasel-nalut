@@ -1,7 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'driver_theme.dart';
 import 'driver_models.dart';
 import 'order_radar_dialog.dart';
@@ -144,13 +142,20 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         final driverId = ord['driver_id']?.toString();
 
         if ((status == 'placed' || status == 'ready_for_pickup' || status == 'preparing') &&
-            (driverId == null || driverId.isEmpty || driverId == DriverSupabaseService.activeDriverId) &&
+            (driverId == null ||
+             driverId.isEmpty ||
+             driverId == DriverSupabaseService.activeDriverId ||
+             driverId == 'driver_nalut_01' ||
+             driverId == 'driver_nalut_02') &&
             !_dismissedOrderIds.contains(orderId)) {
           if (!_notifiedOrderIds.contains(orderId)) {
             _notifiedOrderIds.add(orderId);
+            final double ordAmount = (ord['total_amount_lyd'] is num)
+                ? (ord['total_amount_lyd'] as num).toDouble()
+                : ((ord['total_amount'] is num) ? (ord['total_amount'] as num).toDouble() : 0.0);
             DriverNotificationService().showOrderAlert(
               title: '🚨 مشوار جديد متاح - كابتن واصل',
-              body: 'طلب ${ord['order_number'] ?? ''} بقيمة ${(ord['total_amount'] ?? 0)} د.ل من ${ord['store_name'] ?? 'مطاعم نالوت'} متاح للتوصيل الآن.',
+              body: 'طلب ${ord['order_number'] ?? ''} بقيمة ${ordAmount.toStringAsFixed(2)} د.ل من ${ord['store_name'] ?? 'مطاعم نالوت'} متاح للتوصيل الآن.',
               payload: orderId,
             );
           }
@@ -169,11 +174,15 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     final orderNumber = ord['order_number']?.toString() ?? '#W-100';
     final storeName = ord['store_name']?.toString() ?? 'قصر نالوت للمأكولات';
     final customerAddress = ord['delivery_address']?.toString() ?? 'نالوت - وسط المدينة';
-    final double totalAmount = (ord['total_amount'] is num) ? (ord['total_amount'] as num).toDouble() : 35.0;
+    final double totalAmount = (ord['total_amount_lyd'] is num)
+        ? (ord['total_amount_lyd'] as num).toDouble()
+        : ((ord['total_amount'] is num) ? (ord['total_amount'] as num).toDouble() : 35.0);
     final String paymentMethod = ord['payment_method']?.toString() ?? 'cash';
-    final String otp = (ord['delivery_pin'] != null && ord['delivery_pin'].toString().isNotEmpty)
-        ? ord['delivery_pin'].toString()
-        : '4821';
+    final String otp = (ord['otp_code'] != null && ord['otp_code'].toString().isNotEmpty)
+        ? ord['otp_code'].toString()
+        : ((ord['delivery_pin'] != null && ord['delivery_pin'].toString().isNotEmpty)
+            ? ord['delivery_pin'].toString()
+            : '1234');
     final bool isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
 
     final radarOrder = RadarOrder(
@@ -217,18 +226,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
 
         try {
           await DriverSupabaseService.updateStatus('busy');
-          await http.patch(
-            Uri.parse('${DriverSupabaseService.supabaseUrl}/orders?id=eq.$orderId'),
-            headers: {
-              'apikey': DriverSupabaseService.apiKey,
-              'Authorization': 'Bearer ${DriverSupabaseService.apiKey}',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'driver_id': DriverSupabaseService.activeDriverId,
-              'status': 'out_for_delivery',
-            }),
-          ).timeout(const Duration(seconds: 4));
+          await DriverSupabaseService.updateOrderStatus(
+            orderId: orderId,
+            status: 'out_for_delivery',
+            driverId: DriverSupabaseService.activeDriverId,
+          );
         } catch (_) {}
 
         final active = ActiveDeliveryOrder(

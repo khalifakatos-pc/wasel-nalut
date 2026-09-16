@@ -20,8 +20,48 @@ class DriverSupabaseService {
         'Prefer': 'return=representation',
       };
 
-  // Active Captain ID in Nalut (defaults to drv_01 Tariq)
-  static String activeDriverId = 'drv_01';
+  // Active Captain ID in Nalut (defaults to driver_nalut_01 Khalid)
+  static String activeDriverId = 'driver_nalut_01';
+
+  /// Update order status across Unified Backend and Supabase
+  static Future<bool> updateOrderStatus({
+    required String orderId,
+    required String status,
+    String? driverId,
+  }) async {
+    final effectiveDriverId = driverId ?? activeDriverId;
+    bool success = false;
+
+    // 1. Try Live Unified Backend First
+    try {
+      final res = await http.post(
+        Uri.parse('$backendBaseUrl/orders/$orderId/status'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'status': status,
+          'driver_id': effectiveDriverId,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        success = true;
+      }
+    } catch (_) {}
+
+    // 2. Also sync with Supabase Cloud
+    try {
+      await http.patch(
+        Uri.parse('$supabaseUrl/orders?id=eq.$orderId'),
+        headers: _headers,
+        body: jsonEncode({
+          'status': status,
+          'driver_id': effectiveDriverId,
+        }),
+      ).timeout(const Duration(seconds: 3));
+    } catch (_) {}
+
+    return success;
+  }
 
   /// Fetch driver data from Unified Backend or Supabase Cloud
   static Future<Map<String, dynamic>> fetchDriverProfile({String? driverId}) async {

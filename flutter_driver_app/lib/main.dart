@@ -97,17 +97,19 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
     try {
       final orders = await DriverSupabaseService.fetchAvailableOrders();
       final ongoing = orders.cast<Map<String, dynamic>>().firstWhere(
-        (o) => o['driver_id'] == DriverSupabaseService.activeDriverId &&
+        (o) => (o['driver_id'] == DriverSupabaseService.activeDriverId ||
+                o['driver_id'] == 'driver_nalut_01' ||
+                o['driver_id'] == 'driver_nalut_02') &&
                o['status'] == 'out_for_delivery',
         orElse: () => <String, dynamic>{},
       );
       if (ongoing.isNotEmpty && mounted) {
         final paymentMethod = ongoing['payment_method']?.toString() ?? 'cash';
         final isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
-        final dynamic rawAmt = ongoing['total_amount'];
+        final dynamic rawAmt = ongoing['total_amount_lyd'] ?? ongoing['total_amount'];
         final double amount = (rawAmt is num) ? rawAmt.toDouble() : 35.0;
-        final rawPin = ongoing['delivery_pin']?.toString();
-        final otp = (rawPin != null && rawPin.isNotEmpty) ? rawPin : '4821';
+        final rawPin = (ongoing['otp_code'] ?? ongoing['delivery_pin'])?.toString();
+        final otp = (rawPin != null && rawPin.isNotEmpty) ? rawPin : '1234';
         setState(() {
           _currentActiveDelivery = ActiveDeliveryOrder(
             orderId: ongoing['id']?.toString() ?? '',

@@ -51,99 +51,121 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
 
   Future<void> _fetchLiveOrders() async {
     setState(() => _isLoading = true);
+    final phone = ApiService.userPhone.trim();
+    final activeId = ApiService.activeOrderId;
+
+    List<dynamic> rawOrders = [];
+
+    // 1. Try Live Unified Backend Server First (Instant sync with all Wasel apps)
     try {
+      String query = '';
+      if (phone.isNotEmpty) {
+        query = 'customer_phone=${Uri.encodeComponent(phone)}';
+      } else if (activeId != null && activeId.isNotEmpty) {
+        query = 'id=$activeId';
+      }
+
       final res = await http.get(
-        Uri.parse('${ApiService.supabaseUrl}/orders?select=*&order=created_at.desc'),
-        headers: {
-          'apikey': ApiService.supabaseApiKey,
-          'Authorization': 'Bearer ${ApiService.supabaseApiKey}',
-        },
+        Uri.parse('${ApiService.baseUrl}/orders${query.isNotEmpty ? '?$query' : ''}'),
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          final mapped = list.map<OrderHistoryModel>((o) {
-            final status = o['status'] ?? 'placed';
-            final isActive = status == 'placed' || status == 'preparing' || status == 'out_for_delivery';
-            
-            String statusAr = 'قيد التجهيز';
-            Color statusColor = AppColors.warning;
-            if (status == 'placed') {
-              statusAr = 'تم استلام الطلب بانتظار المطعم';
-              statusColor = AppColors.waselPrimary;
-            } else if (status == 'preparing') {
-              statusAr = 'المطعم يجهز طلبك الآن';
-              statusColor = AppColors.warning;
-            } else if (status == 'out_for_delivery') {
-              statusAr = 'الكابتن في الطريق إليك';
-              statusColor = AppColors.waselPrimary;
-            } else if (status == 'delivered') {
-              statusAr = 'تم التسليم بنجاح';
-              statusColor = AppColors.success;
-            } else if (status == 'cancelled') {
-              statusAr = 'تم إلغاء الطلب';
-              statusColor = AppColors.error;
-            }
-
-            final createdAt = o['created_at'] != null ? o['created_at'].toString().split('T').first : 'اليوم';
-            final total = (o['total_amount_lyd'] is num) ? (o['total_amount_lyd'] as num).toDouble() : 30.0;
-
-            return OrderHistoryModel(
-              orderId: o['id'] ?? 'ord',
-              orderNumber: '#${o['order_number'] ?? 'WAS-0000'}',
-              storeName: o['store_id'] == 'store_nalut_02' ? 'بيتزا ومعجنات القلعة نالوت' : 'مطعم قصر نالوت للمشويات',
-              date: createdAt,
-              totalAmount: total,
-              itemsCount: 2,
-              status: status,
-              statusAr: statusAr,
-              statusColor: statusColor,
-              isActive: isActive,
-            );
-          }).toList();
-
-          if (mounted) {
-            setState(() {
-              _orders = mapped;
-              _isLoading = false;
-            });
-            return;
-          }
+        final dynamic data = jsonDecode(res.body);
+        if (data is Map && data['data'] is List) {
+          rawOrders = data['data'];
+        } else if (data is List) {
+          rawOrders = data;
         }
       }
     } catch (_) {}
 
-    // Baseline fallback if no cloud connection
+    // 2. Fallback to Supabase Cloud if unified backend is offline
+    if (rawOrders.isEmpty) {
+      try {
+        String filter = '';
+        if (phone.isNotEmpty) {
+          filter = 'customer_phone=eq.${Uri.encodeComponent(phone)}&';
+        } else if (activeId != null && activeId.isNotEmpty) {
+          filter = 'id=eq.$activeId&';
+        }
+
+        final res = await http.get(
+          Uri.parse('${ApiService.supabaseUrl}/orders?${filter}select=*&order=created_at.desc'),
+          headers: {
+            'apikey': ApiService.supabaseApiKey,
+            'Authorization': 'Bearer ${ApiService.supabaseApiKey}',
+          },
+        ).timeout(const Duration(seconds: 3));
+
+        if (res.statusCode == 200) {
+          final list = jsonDecode(res.body);
+          if (list is List) {
+            rawOrders = list;
+          }
+        }
+      } catch (_) {}
+    }
+
     if (mounted) {
-      setState(() {
-        _orders = [
-          OrderHistoryModel(
-            orderId: 'ord-live',
-            orderNumber: '#WSL-84920',
-            storeName: 'مطعم قصر نالوت للمشويات',
-            date: 'اليوم، 02:40 م',
-            totalAmount: 34.00,
-            itemsCount: 2,
-            status: 'out_for_delivery',
-            statusAr: 'الكابتن وسيم في الطريق إليك (8 دقائق)',
-            statusColor: AppColors.waselPrimary,
-            isActive: true,
-          ),
-          OrderHistoryModel(
-            orderId: 'ord-2',
-            orderNumber: '#WSL-83210',
-            storeName: 'أسواق نالوت المركزية - واصل فوري',
-            date: '21 أغسطس 2026',
-            totalAmount: 48.50,
-            itemsCount: 5,
-            status: 'delivered',
-            statusAr: 'تم التسليم بنجاح',
-            statusColor: AppColors.success,
-          ),
-        ];
-        _isLoading = false;
-      });
+      if (rawOrders.isNotEmpty) {
+        final mapped = rawOrders.map<OrderHistoryModel>((o) {
+          final status = o['status'] ?? 'placed';
+          final isActive = status == 'placed' || status == 'preparing' || status == 'ready_for_pickup' || status == 'out_for_delivery';
+
+          String statusAr = 'قيد التجهيز';
+          Color statusColor = AppColors.warning;
+          if (status == 'placed') {
+            statusAr = 'تم استلام الطلب بانتظار المطعم';
+            statusColor = AppColors.waselPrimary;
+          } else if (status == 'preparing') {
+            statusAr = 'المطعم يجهز طلبك الآن';
+            statusColor = AppColors.warning;
+          } else if (status == 'ready_for_pickup') {
+            statusAr = 'الطلب جاهز بانتظار استلام الكابتن';
+            statusColor = AppColors.warning;
+          } else if (status == 'out_for_delivery') {
+            statusAr = 'الكابتن في الطريق إليك';
+            statusColor = AppColors.waselPrimary;
+          } else if (status == 'delivered') {
+            statusAr = 'تم التسليم بنجاح';
+            statusColor = AppColors.success;
+          } else if (status == 'cancelled') {
+            statusAr = 'تم إلغاء الطلب';
+            statusColor = AppColors.error;
+          }
+
+          final createdAt = o['created_at'] != null ? o['created_at'].toString().split('T').first : 'اليوم';
+          final total = (o['total_amount_lyd'] is num)
+              ? (o['total_amount_lyd'] as num).toDouble()
+              : ((o['total_amount'] is num) ? (o['total_amount'] as num).toDouble() : 30.0);
+
+          final items = o['items'];
+          final itemsCount = (items is List && items.isNotEmpty) ? items.length : 1;
+
+          return OrderHistoryModel(
+            orderId: o['id'] ?? 'ord',
+            orderNumber: '#${o['order_number'] ?? 'WAS-0000'}',
+            storeName: o['store_name'] ?? (o['store_id'] == 'store_nalut_02' ? 'بيتزا ومعجنات القلعة نالوت' : 'مطعم قصر نالوت للمشويات'),
+            date: createdAt,
+            totalAmount: total,
+            itemsCount: itemsCount,
+            status: status,
+            statusAr: statusAr,
+            statusColor: statusColor,
+            isActive: isActive,
+          );
+        }).toList();
+
+        setState(() {
+          _orders = mapped;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _orders = [];
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -166,10 +188,65 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
           : RefreshIndicator(
               onRefresh: _fetchLiveOrders,
               color: AppColors.waselPrimary,
-              child: ListView(
-                padding: const EdgeInsets.all(AppSpacing.md),
-                children: [
-                  // 1. ACTIVE ORDER BANNER
+              child: orders.isEmpty
+                  ? Center(
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        padding: const EdgeInsets.all(AppSpacing.xl),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 90,
+                              height: 90,
+                              decoration: BoxDecoration(
+                                color: AppColors.waselPrimary.withValues(alpha: 0.1),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.receipt_long_rounded,
+                                size: 48,
+                                color: AppColors.waselPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            const Text(
+                              'لا توجد طلبات سابقة',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'عندما تطلب وجبة أو مشتريات من متاجر نالوت، ستظهر تفاصيل وحالة طلبك ومساره هنا مباشرة.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            ElevatedButton.icon(
+                              onPressed: _fetchLiveOrders,
+                              icon: const Icon(Icons.refresh_rounded, size: 18),
+                              label: const Text('تحديث السجل'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.waselPrimary,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      children: [
+                        // 1. ACTIVE ORDER BANNER
           ...orders.where((o) => o.isActive).map((order) {
             return Container(
               margin: const EdgeInsets.only(bottom: AppSpacing.md),
