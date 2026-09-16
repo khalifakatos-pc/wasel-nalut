@@ -67,7 +67,37 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
           }
         }
       }
+
+      // Also silently re-fetch store menu to sync out-of-stock items in real-time
+      final menuRes = await ApiService.getStoreMenu(storeId);
+      if (mounted && menuRes.isSuccess && menuRes.data != null && menuRes.data['data'] != null) {
+        final rawProducts = menuRes.data['data']['products'];
+        if (rawProducts is List && rawProducts.isNotEmpty) {
+          setState(() {
+            _products = List<Map<String, dynamic>>.from(rawProducts);
+          });
+        }
+      }
     } catch (_) {}
+  }
+
+  bool _isProductInStock(Map<String, dynamic> product) {
+    if (!_isOpen) return false;
+    final inStock = product['in_stock'];
+    final isAvailable = product['is_available'];
+    final stockQty = product['stock_quantity'] ?? product['quantity'];
+    if (inStock == false || inStock == 'false' || inStock == 0) return false;
+    if (isAvailable == false || isAvailable == 'false' || isAvailable == 0) return false;
+    if (stockQty != null && (stockQty is num) && stockQty <= 0) return false;
+    return true;
+  }
+
+  int? _getProductQuantity(Map<String, dynamic> product) {
+    final stockQty = product['stock_quantity'] ?? product['quantity'];
+    if (stockQty != null && stockQty is num) {
+      return stockQty.toInt();
+    }
+    return null;
   }
 
   Future<void> _loadMenu() async {
@@ -241,6 +271,29 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
               Expanded(
                 child: Text(
                   'عذراً، هذا المتجر مغلق مؤقتاً ولا يستقبل طلبات جديدة حالياً.',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!_isProductInStock(product)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.red.shade700,
+          duration: const Duration(seconds: 3),
+          content: const Row(
+            children: [
+              Icon(Icons.remove_shopping_cart_rounded, color: Colors.white),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'عذراً، هذا الصنف نفدت كميته ولم يعد متوفراً حالياً.',
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                 ),
               ),
@@ -670,7 +723,8 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     final title = product['name_ar'] ?? product['name'] ?? 'صنف';
     final desc = product['desc_ar'] ?? product['desc'] ?? '';
     final price = (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 0.0;
-    final inStock = product['in_stock'] != false;
+    final inStock = _isProductInStock(product);
+    final remainingQty = _getProductQuantity(product);
     final isPopular = product['is_popular'] == true;
 
     return WaselBouncyPressable(
@@ -678,7 +732,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
       pressedScale: 0.98,
       onTap: (_isOpen && inStock) ? () => _addToCart(product) : null,
       child: Opacity(
-        opacity: _isOpen ? 1.0 : 0.82,
+        opacity: (!_isOpen || !inStock) ? 0.65 : 1.0,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),
@@ -688,7 +742,9 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
             border: Border.all(
               color: !_isOpen
                   ? Colors.red.withValues(alpha: 0.2)
-                  : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  : (!inStock
+                      ? Colors.orange.withValues(alpha: 0.3)
+                      : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
             ),
             boxShadow: AppShadows.subtle,
           ),
@@ -712,12 +768,25 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                         style: TextStyle(color: AppColors.waselPrimary, fontSize: 10, fontWeight: FontWeight.bold),
                       ),
                     ),
+                  if (remainingQty != null && remainingQty > 0 && remainingQty <= 3)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 4),
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.2),
+                        borderRadius: AppRadius.radiusSm,
+                      ),
+                      child: Text(
+                        '⚠️ متبقي $remainingQty قطع فقط',
+                        style: TextStyle(color: Colors.amber.shade900, fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    ),
                   Text(
                     title,
                     style: TextStyle(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
-                      color: !_isOpen ? Colors.grey.shade600 : null,
+                      color: (!_isOpen || !inStock) ? Colors.grey.shade600 : null,
                     ),
                   ),
                   if (desc.isNotEmpty) ...[
@@ -735,7 +804,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w800,
-                      color: _isOpen ? AppColors.waselPrimary : Colors.grey,
+                      color: (_isOpen && inStock) ? AppColors.waselPrimary : Colors.grey,
                     ),
                   ),
                 ],
@@ -778,12 +847,18 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
+                  color: Colors.red.withValues(alpha: 0.12),
                   borderRadius: AppRadius.radiusMd,
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
-                child: const Text(
-                  'نفد المخزون',
-                  style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '🔴 نفد المخزون',
+                      style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
           ],

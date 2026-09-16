@@ -331,7 +331,7 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
       }
     });
 
-    MerchantSupabaseService.updateProductStock(updatedProduct.id, updatedProduct.inStock);
+    MerchantSupabaseService.updateProductStock(updatedProduct.id, updatedProduct.inStock, updatedProduct.stockQuantity);
     MerchantSupabaseService.updateProductPrice(updatedProduct.id, updatedProduct.priceLyd);
   }
 

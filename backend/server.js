@@ -1315,6 +1315,154 @@ app.get('/api/v1/products/:id', (req, res) => {
   });
 });
 
+app.post('/api/v1/products', (req, res) => {
+  try {
+    const p = req.body;
+    if (!p.name && !p.name_ar) {
+      return res.status(400).json({ success: false, error: 'Product name is required' });
+    }
+    const price = parseFloat(p.price || p.price_lyd || 0);
+    const stockQuantity = p.stock_quantity !== undefined && p.stock_quantity !== null
+      ? parseInt(p.stock_quantity, 10)
+      : 50;
+    const isAvailable = p.is_available !== undefined
+      ? (p.is_available === true || p.is_available === 'true' || p.is_available === 1)
+      : (stockQuantity > 0);
+
+    const newProd = {
+      id: p.id || `prod_${uuidv4().substring(0, 8)}`,
+      store_id: p.store_id || 'store_default',
+      name: p.name || p.name_ar,
+      name_ar: p.name_ar || p.name,
+      price: price,
+      price_lyd: price,
+      category: p.category || 'عام',
+      category_id: p.category_id || '',
+      description: p.description || p.desc_ar || '',
+      desc_ar: p.desc_ar || p.description || '',
+      image_url: p.image_url || '',
+      in_stock: isAvailable && stockQuantity > 0,
+      is_available: isAvailable && stockQuantity > 0,
+      stock_quantity: stockQuantity,
+      is_popular: p.is_popular === true || p.is_popular === 'true',
+      unit: p.unit || 'قطعة',
+      created_at: new Date().toISOString()
+    };
+
+    db.products.push(newProd);
+    saveSeedData();
+    saveProductToPg(newProd);
+
+    if (req.io) {
+      req.io.emit('product:created', newProd);
+      req.io.emit('store:menu_updated', { store_id: newProd.store_id });
+    }
+
+    res.status(201).json({ success: true, data: newProd });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/v1/products/:id', (req, res) => {
+  try {
+    const product = db.products.find(p => p.id === req.params.id);
+    if (!product) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+
+    const updates = req.body;
+
+    // Handle price updates
+    if (updates.price !== undefined || updates.price_lyd !== undefined) {
+      const newPrice = parseFloat(updates.price_lyd || updates.price);
+      product.price = newPrice;
+      product.price_lyd = newPrice;
+    }
+
+    // Handle stock quantity updates
+    if (updates.stock_quantity !== undefined && updates.stock_quantity !== null) {
+      const qty = parseInt(updates.stock_quantity, 10);
+      product.stock_quantity = isNaN(qty) ? 0 : Math.max(0, qty);
+      if (product.stock_quantity === 0) {
+        product.in_stock = false;
+        product.is_available = false;
+      } else {
+        product.in_stock = true;
+        product.is_available = true;
+      }
+    }
+
+    // Handle availability / in_stock toggle explicitly
+    if (updates.is_available !== undefined) {
+      const isAvail = updates.is_available === true || updates.is_available === 'true' || updates.is_available === 1;
+      product.is_available = isAvail;
+      product.in_stock = isAvail;
+      if (!isAvail) {
+        product.stock_quantity = 0;
+      } else if (product.stock_quantity === 0 || product.stock_quantity === undefined) {
+        product.stock_quantity = 10;
+      }
+    } else if (updates.in_stock !== undefined) {
+      const inStk = updates.in_stock === true || updates.in_stock === 'true' || updates.in_stock === 1;
+      product.in_stock = inStk;
+      product.is_available = inStk;
+      if (!inStk) {
+        product.stock_quantity = 0;
+      } else if (product.stock_quantity === 0 || product.stock_quantity === undefined) {
+        product.stock_quantity = 10;
+      }
+    }
+
+    if (updates.name) product.name = updates.name;
+    if (updates.name_ar) product.name_ar = updates.name_ar;
+    if (updates.description) product.description = updates.description;
+    if (updates.desc_ar) product.desc_ar = updates.desc_ar;
+    if (updates.category) product.category = updates.category;
+    if (updates.unit) product.unit = updates.unit;
+
+    saveSeedData();
+    saveProductToPg(product);
+
+    if (req.io) {
+      req.io.emit('product:updated', product);
+      req.io.emit('product:stock_changed', {
+        product_id: product.id,
+        store_id: product.store_id,
+        in_stock: product.in_stock,
+        is_available: product.is_available,
+        stock_quantity: product.stock_quantity
+      });
+      req.io.emit('store:menu_updated', { store_id: product.store_id });
+    }
+
+    res.json({ success: true, data: product });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/api/v1/products/:id', (req, res) => {
+  try {
+    const idx = db.products.findIndex(p => p.id === req.params.id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, error: 'Product not found' });
+    }
+    const deleted = db.products.splice(idx, 1)[0];
+    saveSeedData();
+    deleteProductFromPg(req.params.id);
+
+    if (req.io) {
+      req.io.emit('product:deleted', { id: req.params.id, store_id: deleted.store_id });
+      req.io.emit('store:menu_updated', { store_id: deleted.store_id });
+    }
+
+    res.json({ success: true, message: 'Product deleted', data: deleted });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ----------------------------------------------------------------------------
 // AI OCR & SMART CATALOG SCANNER (GEMINI 3.7 FLASH INTEGRATION)
 // ----------------------------------------------------------------------------
@@ -1488,6 +1636,39 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
       return res.status(404).json({ success: false, error: 'Store not found' });
     }
 
+    // Reject orders if store is closed
+    if (store.is_open === false) {
+      return res.status(400).json({
+        success: false,
+        error: `عذراً، متجر "${store.name}" مغلق حالياً ولا يستقبل طلبات جديدة.`
+      });
+    }
+
+    // Pre-flight validation: check stock availability for every requested item
+    for (const item of items) {
+      const product = db.products.find(p =>
+        (item.product_id && p.id === item.product_id) ||
+        (item.id && p.id === item.id) ||
+        (item.name && (p.name === item.name || p.name_ar === item.name))
+      );
+
+      if (product) {
+        const reqQty = parseInt(item.quantity || 1, 10);
+        if (product.is_available === false || product.in_stock === false) {
+          return res.status(400).json({
+            success: false,
+            error: `عذراً، الصنف "${product.name_ar || product.name}" نفدت كميته ولم يعد متوفراً حالياً.`
+          });
+        }
+        if (product.stock_quantity !== undefined && product.stock_quantity !== null && product.stock_quantity < reqQty) {
+          return res.status(400).json({
+            success: false,
+            error: `عذراً، الكمية المطلوبة من "${product.name_ar || product.name}" غير متوفرة (المتبقي في المتجر: ${product.stock_quantity} فقط).`
+          });
+        }
+      }
+    }
+
     const customer = req.user;
     const destLat = delivery_latitude || (req.body.delivery_location && req.body.delivery_location.latitude) || customer.default_lat || 31.8686;
     const destLng = delivery_longitude || (req.body.delivery_location && req.body.delivery_location.longitude) || customer.default_lng || 10.9818;
@@ -1651,6 +1832,39 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     };
 
     db.orders.push(newOrder);
+
+    // Deduct stock for ordered products in real-time
+    for (const item of items) {
+      const product = db.products.find(p =>
+        (item.product_id && p.id === item.product_id) ||
+        (item.id && p.id === item.id) ||
+        (item.name && (p.name === item.name || p.name_ar === item.name))
+      );
+      if (product) {
+        const qty = parseInt(item.quantity || 1, 10);
+        if (product.stock_quantity !== undefined && product.stock_quantity !== null) {
+          product.stock_quantity = Math.max(0, product.stock_quantity - qty);
+          if (product.stock_quantity === 0) {
+            product.in_stock = false;
+            product.is_available = false;
+          }
+        }
+        saveProductToPg(product);
+        if (req.io) {
+          req.io.emit('product:stock_changed', {
+            product_id: product.id,
+            store_id: product.store_id,
+            in_stock: product.in_stock,
+            is_available: product.is_available,
+            stock_quantity: product.stock_quantity
+          });
+        }
+      }
+    }
+    saveSeedData();
+    if (req.io) {
+      req.io.emit('store:menu_updated', { store_id: store.id });
+    }
 
     if (assignedDriver) {
       assignedDriver.active_order_id = orderId;

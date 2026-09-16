@@ -487,6 +487,8 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
     );
 
     final itemsPayload = _cartItems.map((item) => {
+      'id': item.id,
+      'product_id': item.id,
       'name': item.title,
       'price': item.price,
       'quantity': item.quantity,
@@ -510,6 +512,38 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
 
     if (mounted) {
       Navigator.pop(context); // Close loading indicator
+    }
+
+    if (!result.isSuccess) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusXl),
+            title: const Row(
+              children: [
+                Icon(Icons.remove_shopping_cart_rounded, color: Colors.red),
+                SizedBox(width: 8),
+                Text('تعذر إتمام الطلب', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: Text(
+              (result.errorMessage != null && result.errorMessage!.isNotEmpty)
+                  ? result.errorMessage!
+                  : 'حدث خطأ أثناء معالجة الطلب، قد تكون بعض الأصناف قد نفدت كميتها من المتجر.',
+              style: const TextStyle(fontSize: 14),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('حسناً', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.waselPrimary)),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
     }
 
     if (_usePointsDiscount) {

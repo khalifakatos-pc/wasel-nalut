@@ -182,6 +182,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         },
       },
       {
+        name: "wasel_admin_update_product_stock",
+        description: "تحديث حالة المخزون أو الكمية المتبقية لصنف مع مزامنة فورية على Render و Supabase.",
+        inputSchema: {
+          type: "object",
+          properties: {
+            product_id: { type: "string", description: "معرف الصنف المراد تحديث مخزونه" },
+            is_available: { type: "boolean", description: "هل الصنف متوفر للطلب الفوري (true / false)" },
+            stock_quantity: { type: "number", description: "الكمية المتبقية في المخزون (مثلاً 0 لنفاد الكمية)" },
+            price: { type: "number", description: "تعديل السعر بالدينار الليبي (اختياري)" },
+          },
+          required: ["product_id"],
+        },
+      },
+      {
         name: "wasel_admin_list_drivers",
         description: "عرض أسطول كباتن التوصيل في نالوت مع العهدة النقدية المعلقة (COD) وحالة الاتصال وبيانات الدخول.",
         inputSchema: {
@@ -512,6 +526,45 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             {
               type: "text",
               text: `🗑️ تم حذف الصنف [${pId}] بنجاح.`,
+            },
+          ],
+        };
+      }
+
+      // 8b. Update Product Stock / Availability
+      case "wasel_admin_update_product_stock": {
+        const pId = args.product_id;
+        const payload = {};
+        if (args.is_available !== undefined) payload.is_available = args.is_available;
+        if (args.stock_quantity !== undefined) payload.stock_quantity = Number(args.stock_quantity);
+        if (args.price !== undefined) payload.price_lyd = Number(args.price);
+
+        const backendRes = await fetch(`${BACKEND_URL}/products/${pId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        }).catch(() => null);
+
+        let updatedData = null;
+        if (backendRes && backendRes.ok) {
+          const resJson = await backendRes.json().catch(() => null);
+          updatedData = resJson?.data;
+        }
+
+        await fetch(`${SUPABASE_URL}/products?id=eq.${pId}`, {
+          method: "PATCH",
+          headers: supabaseHeaders,
+          body: JSON.stringify(payload),
+        }).catch(() => {});
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: `✅ تم تحديث حالة المخزون للصنف [${pId}] بنجاح!\n` +
+                    `الحالة: ${payload.is_available !== false ? "متوفر للطلب ✅" : "غير متوفر / نفد المخزون 🔴"}\n` +
+                    `الكمية المسجلة: ${payload.stock_quantity !== undefined ? payload.stock_quantity : "غير محدد"}\n` +
+                    (updatedData ? `البيانات المحدثة: ${JSON.stringify(updatedData)}` : ""),
             },
           ],
         };

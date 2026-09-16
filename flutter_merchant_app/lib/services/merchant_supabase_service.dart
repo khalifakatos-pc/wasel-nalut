@@ -196,7 +196,7 @@ class MerchantSupabaseService {
   /// Update inventory stock count (الجرد)
   static Future<bool> updateInventoryStock(String productId, int newQuantity) async {
     final inStock = newQuantity > 0;
-    return updateProductStock(productId, inStock);
+    return updateProductStock(productId, inStock, newQuantity);
   }
 
   /// Fetch live orders from Unified Backend Server or Supabase Cloud
@@ -480,15 +480,23 @@ class MerchantSupabaseService {
     return [];
   }
 
-  /// Toggle product availability (In Stock / Out of Stock)
-  static Future<bool> updateProductStock(String productId, bool inStock) async {
+  /// Toggle product availability (In Stock / Out of Stock) and quantity
+  static Future<bool> updateProductStock(String productId, bool inStock, [int? quantity]) async {
+    final payload = <String, dynamic>{
+      'is_available': inStock,
+      'in_stock': inStock,
+    };
+    if (quantity != null) {
+      payload['stock_quantity'] = quantity;
+    }
+
     // 1. Try Live Unified Backend
     try {
       final res = await http
           .patch(
             Uri.parse('$backendBaseUrl/products/$productId'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'is_available': inStock}),
+            body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) return true;
@@ -500,7 +508,7 @@ class MerchantSupabaseService {
           .patch(
             Uri.parse('$supabaseUrl/products?id=eq.$productId'),
             headers: _headers,
-            body: jsonEncode({'is_available': inStock}),
+            body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200 || res.statusCode == 204) return true;
@@ -508,6 +516,12 @@ class MerchantSupabaseService {
 
     // 3. Graceful offline fallback
     return true;
+  }
+
+  /// Update product inventory quantity directly
+  static Future<bool> updateProductQuantity(String productId, int quantity) async {
+    final inStock = quantity > 0;
+    return updateProductStock(productId, inStock, quantity);
   }
 
   /// Update product price

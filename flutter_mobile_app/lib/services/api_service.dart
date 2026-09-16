@@ -351,6 +351,9 @@ class ApiService {
           await saveActiveOrderId(resOrderId);
         }
         return ApiResult.success(payloadData);
+      } else if (res.statusCode == 400 || res.statusCode == 404 || res.statusCode == 403) {
+        final errMsg = data['error'] ?? data['message'] ?? 'تعذر إتمام الطلب من المتجر';
+        return ApiResult.error(errMsg.toString());
       }
     } catch (_) {
       // Fallback
