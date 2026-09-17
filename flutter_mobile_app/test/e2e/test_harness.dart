@@ -1,3 +1,4 @@
+// ignore_for_file: use_null_aware_elements
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
@@ -118,7 +119,6 @@ class _MockHttpClient implements HttpClient {
   @override
   String? userAgent;
 
-  @override
   void addAuthentication(Uri url, String realm, HttpClientCredentials credentials) {}
   @override
   void addCredentials(Uri url, String realm, HttpClientCredentials credentials) {}
@@ -175,6 +175,7 @@ class _MockHttpClient implements HttpClient {
 }
 
 class _MockHttpClientRequest implements HttpClientRequest {
+  @override
   final Uri uri;
   @override
   final HttpHeaders headers = _MockHttpHeaders();

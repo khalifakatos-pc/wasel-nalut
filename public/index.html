@@ -1,3 +1,4 @@
+<!-- impeccable-disable nested-cards -- realistic 3D phone showcase and interactive canvas viewport -->
 <!DOCTYPE html>
 <html lang="ar" dir="rtl" class="scroll-smooth">
 <head>
@@ -66,7 +67,14 @@
       background-color: #041710;
       color: #f8f5ee;
       overflow-x: hidden;
+      font-size: 15px;
+      line-height: 1.6;
     }
+    h1 { font-size: 2.45rem !important; line-height: 1.35 !important; font-weight: 900 !important; }
+    h2 { font-size: 1.95rem !important; line-height: 1.35 !important; font-weight: 800 !important; }
+    h3 { font-size: 1.55rem !important; line-height: 1.4 !important; font-weight: 700 !important; }
+    h4 { font-size: 1.24rem !important; line-height: 1.4 !important; font-weight: 700 !important; }
+    h5 { font-size: 1.00rem !important; line-height: 1.45 !important; font-weight: 600 !important; }
     .font-luxury {
       font-family: 'Playfair Display', 'Cairo', serif;
     }
@@ -75,57 +83,72 @@
     }
     /* Luxury Glassmorphism & Borders */
     .glass-nav {
-      background: rgba(4, 23, 16, 0.75);
+      background: rgba(4, 23, 16, 0.85);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(212, 175, 55, 0.2);
     }
     .glass-card {
-      background: rgba(10, 51, 36, 0.55);
+      background: rgba(10, 51, 36, 0.65);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border: 1px solid rgba(248, 245, 238, 0.09);
+      padding: 1.5rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.45);
     }
     .glass-card:hover {
       border-color: rgba(212, 175, 55, 0.35);
     }
     .glass-card-gold {
-      background: rgba(18, 69, 50, 0.7);
+      background: rgba(18, 69, 50, 0.75);
       backdrop-filter: blur(20px);
       border: 1px solid rgba(212, 175, 55, 0.35);
+      padding: 1.5rem;
+      border-radius: 1.5rem;
+      box-shadow: 0 6px 12px -3px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(212, 175, 55, 0.2);
     }
-    /* Gold & Emerald Glows */
+    .hud-panel {
+      background: rgba(10, 51, 36, 0.9);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      padding: 1.25rem;
+      border-radius: 1rem;
+      box-shadow: 0 6px 12px -3px rgba(0, 0, 0, 0.65);
+    }
+    .hud-panel-gold {
+      background: rgba(18, 69, 50, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(212, 175, 55, 0.4);
+      padding: 1.25rem;
+      border-radius: 1rem;
+      box-shadow: 0 6px 12px -3px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(212, 175, 55, 0.25);
+    }
+    /* Natural Directional Elevations */
     .glow-gold {
-      box-shadow: 0 0 30px rgba(212, 175, 55, 0.25);
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(212, 175, 55, 0.25);
     }
     .glow-emerald {
-      box-shadow: 0 0 35px rgba(16, 185, 129, 0.2);
+      box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(16, 185, 129, 0.25);
     }
     .text-gold-gradient {
-      background: linear-gradient(135deg, #f5d061 0%, #d4af37 50%, #c59b27 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
+      color: #d4af37;
     }
     .bg-gold-gradient {
       background: linear-gradient(135deg, #f5d061 0%, #d4af37 50%, #c59b27 100%);
+      color: #041710 !important;
     }
     .bg-emerald-gradient {
-      background: linear-gradient(135deg, #10b981 0%, #059669 50%, #047857 100%);
+      background: linear-gradient(135deg, #046247 0%, #024733 100%);
+      color: #ffffff !important;
     }
     /* Floating Phone Animation */
     @keyframes floatPhone {
       0%, 100% { transform: translateY(0px) rotate(-1deg); }
-      50% { transform: translateY(-12px) rotate(1deg); }
+      50% { transform: translateY(-8px) rotate(1deg); }
     }
     .animate-float-phone {
       animation: floatPhone 6s ease-in-out infinite;
-    }
-    @keyframes pulseGlow {
-      0%, 100% { opacity: 0.4; transform: scale(1); }
-      50% { opacity: 0.8; transform: scale(1.05); }
-    }
-    .animate-pulse-glow {
-      animation: pulseGlow 4s ease-in-out infinite;
     }
     /* Custom Scrollbar */
     ::-webkit-scrollbar {
@@ -159,7 +182,7 @@
         <span>•</span>
         <span class="flex items-center gap-1"><i class="fa-solid fa-wallet text-brand-emerald"></i> دفع كاش ومحفظة</span>
         <span>•</span>
-        <span class="flex items-center gap-1 font-latin text-brand-emerald"><span class="w-2 h-2 rounded-full bg-brand-emerald animate-ping inline-block"></span> 24/7 Live</span>
+        <span class="flex items-center gap-1 font-latin text-brand-emerald"><span class="w-2 h-2 rounded-full bg-brand-emerald inline-block"></span> 24/7 Live</span>
       </div>
     </div>
   </aside>
@@ -240,7 +263,7 @@
         
         <!-- Live Status Pill -->
         <div class="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-brand-raised/80 border border-brand-gold/40 text-brand-gold text-xs font-bold shadow-md">
-          <span class="w-2.5 h-2.5 rounded-full bg-brand-emerald animate-ping"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-brand-emerald inline-block"></span>
           <span>خدمة التوصيل تعمل الآن بالكامل في كافة أحياء نالوت</span>
           <span class="text-brand-champagneMuted">| 📍 جبل نفوسة</span>
         </div>
@@ -354,7 +377,7 @@
               </svg>
 
               <!-- Store Marker -->
-              <div class="relative z-10 flex items-center gap-2 bg-slate-900/90 border border-brand-gold/40 p-2 rounded-xl shadow-lg w-max">
+              <div class="relative z-10 flex items-center gap-2 bg-slate-900/90 px-2.5 py-1.5 rounded-lg w-max">
                 <span class="text-base">🍔</span>
                 <div>
                   <div class="text-[10px] font-bold text-white">مطعم ومقهى رانشيلو</div>
@@ -373,7 +396,7 @@
               </div>
 
               <!-- Destination Marker -->
-              <div class="relative z-10 self-end flex items-center gap-2 bg-slate-900/90 border border-brand-emerald/40 p-2 rounded-xl shadow-lg w-max">
+              <div class="relative z-10 self-end flex items-center gap-2 bg-slate-900/90 px-2.5 py-1.5 rounded-lg w-max">
                 <span class="text-base">🏠</span>
                 <div>
                   <div class="text-[10px] font-bold text-white">موقعك (المدخل الشرقي)</div>
@@ -389,7 +412,7 @@
                 <div class="flex items-center gap-2">
                   <span class="text-xl">🎁</span>
                   <div>
-                    <h5 class="text-xs font-black text-white">بوكس السعادة - رانشيلو</h5>
+                    <p class="text-xs font-black text-white">بوكس السعادة - رانشيلو</p>
                     <p class="text-[10px] text-brand-gold font-latin">29.00 LYD • الدفع كاش</p>
                   </div>
                 </div>
@@ -413,9 +436,9 @@
 
         <!-- Floating Badge Left -->
         <div class="absolute top-12 -left-2 sm:-left-6 z-20 bg-brand-raised/95 border border-brand-gold/40 p-3 rounded-2xl shadow-xl backdrop-blur-md hidden sm:flex items-center gap-3 animate-pulse pointer-events-none">
-          <div class="w-9 h-9 rounded-xl bg-brand-gold/20 flex items-center justify-center text-brand-gold font-bold">
+          <span class="w-9 h-9 rounded-xl bg-brand-gold/20 flex items-center justify-center text-brand-gold font-bold">
             <i class="fa-solid fa-motorcycle"></i>
-          </div>
+          </span>
           <div class="text-right">
             <div class="text-xs font-black text-white">أسرع توصيل في نالوت</div>
             <div class="text-[10px] text-brand-gold">متوسط 18 دقيقة فقط</div>
@@ -424,9 +447,9 @@
 
         <!-- Floating Badge Right -->
         <div class="absolute bottom-20 -right-2 sm:-right-4 z-20 bg-brand-raised/95 border border-brand-emerald/40 p-3 rounded-2xl shadow-xl backdrop-blur-md hidden sm:flex items-center gap-3 pointer-events-none">
-          <div class="w-9 h-9 rounded-xl bg-brand-emerald/20 flex items-center justify-center text-brand-emerald font-bold">
+          <span class="w-9 h-9 rounded-xl bg-brand-emerald/20 flex items-center justify-center text-brand-emerald font-bold">
             <i class="fa-solid fa-burger"></i>
-          </div>
+          </span>
           <div class="text-right">
             <div class="text-xs font-black text-white">منيو رانشيلو كامل</div>
             <div class="text-[10px] text-brand-emerald font-latin">34 صنف أصلي بالأسعار</div>
@@ -597,16 +620,16 @@
         <div class="glass-card rounded-3xl p-6 flex flex-col justify-between space-y-6 border border-brand-gold/25 hover:border-brand-gold transition duration-300 shadow-xl group">
           <div class="space-y-4">
             <div class="flex items-center justify-between">
-              <div class="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/40 text-purple-400 flex items-center justify-center text-2xl group-hover:scale-110 transition shadow-inner">
+              <div class="w-14 h-14 rounded-2xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold flex items-center justify-center text-2xl group-hover:scale-110 transition shadow-inner">
                 <i class="fa-solid fa-store"></i>
               </div>
-              <span class="px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-400 text-[11px] font-bold border border-purple-500/30 font-latin">
+              <span class="px-2.5 py-1 rounded-full bg-brand-gold/15 text-brand-goldRadiance text-[11px] font-bold border border-brand-gold/30 font-latin">
                 v1.0.0 (54.7 MB)
               </span>
             </div>
             <div>
               <h3 class="text-lg font-black text-white">تطبيق التاجر والمطبخ</h3>
-              <p class="text-xs text-purple-400 font-bold font-latin">Wasel Merchant KDS App</p>
+              <p class="text-xs text-brand-gold font-bold font-latin">Wasel Merchant KDS App</p>
             </div>
             <p class="text-xs text-brand-champagneMuted leading-relaxed">
               شاشة استقبال الطلبات للمطاعم، جرس تنبيه صوتي فوري، مؤقت إعداد الوجبات، إدارة المخزون، وسجل الحسابات الصافي (90%).
@@ -616,7 +639,7 @@
               <div class="flex items-center justify-between"><span>التوافق:</span> <span class="text-brand-emerald">هواتف وأجهزة تابلت أندرويد</span></div>
             </div>
           </div>
-          <a href="/downloads/Wasel_Merchant_App.apk" download="Wasel_Merchant_App.apk" class="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:brightness-110 text-white font-bold text-xs sm:text-sm text-center transition shadow-lg flex items-center justify-center gap-2">
+          <a href="/downloads/Wasel_Merchant_App.apk" download="Wasel_Merchant_App.apk" class="w-full py-3 rounded-2xl bg-gold-gradient hover:brightness-110 text-brand-canvas font-black text-xs sm:text-sm text-center transition shadow-lg flex items-center justify-center gap-2">
             <i class="fa-solid fa-download"></i>
             <span>تحميل تطبيق التاجر APK</span>
           </a>
@@ -693,7 +716,7 @@
         <div class="glass-card rounded-3xl overflow-hidden border border-brand-gold/30 hover:border-brand-gold transition duration-300 flex flex-col justify-between group">
           <div>
             <div class="h-44 bg-slate-800 relative overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80" alt="مطعم رانشيلو نالوت" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+              <img src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80" alt="مطعم رانشيلو نالوت" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-gradient-to-t from-brand-canvas via-transparent to-black/30"></div>
               <span class="absolute top-3 right-3 px-2.5 py-1 rounded-xl bg-brand-gold text-brand-canvas font-black text-xs shadow-md">
                 الشريك الذهبي ⭐
@@ -732,7 +755,7 @@
         <div class="glass-card rounded-3xl overflow-hidden border border-brand-emerald/30 hover:border-brand-emerald transition duration-300 flex flex-col justify-between group">
           <div>
             <div class="h-44 bg-slate-800 relative overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80" alt="صيدلية الهناء نالوت" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+              <img src="https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80" alt="صيدلية الهناء نالوت" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-gradient-to-t from-brand-canvas via-transparent to-black/30"></div>
               <span class="absolute top-3 right-3 px-2.5 py-1 rounded-xl bg-brand-emerald text-brand-canvas font-black text-xs shadow-md">
                 صيدلية معتمدة 24/7
@@ -769,7 +792,7 @@
         <div class="glass-card rounded-3xl overflow-hidden border border-red-500/30 hover:border-red-500 transition duration-300 flex flex-col justify-between group">
           <div>
             <div class="h-44 bg-slate-800 relative overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80" alt="بيتزا أكاكوس نالوت" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+              <img src="https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80" alt="بيتزا أكاكوس نالوت" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-gradient-to-t from-brand-canvas via-transparent to-black/30"></div>
               <span class="absolute top-3 right-3 px-2.5 py-1 rounded-xl bg-red-500 text-white font-black text-xs shadow-md">
                 بيتزا إيطالية 🍕
@@ -806,7 +829,7 @@
         <div class="glass-card rounded-3xl overflow-hidden border border-cyan-500/30 hover:border-cyan-500 transition duration-300 flex flex-col justify-between group">
           <div>
             <div class="h-44 bg-slate-800 relative overflow-hidden">
-              <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80" alt="ريكسوس للتسوق نالوت" class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+              <img src="https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80" alt="ريكسوس للتسوق نالوت" class="w-full h-full object-cover">
               <div class="absolute inset-0 bg-gradient-to-t from-brand-canvas via-transparent to-black/30"></div>
               <span class="absolute top-3 right-3 px-2.5 py-1 rounded-xl bg-cyan-500 text-brand-canvas font-black text-xs shadow-md">
                 سوبرماركت شامل 🛒
@@ -881,13 +904,13 @@
       <div class="relative rounded-3xl overflow-hidden border border-brand-gold/30 bg-gradient-to-b from-[#050e0a] to-[#071710] shadow-2xl h-[460px] sm:h-[560px] cursor-grab active:cursor-grabbing" id="canvasContainer">
         <canvas id="nalut3DCanvas" class="w-full h-full block"></canvas>
 
-        <!-- 3D HUD Floating Store Card -->
-        <div id="hudStoreCard" class="hidden absolute top-4 right-4 max-w-xs w-[calc(100%-2rem)] glass-card-gold p-4 rounded-3xl shadow-2xl z-20 transition-all">
+        <!-- 3D HUD Floating Store Panel -->
+        <aside id="hudStoreCard" class="hidden absolute top-4 right-4 max-w-xs w-[calc(100%-2rem)] hud-panel-gold z-20 transition-all">
           <div class="flex items-start justify-between gap-2 mb-2">
             <div class="flex items-center gap-2.5">
               <div class="w-10 h-10 rounded-2xl bg-brand-surface flex items-center justify-center text-xl shadow-inner" id="hudStoreIcon">🍔</div>
               <div>
-                <h4 class="font-extrabold text-sm text-white" id="hudStoreName">مطعم رانشيلو</h4>
+                <p class="font-extrabold text-sm text-white" id="hudStoreName">مطعم رانشيلو</p>
                 <div class="text-[11px] text-brand-gold" id="hudStoreLocation">شارع أفريقيا، نالوت</div>
               </div>
             </div>
@@ -901,14 +924,14 @@
           <button onclick="openRanchelloMenuModal()" class="block w-full text-center py-2 px-3 rounded-xl bg-gold-gradient text-brand-canvas font-bold text-xs transition shadow-md">
             تصفح القائمة بالكامل
           </button>
-        </div>
+        </aside>
 
         <!-- 3D Happiness Box Floating HUD -->
-        <div id="box3DOverlay" class="hidden absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 max-w-sm glass-card-gold p-4 rounded-3xl shadow-2xl z-20">
+        <aside id="box3DOverlay" class="hidden absolute bottom-4 left-4 right-4 sm:left-auto sm:right-4 max-w-sm hud-panel-gold z-20">
           <div class="flex items-center justify-between gap-2 mb-2">
             <div class="flex items-center gap-2">
               <span class="text-xl">🎁</span>
-              <h4 class="font-extrabold text-sm text-brand-goldRadiance">بوكس السعادة - رانشيلو نالوت 3D</h4>
+              <p class="font-extrabold text-sm text-brand-goldRadiance">بوكس السعادة - رانشيلو نالوت 3D</p>
             </div>
             <span class="text-xs font-black text-brand-emerald font-latin bg-brand-emerald/10 px-2.5 py-1 rounded-xl border border-brand-emerald/30">29.00 LYD</span>
           </div>
@@ -923,11 +946,11 @@
               <i class="fa-solid fa-rotate"></i> تدوير 360°
             </button>
           </div>
-        </div>
+        </aside>
 
         <!-- Live Courier Status Badge on 3D -->
         <div class="absolute top-4 left-4 z-20 flex items-center gap-2 bg-brand-canvas/80 border border-brand-gold/30 backdrop-blur-md px-3.5 py-1.5 rounded-2xl text-xs">
-          <span class="w-2.5 h-2.5 rounded-full bg-brand-emerald animate-ping"></span>
+          <span class="w-2.5 h-2.5 rounded-full bg-brand-emerald"></span>
           <span class="text-brand-champagneMuted">الكابتن المباشر:</span>
           <span class="font-bold text-brand-goldRadiance" id="courierStatusText">في الطريق إلى رانشيلو 🛵</span>
         </div>
@@ -962,7 +985,7 @@
         
         <!-- Step 1 -->
         <div class="glass-card p-8 rounded-3xl space-y-4 text-center relative group hover:border-brand-gold transition">
-          <div class="w-16 h-16 rounded-3xl bg-brand-gold/15 border border-brand-gold/30 text-brand-gold flex items-center justify-center text-2xl font-black mx-auto shadow-lg glow-gold group-hover:scale-110 transition">
+          <div class="w-14 h-14 rounded-full bg-brand-gold/20 text-brand-gold flex items-center justify-center text-2xl font-black mx-auto transition">
             1
           </div>
           <h3 class="text-lg font-black text-white">اختر متجرك المفضل</h3>
@@ -973,7 +996,7 @@
 
         <!-- Step 2 -->
         <div class="glass-card p-8 rounded-3xl space-y-4 text-center relative group hover:border-brand-emerald transition">
-          <div class="w-16 h-16 rounded-3xl bg-brand-emerald/15 border border-brand-emerald/30 text-brand-emerald flex items-center justify-center text-2xl font-black mx-auto shadow-lg glow-emerald group-hover:scale-110 transition">
+          <div class="w-14 h-14 rounded-full bg-brand-emerald/20 text-brand-emerald flex items-center justify-center text-2xl font-black mx-auto transition">
             2
           </div>
           <h3 class="text-lg font-black text-white">حدد موقعك في نالوت</h3>
@@ -984,7 +1007,7 @@
 
         <!-- Step 3 -->
         <div class="glass-card p-8 rounded-3xl space-y-4 text-center relative group hover:border-brand-goldRadiance transition">
-          <div class="w-16 h-16 rounded-3xl bg-brand-goldRadiance/15 border border-brand-goldRadiance/30 text-brand-goldRadiance flex items-center justify-center text-2xl font-black mx-auto shadow-lg glow-gold group-hover:scale-110 transition">
+          <div class="w-14 h-14 rounded-full bg-brand-goldRadiance/20 text-brand-goldRadiance flex items-center justify-center text-2xl font-black mx-auto transition">
             3
           </div>
           <h3 class="text-lg font-black text-white">تتبع الكابتن واستلم طلبك</h3>
@@ -1007,7 +1030,7 @@
       <!-- Merchant Partner Card -->
       <div class="glass-card-gold p-8 sm:p-10 rounded-3xl space-y-6 relative overflow-hidden flex flex-col justify-between">
         <div class="space-y-4">
-          <div class="w-14 h-14 rounded-2xl bg-brand-gold/20 border border-brand-gold/40 text-brand-gold flex items-center justify-center text-2xl shadow-lg">
+          <div class="w-14 h-14 rounded-2xl bg-brand-gold/15 text-brand-gold flex items-center justify-center text-2xl">
             <i class="fa-solid fa-shop"></i>
           </div>
           <h3 class="text-2xl sm:text-3xl font-black text-white">لأصحاب المطاعم والمتاجر في نالوت</h3>
@@ -1033,7 +1056,7 @@
       <!-- Captain Driver Partner Card -->
       <div class="glass-card p-8 sm:p-10 rounded-3xl space-y-6 relative overflow-hidden flex flex-col justify-between border-brand-emerald/30 hover:border-brand-emerald/50 transition">
         <div class="space-y-4">
-          <div class="w-14 h-14 rounded-2xl bg-brand-emerald/20 border border-brand-emerald/40 text-brand-emerald flex items-center justify-center text-2xl shadow-lg">
+          <div class="w-14 h-14 rounded-2xl bg-brand-emerald/15 text-brand-emerald flex items-center justify-center text-2xl">
             <i class="fa-solid fa-id-card"></i>
           </div>
           <h3 class="text-2xl sm:text-3xl font-black text-white">كن كابتناً مع واصل نالوت</h3>
@@ -1111,7 +1134,7 @@
       <div class="border-t border-brand-gold/15 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-brand-champagneMuted">
         <div>جميع الحقوق محفوظة لمنظومة <strong>واصل نالوت (Wasel Nalut)</strong> &copy; 2026.</div>
         <div class="flex items-center gap-2">
-          <span class="w-2 h-2 rounded-full bg-brand-emerald animate-ping"></span>
+          <span class="w-2 h-2 rounded-full bg-brand-emerald"></span>
           <span>السيرفر السحابي يعمل بكفاءة 24/7</span>
         </div>
       </div>
@@ -1127,7 +1150,7 @@
       <!-- Modal Header -->
       <div class="p-5 border-b border-brand-gold/20 flex items-center justify-between bg-brand-surface/90">
         <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-2xl bg-brand-gold text-brand-canvas flex items-center justify-center text-xl font-bold">🍔</div>
+          <span class="w-10 h-10 rounded-2xl bg-brand-gold text-brand-canvas flex items-center justify-center text-xl font-bold">🍔</span>
           <div>
             <h3 class="text-base font-black text-white">قائمة وجبات مطعم ومقهى رانشيلو الأصلية (34 صنفاً)</h3>
             <p class="text-xs text-brand-gold">شارع أفريقيا، نالوت • أسعار معتمدة ومطابقة للمطعم</p>

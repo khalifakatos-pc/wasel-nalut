@@ -37,3 +37,10 @@ Thumbs.db
 # Logs
 logs/
 *.log
+
+# Agent Internals
+.agents/
+.codex/
+findings.json
+skills-lock.json
+
