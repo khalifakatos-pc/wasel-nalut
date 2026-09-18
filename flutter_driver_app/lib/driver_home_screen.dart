@@ -101,6 +101,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
       if (mounted) {
         setState(() {
           _profile = p;
+          if (_profile['full_name'] == null || _profile['full_name'] == 'كابتن واصل') {
+            _profile['full_name'] = DriverSupabaseService.activeDriverName;
+          }
+          if (_profile['phone'] == null || (_profile['phone'] as String).isEmpty) {
+            _profile['phone'] = DriverSupabaseService.activeDriverPhone;
+          }
+          if (_profile['vehicle_type'] == null || _profile['vehicle_type'] == 'سيارة') {
+            _profile['vehicle_type'] = DriverSupabaseService.activeDriverVehicle;
+          }
+          if (_profile['plate_number'] == null || _profile['plate_number'] == 'نالوت') {
+            _profile['plate_number'] = DriverSupabaseService.activeDriverPlate;
+          }
+
           final double balance = (p['wallet_balance_lyd'] is num)
               ? (p['wallet_balance_lyd'] as num).toDouble()
               : 0.0;
@@ -768,11 +781,52 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
 
           const SizedBox(height: 24),
 
-          // 5. Active Heat Zones in Nalut
-          const Text('مناطق الطلب النشط في نالوت والجبل 🔥', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
+          // 5. Active Commercial Hotspots in Nalut
+          const Text('مناطق ومتاجر الطلب النشط في نالوت والجبل 🔥', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
           const SizedBox(height: 10),
 
-          ...DriverMockData.libyanZones.map((zone) {
+          ...[
+            const DeliveryZoneHeat(
+              id: 'zone_alhanaa',
+              name: 'جزيرة مصرف الجمهورية (صيدلية الهناء)',
+              city: 'نالوت',
+              surgeMultiplier: 1.5,
+              demandLevel: 'مرتفع جداً 🔥',
+              estimatedWaitTime: '< دقيقتين',
+              bonusLyd: 3.50,
+              isHotspot: true,
+            ),
+            const DeliveryZoneHeat(
+              id: 'zone_ranchello',
+              name: 'شارع أفريقيا (مطعم ومقهى رانشيلو)',
+              city: 'نالوت',
+              surgeMultiplier: 1.4,
+              demandLevel: 'طلب عالي',
+              estimatedWaitTime: '2-3 دقائق',
+              bonusLyd: 3.00,
+              isHotspot: true,
+            ),
+            const DeliveryZoneHeat(
+              id: 'zone_qasr',
+              name: 'حي الشهداء والقلعة (قصر نالوت للمشويات)',
+              city: 'نالوت',
+              surgeMultiplier: 1.3,
+              demandLevel: 'متوسط',
+              estimatedWaitTime: '3-5 دقائق',
+              bonusLyd: 2.50,
+              isHotspot: false,
+            ),
+            const DeliveryZoneHeat(
+              id: 'zone_akakus',
+              name: 'شارع تونس وطريق وازن (بيتزا أكاكوس)',
+              city: 'نالوت',
+              surgeMultiplier: 1.2,
+              demandLevel: 'متوسط',
+              estimatedWaitTime: '4 دقائق',
+              bonusLyd: 2.00,
+              isHotspot: false,
+            ),
+          ].map((zone) {
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(14),

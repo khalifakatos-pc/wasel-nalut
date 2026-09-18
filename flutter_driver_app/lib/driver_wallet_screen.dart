@@ -8,7 +8,9 @@ import 'services/driver_supabase_service.dart';
 /// ============================================================================
 
 class DriverWalletScreen extends StatefulWidget {
-  const DriverWalletScreen({super.key});
+  final VoidCallback? onLogout;
+
+  const DriverWalletScreen({super.key, this.onLogout});
 
   @override
   State<DriverWalletScreen> createState() => _DriverWalletScreenState();
@@ -87,7 +89,9 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
 
   void _openDepositSettleModal() {
     final amountController = TextEditingController(text: _cashInHandCodLyd.toStringAsFixed(0));
-    final phoneController = TextEditingController(text: '0912345678');
+    final phoneController = TextEditingController(
+      text: DriverSupabaseService.activeDriverPhone.isNotEmpty ? DriverSupabaseService.activeDriverPhone : '0912345678',
+    );
     String selectedMethod = 'سداد';
 
     showModalBottomSheet(
@@ -346,6 +350,44 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
     );
   }
 
+  void _showLogoutConfirmDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DriverColors.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusLg),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: DriverColors.offlineRed),
+            SizedBox(width: 8),
+            Text('تسجيل الخروج', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'هل أنت متأكد من رغبتك في تسجيل الخروج وإنهاء وردية الكابتن الحالية؟',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: DriverColors.offlineRed),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await DriverSupabaseService.logoutCaptain();
+              if (widget.onLogout != null) {
+                widget.onLogout!();
+              }
+            },
+            child: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -356,6 +398,12 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
         backgroundColor: DriverColors.darkSurface,
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _loadLiveWalletData),
+          if (widget.onLogout != null)
+            IconButton(
+              icon: const Icon(Icons.logout_rounded, color: DriverColors.offlineRed),
+              tooltip: 'تسجيل الخروج',
+              onPressed: _showLogoutConfirmDialog,
+            ),
         ],
       ),
       body: RefreshIndicator(

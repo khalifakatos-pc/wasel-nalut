@@ -94,9 +94,9 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'فاتورة طلب مطعم قصر نالوت (#WSL-90412)',
-                style: TextStyle(color: DriverColors.darkTextMuted, fontSize: 12),
+              Text(
+                'فاتورة طلب ${_activeOrder.storeName} (${_activeOrder.orderNumber})',
+                style: const TextStyle(color: DriverColors.darkTextMuted, fontSize: 12),
               ),
             ],
           ),

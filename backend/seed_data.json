@@ -42,6 +42,100 @@
       }
     ]
   },
+  "users": [
+    {
+      "id": "admin_master",
+      "full_name": "مدير عمليات سوبر آب نالوت",
+      "phone": "0910009832",
+      "role": "admin",
+      "city": "nalut",
+      "password": "Password123!"
+    },
+    {
+      "id": "usr_guest_nalut",
+      "full_name": "زبون واصل نالوت",
+      "phone": "0910000000",
+      "role": "customer",
+      "city": "nalut"
+    }
+  ],
+  "wallets": [
+    {
+      "id": "wallet_platform_escrow",
+      "user_id": null,
+      "wallet_type": "platform_escrow",
+      "currency": "LYD",
+      "balance": 10000,
+      "status": "active"
+    },
+    {
+      "id": "wallet_platform_revenue",
+      "user_id": null,
+      "wallet_type": "platform_revenue",
+      "currency": "LYD",
+      "balance": 2450,
+      "status": "active"
+    },
+    {
+      "id": "wallet_driver_01",
+      "user_id": "user_driver_01",
+      "wallet_type": "driver_earnings",
+      "currency": "LYD",
+      "balance": 145,
+      "status": "active"
+    },
+    {
+      "id": "wallet_usr_guest_nalut",
+      "user_id": "usr_guest_nalut",
+      "wallet_type": "customer_wallet",
+      "currency": "LYD",
+      "balance": 250,
+      "locked_balance": 0,
+      "status": "active"
+    }
+  ],
+  "drivers": [
+    {
+      "id": "driver_nalut_01",
+      "user_id": "user_driver_01",
+      "full_name": "خالد الكاتب (كابتن نالوت)",
+      "phone": "0912345678",
+      "vehicle_type": "car",
+      "vehicle_plate": "نالوت 5 - 12849",
+      "license_number": "LIC-NAL-01",
+      "national_id": "NAT-NAL-8812",
+      "rating": 4.95,
+      "total_deliveries": 342,
+      "is_approved": true,
+      "is_active": true,
+      "status": "online_idle",
+      "wallet_balance_lyd": 145,
+      "cod_balance_lyd": 0,
+      "latitude": 31.8686,
+      "longitude": 10.9818,
+      "created_at": "2026-09-15T20:22:37.368Z"
+    },
+    {
+      "id": "driver_nalut_02",
+      "user_id": "user_driver_02",
+      "full_name": "عمر القلعاوي",
+      "phone": "0923456789",
+      "vehicle_type": "motorcycle",
+      "vehicle_plate": "نالوت 2 - 8812",
+      "license_number": "LIC-NAL-02",
+      "national_id": "NAT-NAL-9901",
+      "rating": 4.88,
+      "total_deliveries": 189,
+      "is_approved": true,
+      "is_active": true,
+      "status": "online_idle",
+      "wallet_balance_lyd": 80,
+      "cod_balance_lyd": 0,
+      "latitude": 31.8695,
+      "longitude": 10.9835,
+      "created_at": "2026-09-15T20:22:37.368Z"
+    }
+  ],
   "categories": [
     {
       "id": "cat_food_grill",
@@ -1026,91 +1120,49 @@
       "unit": "كيس"
     }
   ],
-  "drivers": [
+  "orders": [
     {
-      "id": "driver_nalut_01",
-      "user_id": "user_driver_01",
-      "full_name": "خالد الكاتب (كابتن نالوت)",
-      "phone": "0912345678",
-      "vehicle_type": "car",
-      "vehicle_plate": "نالوت 5 - 12849",
-      "license_number": "LIC-NAL-01",
-      "national_id": "NAT-NAL-8812",
-      "rating": 4.95,
-      "total_deliveries": 342,
-      "is_approved": true,
-      "is_active": true,
-      "status": "online_idle",
-      "wallet_balance_lyd": 145,
-      "cod_balance_lyd": 0,
-      "latitude": 31.8686,
-      "longitude": 10.9818,
-      "created_at": "2026-09-15T20:22:37.368Z"
-    },
-    {
-      "id": "driver_nalut_02",
-      "user_id": "user_driver_02",
-      "full_name": "عمر القلعاوي",
-      "phone": "0923456789",
-      "vehicle_type": "motorcycle",
-      "vehicle_plate": "نالوت 2 - 8812",
-      "license_number": "LIC-NAL-02",
-      "national_id": "NAT-NAL-9901",
-      "rating": 4.88,
-      "total_deliveries": 189,
-      "is_approved": true,
-      "is_active": true,
-      "status": "online_idle",
-      "wallet_balance_lyd": 80,
-      "cod_balance_lyd": 0,
-      "latitude": 31.8695,
-      "longitude": 10.9835,
-      "created_at": "2026-09-15T20:22:37.368Z"
+      "id": "ord_5980dce6",
+      "order_number": "ORD-2026-LY-3053",
+      "customer_id": "usr_guest_nalut",
+      "customer_name": "سالم النالوتي",
+      "customer_phone": "0917778899",
+      "store_id": "store_nalut_alhanaa",
+      "store_name": "صيدلية الهناء",
+      "store_latitude": 31.877755,
+      "store_longitude": 10.978004,
+      "driver_id": "driver_nalut_02",
+      "status": "placed",
+      "otp_code": "1890",
+      "payment_method": "cash_on_delivery",
+      "payment_status": "pending_cod",
+      "subtotal_lyd": 57,
+      "delivery_fee_lyd": 3,
+      "service_fee_lyd": 1,
+      "discount_lyd": 0,
+      "total_amount_lyd": 61,
+      "delivery_address": "نالوت - بجانب جامع التوحيد - شارع تونس",
+      "delivery_latitude": 31.8686,
+      "delivery_longitude": 10.9818,
+      "distance_km": 1.1,
+      "estimated_eta_minutes": 3,
+      "notes": "الرجاء الاتصال عند الوصول لبوابة المنزل",
+      "items": [
+        {
+          "product_id": "prod_nalut_test_01",
+          "name_ar": "علبة دواء وفيتامين سي",
+          "name_en": "علبة دواء وفيتامين سي",
+          "unit_price_lyd": 28.5,
+          "quantity": 2,
+          "modifiers": [],
+          "item_total_lyd": 57
+        }
+      ],
+      "created_at": "2026-09-17T21:45:54.913Z",
+      "updated_at": "2026-09-17T21:45:54.913Z"
     }
   ],
-  "users": [
-    {
-      "id": "admin_master",
-      "full_name": "مدير عمليات سوبر آب نالوت",
-      "phone": "0910009832",
-      "role": "admin",
-      "city": "nalut",
-      "password": "Password123!"
-    },
-    {
-      "id": "usr_guest_nalut",
-      "full_name": "زبون واصل نالوت",
-      "phone": "0910000000",
-      "role": "customer",
-      "city": "nalut"
-    }
-  ],
-  "wallets": [
-    {
-      "id": "wallet_platform_escrow",
-      "user_id": null,
-      "wallet_type": "platform_escrow",
-      "currency": "LYD",
-      "balance": 10000,
-      "status": "active"
-    },
-    {
-      "id": "wallet_platform_revenue",
-      "user_id": null,
-      "wallet_type": "platform_revenue",
-      "currency": "LYD",
-      "balance": 2450,
-      "status": "active"
-    },
-    {
-      "id": "wallet_driver_01",
-      "user_id": "user_driver_01",
-      "wallet_type": "driver_earnings",
-      "currency": "LYD",
-      "balance": 145,
-      "status": "active"
-    }
-  ],
-  "orders": [],
-  "wallet_transactions": []
+  "wallet_transactions": [],
+  "vouchers": [],
+  "audit_logs": []
 }

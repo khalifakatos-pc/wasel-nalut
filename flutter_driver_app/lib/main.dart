@@ -3,6 +3,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'driver_theme.dart';
 import 'driver_models.dart';
 import 'driver_home_screen.dart';
+import 'driver_login_screen.dart';
 import 'active_delivery_flow_screen.dart';
 import 'driver_wallet_screen.dart';
 import 'services/driver_notification_service.dart';
@@ -14,7 +15,7 @@ void main() {
 }
 
 /// ============================================================================
-/// CAPTAIN WASEL (كابتن واصل) DRIVER APP — MAIN ENTRY POINT & HARNESS
+/// CAPTAIN WASEL (كابتن واصل) DRIVER APP — MAIN ENTRY POINT & AUTH GATE
 /// ============================================================================
 
 class WaselCaptainApp extends StatefulWidget {
@@ -26,11 +27,24 @@ class WaselCaptainApp extends StatefulWidget {
 
 class _WaselCaptainAppState extends State<WaselCaptainApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+  bool _isCheckingAuth = true;
+  bool _isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
+    _checkInitialAuth();
     _initNotificationsAsync();
+  }
+
+  Future<void> _checkInitialAuth() async {
+    final loggedIn = await DriverSupabaseService.loadSavedCaptain();
+    if (mounted) {
+      setState(() {
+        _isLoggedIn = loggedIn;
+        _isCheckingAuth = false;
+      });
+    }
   }
 
   Future<void> _initNotificationsAsync() async {
@@ -42,6 +56,18 @@ class _WaselCaptainAppState extends State<WaselCaptainApp> {
   void toggleTheme() {
     setState(() {
       _themeMode = _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+    });
+  }
+
+  void _handleLoginSuccess() {
+    setState(() {
+      _isLoggedIn = true;
+    });
+  }
+
+  void _handleLogout() {
+    setState(() {
+      _isLoggedIn = false;
     });
   }
 
@@ -63,19 +89,43 @@ class _WaselCaptainAppState extends State<WaselCaptainApp> {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: DriverMainNavigationHarness(
-        onToggleTheme: toggleTheme,
-      ),
+      home: _isCheckingAuth
+          ? const Scaffold(
+              backgroundColor: DriverColors.darkBg,
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.delivery_dining_rounded, size: 64, color: DriverColors.primary),
+                    SizedBox(height: 20),
+                    CircularProgressIndicator(color: DriverColors.primary, strokeWidth: 3),
+                    SizedBox(height: 16),
+                    Text(
+                      'جاري التحقق من هوية الكابتن...',
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : (!_isLoggedIn
+              ? DriverLoginScreen(onLoginSuccess: _handleLoginSuccess)
+              : DriverMainNavigationHarness(
+                  onToggleTheme: toggleTheme,
+                  onLogout: _handleLogout,
+                )),
     );
   }
 }
 
 class DriverMainNavigationHarness extends StatefulWidget {
   final VoidCallback onToggleTheme;
+  final VoidCallback onLogout;
 
   const DriverMainNavigationHarness({
     super.key,
     required this.onToggleTheme,
+    required this.onLogout,
   });
 
   @override
@@ -99,7 +149,8 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
       final ongoing = orders.cast<Map<String, dynamic>>().firstWhere(
         (o) => (o['driver_id'] == DriverSupabaseService.activeDriverId ||
                 o['driver_id'] == 'driver_nalut_01' ||
-                o['driver_id'] == 'driver_nalut_02') &&
+                o['driver_id'] == 'driver_nalut_02' ||
+                o['driver_id'] == 'drv_01') &&
                o['status'] == 'out_for_delivery',
         orElse: () => <String, dynamic>{},
       );
@@ -120,7 +171,7 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
             storeLatitude: 31.8680,
             storeLongitude: 10.9850,
             customerName: ongoing['customer_name']?.toString() ?? 'زبون نالوت',
-            customerPhone: '091-7788990',
+            customerPhone: ongoing['customer_phone']?.toString() ?? '091-7788990',
             customerAddress: ongoing['delivery_address']?.toString() ?? 'نالوت - حي الزهور',
             customerNotes: ongoing['notes']?.toString() ?? 'الدق على الباب الخارجي',
             customerLatitude: 31.8620,
@@ -173,27 +224,43 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
               backgroundColor: DriverColors.darkBg,
               appBar: AppBar(title: const Text('المشوار الجاري')),
               body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.delivery_dining_rounded, size: 64, color: DriverColors.offlineGrey),
-                    const SizedBox(height: 16),
-                    const Text('لا يوجد مشوار توصيل نشط حالياً', style: TextStyle(color: Colors.white70, fontSize: 16)),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() {
-                          _currentActiveDelivery = DriverMockData.getSampleActiveDelivery();
-                        });
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: DriverColors.primary),
-                      child: const Text('بدء مشوار تجريبي في نالوت 🛵', style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
+                child: Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.delivery_dining_rounded, size: 64, color: DriverColors.offlineGrey),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'لا يوجد مشوار توصيل نشط حالياً',
+                        style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'في انتظار وصول طلبات جديدة من مطاعم ومتاجر نالوت عبر الرادار المباشر',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: DriverColors.darkTextMuted, fontSize: 13),
+                      ),
+                      const SizedBox(height: 24),
+                      OutlinedButton.icon(
+                        onPressed: () => setState(() => _currentIndex = 0),
+                        icon: const Icon(Icons.radar_rounded, color: DriverColors.primary),
+                        label: const Text(
+                          'الانتقال للرادار لاستقبال الطلبات',
+                          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: DriverColors.primary),
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
-      const DriverWalletScreen(),
+      DriverWalletScreen(onLogout: widget.onLogout),
     ];
 
     return Scaffold(

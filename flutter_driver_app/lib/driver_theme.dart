@@ -23,6 +23,7 @@ class DriverColors {
   static const Color offlineGrey = Color(0xFF64748B);    // Driver Offline / Inactive
   static const Color busyOrange = Color(0xFFF59E0B);     // On Active Delivery / Navigating
   static const Color urgentRed = Color(0xFFEF4444);      // High Urgency / Radar Expiry
+  static const Color offlineRed = Color(0xFFEF4444);     // Alert / Logout / Offline Red
   static const Color surgeAmber = Color(0xFFD4AF37);     // Surge Multiplier Gold
 
   // Financial & COD Tokens
