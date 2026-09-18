@@ -607,6 +607,67 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(webDir, 'admin_dispatch_dashboard.html'));
 });
 
+app.get('/live', (req, res) => {
+  res.sendFile(path.join(publicDir, 'live_mission_control.html'));
+});
+
+app.get('/mission-control', (req, res) => {
+  res.sendFile(path.join(publicDir, 'live_mission_control.html'));
+});
+
+// Real-time End-to-End simulation trigger for Live Mission Control
+app.post('/api/v1/simulation/run-cycle', async (req, res) => {
+  try {
+    const orderNum = `ORD-2026-LY-${Math.floor(1000 + Math.random() * 9000)}`;
+    const orderId = `ord_nalut_sim_${Date.now()}`;
+    const targetStore = db.stores.find(s => s.id === 'store_nalut_alhanaa') || db.stores[0];
+    
+    const simulatedOrder = {
+      id: orderId,
+      order_number: orderNum,
+      customer_id: 'user_nalut_salem',
+      customer_name: 'سالم النالوتي',
+      customer_phone: '0917778899',
+      store_id: targetStore.id,
+      store_name: targetStore.name,
+      status: 'pending',
+      items: [
+        { id: 'prod_nalut_sim_01', name: 'أدوية وفيتامينات - صيدلية الهناء', price: 61.0, quantity: 1 }
+      ],
+      total_amount_lyd: 61.0,
+      delivery_fee_lyd: 7.5,
+      driver_payout_lyd: 7.5,
+      payment_method: 'cash_on_delivery',
+      delivery_address: 'نالوت - حي الزهور - شارع تونس',
+      otp_code: '1890',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    db.orders.push(simulatedOrder);
+    saveOrderToPg(simulatedOrder);
+
+    // Broadcast Stage 1: Order Created
+    io.emit('order:new', simulatedOrder);
+    io.emit('order:status_changed', {
+      order_id: simulatedOrder.id,
+      order_number: simulatedOrder.order_number,
+      status: 'pending',
+      customer_name: simulatedOrder.customer_name,
+      total_amount_lyd: simulatedOrder.total_amount_lyd,
+      store_name: simulatedOrder.store_name
+    });
+
+    res.json({
+      success: true,
+      message: 'Simulation cycle started successfully',
+      data: simulatedOrder
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 const io = new Server(server, {
   cors: {
     origin: '*',

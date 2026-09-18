@@ -100,8 +100,8 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
       _driverPos = _customerPos;
     } else {
       _driverPos = LatLng(
-        (widget.driverLat ?? 31.8686 + _customerPos.latitude) / 2,
-        (widget.driverLng ?? 10.9818 + _customerPos.longitude) / 2,
+        ((widget.driverLat ?? 31.8686) + _customerPos.latitude) / 2,
+        ((widget.driverLng ?? 10.9818) + _customerPos.longitude) / 2,
       );
     }
 
@@ -120,7 +120,11 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeStep != widget.activeStep) {
       _initCoordinates();
-      _recenterOnDriver();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _recenterOnDriver();
+        }
+      });
     }
   }
 

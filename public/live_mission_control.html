@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>واصل نالوت | غرفة العمليات والتحكم المركزي المباشر (Live Mission Control)</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            berber: {
+              gold: '#D4AF37',
+              dark: '#041710',
+              surface: '#0A261D',
+              card: '#0F382B',
+              border: '#1A5340',
+              accent: '#10B981',
+              red: '#EF4444',
+              blue: '#3B82F6',
+              amber: '#F59E0B'
+            }
+          },
+          fontFamily: {
+            tajawal: ['Tajawal', 'Cairo', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Tajawal & Cairo -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Socket.io Client -->
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background-color: #041710;
+      color: #F8F5EE;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #0A261D;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #1A5340;
+      border-radius: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #D4AF37;
+    }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.15); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulse-glow {
+      animation: pulse-ring 2s infinite ease-in-out;
+    }
+    .leaflet-popup-content-wrapper {
+      background: #0A261D;
+      color: #F8F5EE;
+      border: 1px solid #D4AF37;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+    }
+    .leaflet-popup-tip {
+      background: #0A261D;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-berber-gold selection:text-berber-dark">
+
+  <!-- ========================================================================= -->
+  <!-- 1. TOP MISSION CONTROL HEADER & TELEMETRY STATUS                          -->
+  <!-- ========================================================================= -->
+  <header class="bg-berber-surface border-b border-berber-border px-6 py-4 sticky top-0 z-50 shadow-2xl">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+      
+      <!-- Brand & Title -->
+      <div class="flex items-center gap-4">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-berber-card to-berber-border border-2 border-berber-gold flex items-center justify-center shadow-lg">
+          <span class="text-2xl">👑</span>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl md:text-2xl font-black text-white tracking-wide">غرفة العمليات المركزية المباشرة</h1>
+            <span class="bg-berber-gold/20 text-berber-gold border border-berber-gold/40 text-xs px-2.5 py-0.5 rounded-full font-bold">نالوت Live</span>
+          </div>
+          <p class="text-xs text-emerald-300/70">مراقبة حية وشاملة لكافة العمليات بين الزبون والمتجر والكابتن والسيرفر</p>
+        </div>
+      </div>
+
+      <!-- Live Controls & Connection Status -->
+      <div class="flex items-center flex-wrap gap-3">
+        <!-- Socket Status Badge -->
+        <div id="socketBadge" class="flex items-center gap-2 bg-emerald-950/80 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-400">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 pulse-glow"></span>
+          <span id="socketText">متصل بالسيرفر الموحد (Socket.io)</span>
+        </div>
+
+        <!-- Audio Alert Toggle -->
+        <button id="soundToggleBtn" onclick="toggleAudio()" class="flex items-center gap-2 bg-berber-card hover:bg-berber-border border border-berber-border text-xs px-3.5 py-1.5 rounded-xl transition duration-200">
+          <span id="soundIcon">🔊</span>
+          <span id="soundText">الصوت مفعّل</span>
+        </button>
+
+        <!-- 1-Click Simulation Button -->
+        <button id="simBtn" onclick="runLiveSimulationCycle()" class="flex items-center gap-2 bg-gradient-to-r from-berber-gold to-amber-500 hover:from-amber-500 hover:to-berber-gold text-berber-dark font-black text-sm px-5 py-2 rounded-xl shadow-lg hover:shadow-berber-gold/20 transition duration-300 transform active:scale-95">
+          <span>🚀</span>
+          <span>محاكاة دورة طلب حية في نالوت</span>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ========================================================================= -->
+  <!-- 2. REAL-TIME KPI PULSE BAR                                                -->
+  <!-- ========================================================================= -->
+  <section class="bg-berber-dark/90 border-b border-berber-border px-6 py-3">
+    <div class="max-w-7xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      
+      <!-- Metric 1: Active Orders -->
+      <div class="bg-berber-surface/60 border border-berber-border/80 rounded-xl p-3 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-amber-500/10 text-amber-400 flex items-center justify-center text-xl">📦</div>
+        <div>
+          <div class="text-[11px] text-gray-400">الطلبات النشطة</div>
+          <div id="metricOrders" class="text-lg font-black text-white">1 جارٍ</div>
+        </div>
+      </div>
+
+      <!-- Metric 2: Online Captains -->
+      <div class="bg-berber-surface/60 border border-berber-border/80 rounded-xl p-3 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl">🛵</div>
+        <div>
+          <div class="text-[11px] text-gray-400">كباتن نالوت النشطين</div>
+          <div id="metricCaptains" class="text-lg font-black text-white">3 كباتن</div>
+        </div>
+      </div>
+
+      <!-- Metric 3: Active Stores -->
+      <div class="bg-berber-surface/60 border border-berber-border/80 rounded-xl p-3 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-blue-500/10 text-blue-400 flex items-center justify-center text-xl">🏬</div>
+        <div>
+          <div class="text-[11px] text-gray-400">متاجر وصيدليات نالوت</div>
+          <div id="metricStores" class="text-lg font-black text-white">4 متاجر</div>
+        </div>
+      </div>
+
+      <!-- Metric 4: Total Volume LYD -->
+      <div class="bg-berber-surface/60 border border-berber-border/80 rounded-xl p-3 flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-berber-gold/10 text-berber-gold flex items-center justify-center text-xl">💰</div>
+        <div>
+          <div class="text-[11px] text-gray-400">إجمالي حجم التداول</div>
+          <div id="metricVolume" class="text-lg font-black text-berber-gold">1,485.50 د.ل</div>
+        </div>
+      </div>
+
+      <!-- Metric 5: Telemetry Pings -->
+      <div class="bg-berber-surface/60 border border-berber-border/80 rounded-xl p-3 flex items-center gap-3 col-span-2 sm:col-span-1">
+        <div class="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center text-xl">📡</div>
+        <div>
+          <div class="text-[11px] text-gray-400">نبضات البث اللحظي</div>
+          <div id="metricPings" class="text-lg font-black text-purple-300">128 نبضة</div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================================= -->
+  <!-- 3. MAIN DASHBOARD CONTENT AREA                                            -->
+  <!-- ========================================================================= -->
+  <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- LEFT COLUMN: LIVE NALUT MAP & STEPPER (7 COLS) -->
+    <div class="lg:col-span-7 flex flex-col gap-6">
+
+      <!-- Map Card -->
+      <div class="bg-berber-surface border border-berber-border rounded-2xl overflow-hidden shadow-2xl flex flex-col">
+        <div class="px-5 py-3.5 border-b border-berber-border flex items-center justify-between bg-berber-surface/80">
+          <div class="flex items-center gap-2">
+            <span class="text-emerald-400 text-lg">🗺️</span>
+            <h2 class="font-bold text-white text-base">رادار نالوت المباشر (تتبع الأسطول والمتاجر لحظياً)</h2>
+          </div>
+          <div class="text-xs text-berber-gold font-semibold bg-berber-gold/10 px-2.5 py-1 rounded-lg border border-berber-gold/30">
+            نالوت (31.8686°, 10.9818°)
+          </div>
+        </div>
+
+        <!-- Leaflet Map Container -->
+        <div id="map" class="w-full h-[400px] z-10"></div>
+
+        <!-- Map Legend -->
+        <div class="p-3 bg-berber-dark/90 border-t border-berber-border flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div class="flex items-center gap-4 flex-wrap">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-400"></span> 🏬 صيدلية / متجر</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-400"></span> 🛵 كابتن متاح</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-400"></span> 🚗 كابتن في مهمة</span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-red-400"></span> 📍 موقع الزبون</span>
+          </div>
+          <button onclick="recenterNalutMap()" class="text-berber-gold hover:underline text-xs flex items-center gap-1">
+            <span>🎯</span> إعادة ضبط المركز
+          </button>
+        </div>
+      </div>
+
+      <!-- Interactive 5-Stage Lifecycle Stepper -->
+      <div class="bg-berber-surface border border-berber-border rounded-2xl p-5 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-white text-sm flex items-center gap-2">
+            <span>🔄</span> مسار دورة الطلب الجارية الآن
+          </h3>
+          <span id="activeOrderBadge" class="text-xs font-mono bg-berber-card border border-berber-border px-2.5 py-1 rounded-lg text-emerald-400">
+            #ORD-2026-LY-3053
+          </span>
+        </div>
+
+        <!-- Stepper Cards -->
+        <div class="grid grid-cols-5 gap-2 text-center text-xs">
+          
+          <!-- Step 1 -->
+          <div id="stepCard1" class="step-card p-2.5 rounded-xl border border-berber-gold bg-berber-gold/10 transition-all duration-300">
+            <div class="text-lg mb-1">🛒</div>
+            <div class="font-bold text-white">الطلب</div>
+            <div class="text-[10px] text-gray-300">الزبون سالم</div>
+          </div>
+
+          <!-- Step 2 -->
+          <div id="stepCard2" class="step-card p-2.5 rounded-xl border border-berber-border bg-berber-card transition-all duration-300">
+            <div class="text-lg mb-1">👨‍🍳</div>
+            <div class="font-bold text-white">تجهيز</div>
+            <div class="text-[10px] text-gray-400">صيدلية الهناء</div>
+          </div>
+
+          <!-- Step 3 -->
+          <div id="stepCard3" class="step-card p-2.5 rounded-xl border border-berber-border bg-berber-card transition-all duration-300">
+            <div class="text-lg mb-1">📦</div>
+            <div class="font-bold text-white">جاهز</div>
+            <div class="text-[10px] text-gray-400">في انتظار الكابتن</div>
+          </div>
+
+          <!-- Step 4 -->
+          <div id="stepCard4" class="step-card p-2.5 rounded-xl border border-berber-border bg-berber-card transition-all duration-300">
+            <div class="text-lg mb-1">🛵</div>
+            <div class="font-bold text-white">استلام وتوصيل</div>
+            <div class="text-[10px] text-gray-400">خالد الكاتب</div>
+          </div>
+
+          <!-- Step 5 -->
+          <div id="stepCard5" class="step-card p-2.5 rounded-xl border border-berber-border bg-berber-card transition-all duration-300">
+            <div class="text-lg mb-1">🏠</div>
+            <div class="font-bold text-white">تسليم OTP</div>
+            <div class="text-[10px] text-gray-400">تم التحصيل</div>
+          </div>
+
+        </div>
+
+        <!-- Simulation Progress Detail Note -->
+        <div id="simDetailBox" class="mt-4 p-3 bg-berber-card/80 border border-berber-border rounded-xl flex items-center justify-between text-xs">
+          <div class="flex items-center gap-2 text-gray-200">
+            <span class="text-berber-gold">⚡</span>
+            <span id="simDetailText">المنظومة في حالة جاهزية كاملة. يمكنك النقر على زر "محاكاة دورة طلب حية" لتشغيل دورة متكاملة.</span>
+          </div>
+          <span id="simOtpBadge" class="hidden bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 px-2 py-0.5 rounded font-mono text-[11px]">
+            OTP: 1890
+          </span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: REAL-TIME EVENT STREAM & FLEET LIST (5 COLS) -->
+    <div class="lg:col-span-5 flex flex-col gap-6">
+
+      <!-- Live Event Stream Feed -->
+      <div class="bg-berber-surface border border-berber-border rounded-2xl shadow-2xl flex flex-col h-[520px]">
+        
+        <!-- Header -->
+        <div class="px-5 py-3.5 border-b border-berber-border flex items-center justify-between bg-berber-surface/80">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-berber-gold pulse-glow"></span>
+            <h2 class="font-bold text-white text-base">سجل البث والعمليات اللحظي (Live Event Feed)</h2>
+          </div>
+          <button onclick="clearEventFeed()" class="text-gray-400 hover:text-gray-200 text-xs transition">
+            مسح السجل
+          </button>
+        </div>
+
+        <!-- Event List Container -->
+        <div id="eventFeed" class="flex-1 p-4 overflow-y-auto space-y-2.5 custom-scrollbar font-mono text-xs">
+          
+          <!-- Default Welcome Event -->
+          <div class="p-3 rounded-xl bg-berber-card/60 border border-berber-border flex items-start gap-3">
+            <span class="text-base">🟢</span>
+            <div class="flex-1">
+              <div class="flex items-center justify-between text-[11px] text-gray-400 mb-1">
+                <span class="font-bold text-berber-gold">[النظام المركزي]</span>
+                <span>الآن</span>
+              </div>
+              <p class="text-gray-200 leading-relaxed font-sans">
+                تم الاتصال بالسيرفر السحابي الموحد. يتم الاستماع اللحظي لأحداث Socket.io لكافة التطبيقات (الزبون، التاجر، الكابتن، الإدارة).
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Event Feed Footer Info -->
+        <div class="p-3 bg-berber-dark/90 border-t border-berber-border flex items-center justify-between text-[11px] text-gray-400">
+          <span>📡 بروتوكول: WebSocket / Socket.io + REST</span>
+          <span id="eventCountBadge" class="text-berber-gold font-bold">1 حدث</span>
+        </div>
+
+      </div>
+
+      <!-- Active Fleet Status -->
+      <div class="bg-berber-surface border border-berber-border rounded-2xl p-4 shadow-xl">
+        <h3 class="font-bold text-white text-sm mb-3 flex items-center gap-2">
+          <span>🛵</span> أسطول كباتن نالوت المتصلين الآن
+        </h3>
+        
+        <div class="space-y-2.5">
+          <!-- Captain 1 -->
+          <div class="p-2.5 rounded-xl bg-berber-card border border-berber-border flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-sm">
+                🚗
+              </div>
+              <div>
+                <div class="font-bold text-white">خالد الكاتب</div>
+                <div class="text-[10px] text-gray-400">0912345678 • سيارة تويوتا</div>
+              </div>
+            </div>
+            <div class="text-left">
+              <span id="statusCap1" class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                متاح للطلبات
+              </span>
+              <div class="text-[10px] text-gray-400 mt-1">الرصيد: 45.00 د.ل</div>
+            </div>
+          </div>
+
+          <!-- Captain 2 -->
+          <div class="p-2.5 rounded-xl bg-berber-card border border-berber-border flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm">
+                🛵
+              </div>
+              <div>
+                <div class="font-bold text-white">عمر القلعاوي</div>
+                <div class="text-[10px] text-gray-400">0923456789 • دراجة نارية</div>
+              </div>
+            </div>
+            <div class="text-left">
+              <span class="bg-amber-500/20 text-amber-400 border border-amber-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                متاح للطلبات
+              </span>
+              <div class="text-[10px] text-gray-400 mt-1">الرصيد: 32.50 د.ل</div>
+            </div>
+          </div>
+
+          <!-- Captain 3 -->
+          <div class="p-2.5 rounded-xl bg-berber-card border border-berber-border flex items-center justify-between text-xs">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm">
+                🚗
+              </div>
+              <div>
+                <div class="font-bold text-white">طارق النالوتي</div>
+                <div class="text-[10px] text-gray-400">0915544332 • هيونداي</div>
+              </div>
+            </div>
+            <div class="text-left">
+              <span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                متاح للطلبات
+              </span>
+              <div class="text-[10px] text-gray-400 mt-1">الرصيد: 60.00 د.ل</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================================================= -->
+  <!-- 4. JAVASCRIPT LOGIC: LEAFLET MAP, SOCKET.IO & LIVE SIMULATION ENGINE       -->
+  <!-- ========================================================================= -->
+  <script>
+    // --- Audio Alert Synth (Web Audio API) ---
+    let audioEnabled = true;
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) audioCtx = new AudioContext();
+    }
+
+    function playTone(freq, type = 'sine', duration = 0.15) {
+      if (!audioEnabled) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (_) {}
+    }
+
+    function playNotificationChime(kind = 'order') {
+      if (!audioEnabled) return;
+      if (kind === 'order') {
+        playTone(523.25, 'triangle', 0.12);
+        setTimeout(() => playTone(659.25, 'triangle', 0.15), 100);
+        setTimeout(() => playTone(783.99, 'triangle', 0.25), 200);
+      } else if (kind === 'pickup') {
+        playTone(440, 'sine', 0.1);
+        setTimeout(() => playTone(554.37, 'sine', 0.2), 120);
+      } else if (kind === 'delivered') {
+        playTone(587.33, 'triangle', 0.1);
+        setTimeout(() => playTone(880, 'triangle', 0.3), 120);
+      }
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const soundText = document.getElementById('soundText');
+      const soundIcon = document.getElementById('soundIcon');
+      if (audioEnabled) {
+        soundText.innerText = 'الصوت مفعّل';
+        soundIcon.innerText = '🔊';
+        playTone(600);
+      } else {
+        soundText.innerText = 'الصوت مكتوم';
+        soundIcon.innerText = '🔇';
+      }
+    }
+
+    // --- Nalut Geography & Map Setup ---
+    const NALUT_CENTER = [31.8686, 10.9818];
+    const map = L.map('map', {
+      zoomControl: true,
+      attributionControl: false
+    }).setView(NALUT_CENTER, 15);
+
+    // Dark matter map tiles
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      maxZoom: 19
+    }).addTo(map);
+
+    function recenterNalutMap() {
+      map.setView(NALUT_CENTER, 15);
+    }
+
+    // Stores in Nalut
+    const stores = [
+      { id: 'store_nalut_alhanaa', name: 'صيدلية الهناء', type: 'pharmacy', lat: 31.8680, lng: 10.9850, icon: '💊' },
+      { id: 'store_nalut_ranchello', name: 'مطعم رانشيلو نالوت', type: 'restaurant', lat: 31.8686, lng: 10.9818, icon: '🍔' },
+      { id: 'store_nalut_qasr', name: 'مطعم قصر نالوت', type: 'restaurant', lat: 31.8705, lng: 10.9835, icon: '🍗' },
+      { id: 'store_nalut_akakus', name: 'بيتزا أكاكوس', type: 'restaurant', lat: 31.8660, lng: 10.9800, icon: '🍕' }
+    ];
+
+    stores.forEach(s => {
+      const el = document.createElement('div');
+      el.className = 'w-8 h-8 rounded-full bg-emerald-950 border-2 border-emerald-400 flex items-center justify-center text-sm shadow-lg';
+      el.innerText = s.icon;
+      const customIcon = L.divIcon({ html: el.outerHTML, className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
+      L.marker([s.lat, s.lng], { icon: customIcon })
+        .addTo(map)
+        .bindPopup(`<b>${s.name}</b><br><span class="text-xs text-emerald-400">${s.type === 'pharmacy' ? 'صيدلية معتمدة' : 'مطعم معتمد'}</span>`);
+    });
+
+    // Captains in Nalut
+    const captains = [
+      { id: 'driver_nalut_01', name: 'خالد الكاتب', vehicle: 'سيارة', lat: 31.8645, lng: 10.9840, icon: '🚗' },
+      { id: 'driver_nalut_02', name: 'عمر القلعاوي', vehicle: 'دراجة', lat: 31.8695, lng: 10.9790, icon: '🛵' },
+      { id: 'drv_01', name: 'طارق النالوتي', vehicle: 'سيارة', lat: 31.8710, lng: 10.9860, icon: '🚗' }
+    ];
+
+    const captainMarkers = {};
+    captains.forEach(c => {
+      const el = document.createElement('div');
+      el.className = 'w-9 h-9 rounded-full bg-amber-950 border-2 border-berber-gold flex items-center justify-center text-sm shadow-xl pulse-glow';
+      el.innerText = c.icon;
+      const customIcon = L.divIcon({ html: el.outerHTML, className: '', iconSize: [36, 36], iconAnchor: [18, 18] });
+      const m = L.marker([c.lat, c.lng], { icon: customIcon })
+        .addTo(map)
+        .bindPopup(`<b>كابتن نالوت: ${c.name}</b><br><span class="text-xs text-amber-300">المركبة: ${c.vehicle} | متصل</span>`);
+      captainMarkers[c.id] = m;
+    });
+
+    // Customer Location
+    const customerPos = [31.8735, 10.9785];
+    const custEl = document.createElement('div');
+    custEl.className = 'w-8 h-8 rounded-full bg-red-950 border-2 border-red-400 flex items-center justify-center text-sm shadow-lg';
+    custEl.innerText = '🏠';
+    const custIcon = L.divIcon({ html: custEl.outerHTML, className: '', iconSize: [32, 32], iconAnchor: [16, 16] });
+    L.marker(customerPos, { icon: custIcon })
+      .addTo(map)
+      .bindPopup(`<b>الزبون: سالم النالوتي</b><br><span class="text-xs text-gray-300">حي الزهور - نالوت</span>`);
+
+    let activeRoutePolyline = null;
+
+    // --- Real-time Socket.io Setup ---
+    let socket = null;
+    let eventCounter = 1;
+    let telemetryPingCounter = 128;
+
+    function connectSocket() {
+      try {
+        socket = io({ query: { role: 'admin', userId: 'super_admin_mission_control' } });
+
+        socket.on('connect', () => {
+          const badge = document.getElementById('socketBadge');
+          const text = document.getElementById('socketText');
+          badge.className = 'flex items-center gap-2 bg-emerald-950/80 border border-emerald-500/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-emerald-400';
+          text.innerText = 'متصل بالسيرفر الموحد (Socket.io)';
+          addEventLog('سيرفر', 'تم الاتصال بقناة Socket.io المركزية بنجاح 🟢', 'server');
+        });
+
+        socket.on('disconnect', () => {
+          const badge = document.getElementById('socketBadge');
+          const text = document.getElementById('socketText');
+          badge.className = 'flex items-center gap-2 bg-red-950/80 border border-red-500/30 px-3.5 py-1.5 rounded-xl text-xs font-semibold text-red-400';
+          text.innerText = 'انقطع الاتصال بالسيرفر (إعادة المحاولة...)';
+        });
+
+        // Listen for new orders
+        socket.on('order:new', (order) => {
+          playNotificationChime('order');
+          addEventLog('زبون', `طلب جديد أنشئ #${order.order_number || order.id} بقيمة ${order.total_amount_lyd || order.total} د.ل من ${order.customer_name || 'زبون نالوت'}`, 'customer');
+          updateStep(1);
+        });
+
+        // Listen for order status changes
+        socket.on('order:status_changed', (data) => {
+          const status = data.status;
+          if (status === 'preparing') {
+            addEventLog('متجر', `المتجر بدأ تجهيز الطلب #${data.order_number || data.order_id}`, 'merchant');
+            updateStep(2);
+            playTone(500);
+          } else if (status === 'ready_for_pickup') {
+            addEventLog('متجر', `الطلب جاهز للاستلام والتسليم للكابتن #${data.order_number || data.order_id}`, 'merchant');
+            updateStep(3);
+            playTone(650);
+          } else if (status === 'out_for_delivery') {
+            addEventLog('كابتن', `الكابتن استلم الطلب وهو في الطريق للزبون 🛵 (${data.driver_id || 'كابتن نالوت'})`, 'captain');
+            updateStep(4);
+            playNotificationChime('pickup');
+          } else if (status === 'delivered') {
+            addEventLog('تسليم', `تم التحقق من الرمز OTP وتسليم الطلب بنجاح! تم تحصيل الكاش وإيداع أرباح الكابتن 🎉`, 'delivered');
+            updateStep(5);
+            playNotificationChime('delivered');
+          }
+        });
+
+        // Driver GPS telemetry
+        socket.on('driver:location', (loc) => {
+          telemetryPingCounter++;
+          document.getElementById('metricPings').innerText = `${telemetryPingCounter} نبضة`;
+          if (loc.driver_id && captainMarkers[loc.driver_id] && loc.latitude && loc.longitude) {
+            captainMarkers[loc.driver_id].setLatLng([loc.latitude, loc.longitude]);
+          }
+        });
+
+      } catch (err) {
+        console.warn('Socket.io connection warning:', err);
+      }
+    }
+
+    connectSocket();
+
+    // --- Stepper Progression UI ---
+    function updateStep(stepNumber) {
+      for (let i = 1; i <= 5; i++) {
+        const card = document.getElementById(`stepCard${i}`);
+        if (!card) continue;
+        if (i < stepNumber) {
+          card.className = 'step-card p-2.5 rounded-xl border border-emerald-500/60 bg-emerald-950/40 text-emerald-400 transition-all duration-300';
+        } else if (i === stepNumber) {
+          card.className = 'step-card p-2.5 rounded-xl border-2 border-berber-gold bg-berber-gold/20 shadow-lg shadow-berber-gold/10 transform scale-105 transition-all duration-300';
+        } else {
+          card.className = 'step-card p-2.5 rounded-xl border border-berber-border bg-berber-card opacity-60 transition-all duration-300';
+        }
+      }
+    }
+
+    // --- Event Feed Logger ---
+    function addEventLog(sender, message, type = 'info') {
+      const feed = document.getElementById('eventFeed');
+      if (!feed) return;
+
+      eventCounter++;
+      document.getElementById('eventCountBadge').innerText = `${eventCounter} أحداث`;
+
+      const timeStr = new Date().toLocaleTimeString('ar-LY', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      let badgeColor = 'text-berber-gold bg-berber-gold/10 border-berber-gold/30';
+      let icon = '⚡';
+
+      if (type === 'customer') {
+        badgeColor = 'text-cyan-400 bg-cyan-950/40 border-cyan-500/30';
+        icon = '🛒';
+      } else if (type === 'merchant') {
+        badgeColor = 'text-amber-400 bg-amber-950/40 border-amber-500/30';
+        icon = '👨‍🍳';
+      } else if (type === 'captain') {
+        badgeColor = 'text-berber-gold bg-amber-950/40 border-berber-gold/30';
+        icon = '🛵';
+      } else if (type === 'delivered') {
+        badgeColor = 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30';
+        icon = '✅';
+      } else if (type === 'server') {
+        badgeColor = 'text-purple-400 bg-purple-950/40 border-purple-500/30';
+        icon = '⚙️';
+      }
+
+      const row = document.createElement('div');
+      row.className = 'p-3 rounded-xl bg-berber-card/80 border border-berber-border flex items-start gap-3 animate-fade-in';
+      row.innerHTML = `
+        <span class="text-base">${icon}</span>
+        <div class="flex-1">
+          <div class="flex items-center justify-between text-[11px] mb-1">
+            <span class="font-bold px-2 py-0.5 rounded border ${badgeColor}">[${sender}]</span>
+            <span class="text-gray-400 font-mono">${timeStr}</span>
+          </div>
+          <p class="text-gray-200 leading-relaxed font-sans text-xs">${message}</p>
+        </div>
+      `;
+
+      feed.prepend(row);
+    }
+
+    function clearEventFeed() {
+      const feed = document.getElementById('eventFeed');
+      feed.innerHTML = '';
+      eventCounter = 0;
+      document.getElementById('eventCountBadge').innerText = `0 أحداث`;
+    }
+
+    // --- Interactive 1-Click Simulation Cycle ---
+    let isSimulating = false;
+
+    async function runLiveSimulationCycle() {
+      if (isSimulating) return;
+      isSimulating = true;
+      initAudio();
+
+      const simBtn = document.getElementById('simBtn');
+      const simDetail = document.getElementById('simDetailText');
+      const otpBadge = document.getElementById('simOtpBadge');
+      const statusCap1 = document.getElementById('statusCap1');
+
+      simBtn.disabled = true;
+      simBtn.classList.add('opacity-50', 'cursor-not-allowed');
+
+      try {
+        // STEP 1: Customer creates order
+        updateStep(1);
+        const orderNum = `#ORD-2026-LY-${Math.floor(1000 + Math.random() * 9000)}`;
+        const orderId = `ord_nalut_live_${Date.now()}`;
+        document.getElementById('activeOrderBadge').innerText = orderNum;
+        simDetail.innerText = `[1/5 الزبون]: سالم النالوتي أنشأ طلباً جديداً (${orderNum}) من صيدلية الهناء بقيمة 61.00 د.ل`;
+        playNotificationChime('order');
+        addEventLog('الزبون', `سالم النالوتي يؤكد طلب أدوية وفيتامينات ${orderNum} - طريقة الدفع كاش COD`, 'customer');
+
+        // Draw route from pharmacy to customer
+        if (activeRoutePolyline) map.removeLayer(activeRoutePolyline);
+        activeRoutePolyline = L.polyline([[31.8680, 10.9850], customerPos], {
+          color: '#D4AF37',
+          weight: 4,
+          dashArray: '8, 8',
+          opacity: 0.8
+        }).addTo(map);
+
+        await new Promise(r => setTimeout(r, 2200));
+
+        // STEP 2: Merchant preparing
+        updateStep(2);
+        simDetail.innerText = `[2/5 المتجر]: صيدلية الهناء استقبلت التنبيه وبدأت في تجهيز الأدوية ومطابقة الأصناف...`;
+        playTone(480);
+        addEventLog('المتجر', `صيدلية الهناء (طريق المستشفى) بدأت تجهيز أصناف الطلب ${orderNum}`, 'merchant');
+
+        await new Promise(r => setTimeout(r, 2200));
+
+        // STEP 3: Ready for pickup
+        updateStep(3);
+        simDetail.innerText = `[3/5 المتجر]: تم تجهيز الطلب ووضع باركود الفاتورة. إشعار رادار الكباتن القريبين...`;
+        playTone(600);
+        addEventLog('المتجر', `الطلب ${orderNum} جاهز للاستلام من المطبخ/المحل - بث نداء لرادار الكباتن`, 'merchant');
+
+        await new Promise(r => setTimeout(r, 2000));
+
+        // STEP 4: Captain Khalid accepts on radar & picks up
+        updateStep(4);
+        statusCap1.innerText = 'في مهمة توصيل 🛵';
+        statusCap1.className = 'bg-blue-500/20 text-blue-400 border border-blue-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold';
+        
+        simDetail.innerText = `[4/5 الكابتن]: خالد الكاتب قبل الطلب عبر الرادار، استلم الطلب من الصيدلية وهو في الطريق للزبون!`;
+        playNotificationChime('pickup');
+        addEventLog('الكابتن', `الكابتن خالد الكاتب (0912345678) أكد استلام الطلب من صيدلية الهناء وتوجه لحي الزهور 🛵`, 'captain');
+
+        // Animate captain moving to customer
+        const capMarker = captainMarkers['driver_nalut_01'];
+        if (capMarker) {
+          capMarker.setLatLng([31.8700, 10.9820]);
+          await new Promise(r => setTimeout(r, 1200));
+          capMarker.setLatLng(customerPos);
+        }
+
+        await new Promise(r => setTimeout(r, 2000));
+
+        // STEP 5: Delivery & OTP
+        updateStep(5);
+        const otpCode = '1890';
+        otpBadge.classList.remove('hidden');
+        otpBadge.innerText = `OTP: ${otpCode}`;
+
+        simDetail.innerText = `[5/5 التسليم]: الكابتن وصل لمنزل الزبون، تم التحقق من الرمز (${otpCode}) وتحصيل 61 د.ل كاش وإيداع أرباح الكابتن!`;
+        playNotificationChime('delivered');
+        addEventLog('النظام', `✅ تم تسليم الطلب ${orderNum} بنجاح! تم التحقق من OTP (${otpCode}) وإيداع 7.50 د.ل في محفظة الكابتن خالد.`, 'delivered');
+
+        statusCap1.innerText = 'متاح للطلبات';
+        statusCap1.className = 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[10px] px-2 py-0.5 rounded-full font-bold';
+
+        // Also call the backend simulation route if online
+        try {
+          fetch('/api/v1/simulation/run-cycle', { method: 'POST' }).catch(() => {});
+        } catch (_) {}
+
+      } finally {
+        isSimulating = false;
+        simBtn.disabled = false;
+        simBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+      }
+    }
+  </script>
+
+</body>
+</html>

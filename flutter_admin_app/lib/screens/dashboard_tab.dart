@@ -85,6 +85,96 @@ class _DashboardTabState extends State<DashboardTab> {
                     ),
                     const SizedBox(height: 16),
 
+                    // Live Mission Control Banner
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F382B), Color(0xFF0A261D)],
+                        ),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.5)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AdminColors.primaryGold.withValues(alpha: 0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: AdminColors.primaryGold.withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.radar_rounded, color: AdminColors.primaryGold, size: 24),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'رادار العمليات المباشر (Live Telemetry)',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'مراقبة حركة الكباتن والطلبات الحية عبر /live',
+                                  style: TextStyle(fontSize: 11, color: Colors.white70),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.info_outline_rounded, color: AdminColors.primaryGold),
+                            tooltip: 'تفاصيل غرفة العمليات',
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: AdminColors.surface,
+                                  title: const Row(
+                                    children: [
+                                      Icon(Icons.radar_rounded, color: AdminColors.primaryGold),
+                                      SizedBox(width: 8),
+                                      Text('غرفة العمليات المركزية', style: TextStyle(color: Colors.white, fontSize: 16)),
+                                    ],
+                                  ),
+                                  content: const Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'يمكنك فتح غرفة العمليات المباشرة من أي متصفح لمشاهدة جميع العمليات بين التطبيقات والسيرفر لحظياً:',
+                                        style: TextStyle(color: Colors.white70, fontSize: 13),
+                                      ),
+                                      SizedBox(height: 12),
+                                      Text('🔗 رابط المحطة المحلي:', style: TextStyle(color: AdminColors.primaryGold, fontWeight: FontWeight.bold, fontSize: 12)),
+                                      SelectableText('http://localhost:3000/live', style: TextStyle(color: Colors.white, fontFamily: 'monospace')),
+                                      SizedBox(height: 8),
+                                      Text('🔗 رابط السحابة:', style: TextStyle(color: AdminColors.primaryGold, fontWeight: FontWeight.bold, fontSize: 12)),
+                                      SelectableText('https://wasel-nalut-api.onrender.com/live', style: TextStyle(color: Colors.white, fontFamily: 'monospace')),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(ctx),
+                                      child: const Text('إغلاق', style: TextStyle(color: AdminColors.primaryGold)),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     // Primary Revenue Card
                     _buildPrimaryRevenueCard(),
 

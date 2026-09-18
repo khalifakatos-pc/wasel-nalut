@@ -52,6 +52,14 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
     setState(() {
       _activeOrder.currentStep = step;
     });
+
+    if (step == DeliveryStep.navigatingToCustomer) {
+      DriverSupabaseService.updateOrderStatus(
+        orderId: _activeOrder.orderId,
+        status: 'out_for_delivery',
+        driverId: DriverSupabaseService.activeDriverId,
+      );
+    }
   }
 
   void _openQrScannerSimulator() {
@@ -368,14 +376,58 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
                 'قائمة التحقق من الأصناف:',
                 style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white),
               ),
-              TextButton.icon(
-                icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
-                label: const Text('مسح باركود'),
-                onPressed: _openQrScannerSimulator,
+              Wrap(
+                spacing: 6,
+                children: [
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: DriverColors.onlineGreen,
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    ),
+                    icon: const Icon(Icons.done_all_rounded, size: 18),
+                    label: const Text('تأكيد الكل ✅', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    onPressed: () {
+                      setState(() {
+                        _isQrScanned = true;
+                        for (var item in _activeOrder.items) {
+                          item.isVerified = true;
+                        }
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('✅ تم تأكيد مطابقة جميع أصناف الطلب بنجاح!'),
+                          backgroundColor: DriverColors.onlineGreen,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                  ),
+                  TextButton.icon(
+                    icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
+                    label: const Text('مسح باركود'),
+                    onPressed: _openQrScannerSimulator,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          if (_isQrScanned)
+            Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: DriverColors.onlineGreen.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: DriverColors.onlineGreen.withValues(alpha: 0.3)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.verified_rounded, color: DriverColors.onlineGreen, size: 16),
+                  SizedBox(width: 6),
+                  Text('تم مسح وتأكيد فاتورة المتجر بنجاح', style: TextStyle(color: Colors.white, fontSize: 12)),
+                ],
+              ),
+            ),
           ..._activeOrder.items.map((item) {
             return CheckboxListTile(
               contentPadding: EdgeInsets.zero,
@@ -655,10 +707,24 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         break;
 
       case DeliveryStep.orderPickupChecklist:
-        final allChecked = _activeOrder.items.every((i) => i.isVerified) || _isQrScanned;
         label = 'تأكيد الاستلام وبدء التوصيل للزبون 🛵';
         buttonColor = DriverColors.primary;
-        onTap = allChecked ? () => _advanceToStep(DeliveryStep.navigatingToCustomer) : null;
+        onTap = () {
+          setState(() {
+            _isQrScanned = true;
+            for (var item in _activeOrder.items) {
+              item.isVerified = true;
+            }
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ تم تأكيد استلام الطلب من المطعم وبدء التوصيل للزبون!'),
+              backgroundColor: DriverColors.onlineGreen,
+              duration: Duration(seconds: 2),
+            ),
+          );
+          _advanceToStep(DeliveryStep.navigatingToCustomer);
+        };
         break;
 
       case DeliveryStep.navigatingToCustomer:
