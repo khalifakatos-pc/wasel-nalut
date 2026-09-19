@@ -14,6 +14,7 @@
  */
 
 const express = require('express');
+const compression = require('compression');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
@@ -122,7 +123,8 @@ if (DATABASE_URL) {
     pgPool = new Pool({
       connectionString: DATABASE_URL,
       ssl: DATABASE_URL.includes('localhost') ? false : { rejectUnauthorized: false },
-      connectionTimeoutMillis: 10000,
+      max: 20,
+      connectionTimeoutMillis: 5000,
       idleTimeoutMillis: 30000
     });
     console.log('[PostgreSQL] Initialized pg pool with cloud database');
@@ -166,11 +168,38 @@ function loadSeedData() {
 
 loadSeedData();
 
-function saveSeedData() {
+let _saveSeedTimeout = null;
+let _isSavingSeed = false;
+let _hasPendingSeedSave = false;
+
+function saveSeedData(immediate = false) {
+  if (immediate) {
+    _executeSaveSeedData();
+    return;
+  }
+  if (_saveSeedTimeout) clearTimeout(_saveSeedTimeout);
+  _saveSeedTimeout = setTimeout(() => {
+    _executeSaveSeedData();
+  }, 2500); // Debounce disk writes to max once every 2.5s
+}
+
+async function _executeSaveSeedData() {
+  if (_isSavingSeed) {
+    _hasPendingSeedSave = true;
+    return;
+  }
+  _isSavingSeed = true;
   try {
-    fs.writeFileSync(SEED_DATA_PATH, JSON.stringify(db, null, 2), 'utf-8');
+    const data = JSON.stringify(db);
+    await fs.promises.writeFile(SEED_DATA_PATH, data, 'utf-8');
   } catch (err) {
     console.error('[Database] Failed to save seed_data.json:', err.message);
+  } finally {
+    _isSavingSeed = false;
+    if (_hasPendingSeedSave) {
+      _hasPendingSeedSave = false;
+      saveSeedData(true);
+    }
   }
 }
 
@@ -420,6 +449,14 @@ async function initPgTables(forceSeed = false) {
         notes TEXT,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- High-Performance Production Query Indexes
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_orders_store_id ON orders(store_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_driver_id ON orders(driver_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_stores_is_open ON stores(is_open);
+      CREATE INDEX IF NOT EXISTS idx_products_store_id ON products(store_id);
     `);
 
     const countRes = await pgPool.query('SELECT COUNT(*) FROM stores');
@@ -567,6 +604,17 @@ function calculateDynamicDeliveryFee(store, deliveryLat, deliveryLng, totalWeigh
 // ----------------------------------------------------------------------------
 const app = express();
 const server = http.createServer(app);
+
+// Fast unblocking Health Check for UptimeRobot / Render Keep-Alive
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', uptime: Math.round(process.uptime()), timestamp: new Date().toISOString() });
+});
+app.get('/api/v1/ping', (req, res) => {
+  res.json({ pong: true, uptime: Math.round(process.uptime()), memory_mb: Math.round(process.memoryUsage().heapUsed / 1024 / 1024) });
+});
+
+// Response compression for 70-85% smaller payloads
+app.use(compression());
 
 app.use(cors({
   origin: '*',
@@ -1137,6 +1185,7 @@ app.get('/api/v1/stores', (req, res) => {
       stores.sort((a, b) => a.distance_meters - b.distance_meters);
     }
 
+    res.set('Cache-Control', 'public, max-age=15, stale-while-revalidate=60');
     res.json({
       success: true,
       count: stores.length,
@@ -1152,6 +1201,7 @@ app.get('/api/v1/stores/:id', (req, res) => {
   if (!store) {
     return res.status(404).json({ success: false, error: 'Store not found' });
   }
+  res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
   res.json({
     success: true,
     data: store
@@ -1175,6 +1225,7 @@ app.get('/api/v1/stores/:id/menu', (req, res) => {
       products: storeProducts.filter(p => p.category_id === cat.id)
     }));
 
+    res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
     res.json({
       success: true,
       store: {
