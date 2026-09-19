@@ -50,6 +50,7 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
 
   bool _isSatelliteMode = true;
   double _currentZoom = 16.0;
+  bool _isMapReady = false;
 
   // Nalut coordinate anchors
   late LatLng _storePos;
@@ -120,11 +121,13 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
     super.didUpdateWidget(oldWidget);
     if (oldWidget.activeStep != widget.activeStep) {
       _initCoordinates();
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _recenterOnDriver();
-        }
-      });
+      if (_isMapReady) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _isMapReady) {
+            _recenterOnDriver();
+          }
+        });
+      }
     }
   }
 
@@ -136,20 +139,35 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
   }
 
   void _recenterOnDriver() {
-    _mapController.move(_driverPos, _currentZoom);
+    if (!_isMapReady) return;
+    try {
+      _mapController.move(_driverPos, _currentZoom);
+    } catch (e) {
+      debugPrint('Error recentering on driver: $e');
+    }
     widget.onRecenter?.call();
   }
 
   void _zoomIn() {
-    _currentZoom = (_currentZoom + 1).clamp(11.0, 19.0);
-    _mapController.move(_mapController.camera.center, _currentZoom);
-    setState(() {});
+    if (!_isMapReady) return;
+    try {
+      _currentZoom = (_currentZoom + 1).clamp(11.0, 19.0);
+      _mapController.move(_mapController.camera.center, _currentZoom);
+      setState(() {});
+    } catch (e) {
+      debugPrint('Error zooming in: $e');
+    }
   }
 
   void _zoomOut() {
-    _currentZoom = (_currentZoom - 1).clamp(11.0, 19.0);
-    _mapController.move(_mapController.camera.center, _currentZoom);
-    setState(() {});
+    if (!_isMapReady) return;
+    try {
+      _currentZoom = (_currentZoom - 1).clamp(11.0, 19.0);
+      _mapController.move(_mapController.camera.center, _currentZoom);
+      setState(() {});
+    } catch (e) {
+      debugPrint('Error zooming out: $e');
+    }
   }
 
   @override
@@ -173,6 +191,14 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
               interactionOptions: InteractionOptions(
                 flags: widget.isInteractive ? InteractiveFlag.all : InteractiveFlag.none,
               ),
+              onMapReady: () {
+                _isMapReady = true;
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && _isMapReady) {
+                    _recenterOnDriver();
+                  }
+                });
+              },
             ),
             children: [
               // Tile Layer (ArcGIS Satellite or OpenStreetMap)

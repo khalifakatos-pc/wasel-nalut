@@ -49,6 +49,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   }
 
   void _advanceToStep(DeliveryStep step) {
+    if (!mounted) return;
     setState(() {
       _activeOrder.currentStep = step;
     });
@@ -58,7 +59,10 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         orderId: _activeOrder.orderId,
         status: 'out_for_delivery',
         driverId: DriverSupabaseService.activeDriverId,
-      );
+      ).catchError((e) {
+        debugPrint('Error updating order status to out_for_delivery: $e');
+        return false;
+      });
     }
   }
 
