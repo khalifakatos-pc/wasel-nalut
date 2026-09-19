@@ -147,10 +147,7 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
     try {
       final orders = await DriverSupabaseService.fetchAvailableOrders();
       final ongoing = orders.cast<Map<String, dynamic>>().firstWhere(
-        (o) => (o['driver_id'] == DriverSupabaseService.activeDriverId ||
-                o['driver_id'] == 'driver_nalut_01' ||
-                o['driver_id'] == 'driver_nalut_02' ||
-                o['driver_id'] == 'drv_01') &&
+        (o) => o['driver_id'] == DriverSupabaseService.activeDriverId &&
                o['status'] == 'out_for_delivery',
         orElse: () => <String, dynamic>{},
       );

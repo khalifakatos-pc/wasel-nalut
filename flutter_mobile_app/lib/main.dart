@@ -8,7 +8,6 @@ import 'cart_checkout_screen.dart';
 import 'orders_history_screen.dart';
 import 'wallet_screen.dart';
 import 'profile_screen.dart';
-import 'driver_radar_sheet.dart';
 import 'splash_screen.dart';
 import 'onboarding_screen.dart';
 import 'services/api_service.dart';
@@ -147,19 +146,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
   int _currentIndex = 0;
   final Set<int> _loadedTabs = {0};
 
-  void _triggerDriverRadar() {
-    showDialog(
-      context: context,
-      builder: (ctx) => DriverRadarSheet(
-        onAccept: () {
-          setState(() {
-            _currentIndex = 0;
-          });
-        },
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
@@ -186,17 +172,6 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       body: IndexedStack(
         index: _currentIndex,
         children: screens,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _triggerDriverRadar,
-        backgroundColor: AppColors.waselPrimary,
-        foregroundColor: Colors.white,
-        elevation: 6,
-        icon: const Icon(Icons.sensors_rounded, size: 20),
-        label: const Text(
-          'رادار الكابتن',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,

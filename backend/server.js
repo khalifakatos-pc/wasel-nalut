@@ -1871,28 +1871,9 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
       });
     }
 
-    // Auto-dispatch nearest available driver
-    const storeCity = (store.city || 'nalut').toLowerCase();
-    const availableDrivers = db.drivers.filter(d =>
-      d.status === 'available' ||
-      d.status === 'online_idle' ||
-      d.id === 'driver_nalut_01' ||
-      d.id === 'driver_nalut_02' ||
-      (d.city && d.city.toLowerCase() === storeCity)
-    );
-
+    // Decoupled dispatch: orders start unassigned (driver_id = null).
+    // Dispatching to Captain Radar ONLY occurs when store marks order 'ready_for_pickup'.
     let assignedDriver = null;
-    if (availableDrivers.length > 0) {
-      // Find nearest driver to store
-      availableDrivers.sort((a, b) => {
-        const distA = calculateHaversineDistance(a.latitude, a.longitude, store.latitude, store.longitude);
-        const distB = calculateHaversineDistance(b.latitude, b.longitude, store.latitude, store.longitude);
-        return distA - distB;
-      });
-      assignedDriver = availableDrivers[0];
-    } else if (db.drivers.length > 0) {
-      assignedDriver = db.drivers[0];
-    }
 
     const orderId = `ord_${uuidv4().substring(0, 8)}`;
     const orderNumber = `ORD-2026-LY-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -1911,7 +1892,7 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
       store_name: store.name,
       store_latitude: store.latitude,
       store_longitude: store.longitude,
-      driver_id: assignedDriver ? assignedDriver.id : null,
+      driver_id: null,
       status: 'placed',
       otp_code: otpCode,
       payment_method,
@@ -1968,11 +1949,7 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
       req.io.emit('store:menu_updated', { store_id: store.id });
     }
 
-    if (assignedDriver) {
-      assignedDriver.active_order_id = orderId;
-    }
-
-    // Real-time Socket broadcasts
+    // Real-time Socket broadcasts to Store, User, and Admin (NOT Captain Radar yet)
     req.io.to(`store:${store.id}`).emit('store:new_order', {
       order_id: orderId,
       order_number: orderNumber,
@@ -1981,47 +1958,18 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
       status: newOrder.status
     });
 
-    if (assignedDriver) {
-      req.io.to(`driver:${assignedDriver.id}`).emit('driver:assigned_order', {
-        order_id: orderId,
-        order_number: orderNumber,
-        store: {
-          name: store.name,
-          latitude: store.latitude,
-          longitude: store.longitude
-        },
-        destination: {
-          address: destAddress,
-          latitude: destLat,
-          longitude: destLng
-        },
-        delivery_fee_lyd: deliveryFee
-      });
-    }
-
     req.io.to(`user:${customer.id}`).emit('order:created', newOrder);
     req.io.to('admin:fleet').emit('admin:order_created', newOrder);
-    // Broadcast to all active driver radar clients
-    req.io.emit('radar:incoming_order', newOrder);
     req.io.emit('merchant:new_order', newOrder);
 
     res.status(201).json({
       success: true,
-      message: 'Order created and dispatched successfully',
+      message: 'Order created successfully and waiting for kitchen preparation',
       data: {
         ...newOrder,
         order_id: orderId,
         order: newOrder,
-        assigned_driver: assignedDriver
-          ? {
-              id: assignedDriver.id,
-              name: assignedDriver.full_name,
-              phone: assignedDriver.phone,
-              vehicle: assignedDriver.vehicle_model,
-              latitude: assignedDriver.latitude,
-              longitude: assignedDriver.longitude
-            }
-          : null,
+        assigned_driver: null,
         wallet_summary: {
           balance: customerWallet.balance,
           locked_balance: customerWallet.locked_balance,
@@ -2282,6 +2230,14 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       req.io.to(`driver:${order.driver_id}`).emit('order:status_changed', statusPayload);
     }
     req.io.to('admin:fleet').emit('admin:order_status_changed', statusPayload);
+
+    // Broadcast to Captain Radar ONLY when the merchant marks order 'ready_for_pickup'
+    if (order.status === 'ready_for_pickup') {
+      req.io.emit('radar:incoming_order', order);
+    } else if (order.status === 'out_for_delivery' || (order.driver_id && previousStatus === 'ready_for_pickup')) {
+      // Once accepted by a captain, inform all other drivers to dismiss this order from their radar
+      req.io.emit('radar:order_claimed', { order_id: order.id, driver_id: order.driver_id });
+    }
 
     res.json({
       success: true,

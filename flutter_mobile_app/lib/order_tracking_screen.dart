@@ -36,6 +36,7 @@ class OrderTrackingScreen extends StatefulWidget {
 
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTickerProviderStateMixin {
   OrderStatus _currentStatus = OrderStatus.placed;
+  String _rawStatus = 'placed';
   OrderStatus? _lastNotifiedTrackingStatus;
   Timer? _pollingTimer;
   final MapController _mapController = MapController();
@@ -82,24 +83,23 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
   }
 
   Future<void> _fetchLiveTrackingData() async {
+    final orderId = widget.orderId;
+    if (orderId == null || orderId.isEmpty) {
+      return;
+    }
+
     try {
-      final orderId = widget.orderId;
       Map<String, dynamic>? order;
 
       // 1. Try Live Unified Backend Server First (24/7 Cloud or Local)
       try {
-        final uri = orderId != null
-            ? Uri.parse('${ApiService.baseUrl}/orders/$orderId')
-            : Uri.parse('${ApiService.baseUrl}/orders?status=placed,preparing,ready_for_pickup,out_for_delivery,delivered');
-
+        final uri = Uri.parse('${ApiService.baseUrl}/orders/$orderId');
         final res = await http.get(uri).timeout(const Duration(seconds: 3));
         if (res.statusCode == 200) {
           final dynamic data = jsonDecode(res.body);
           if (data is Map && data['success'] == true) {
             if (data['data'] is Map) {
               order = Map<String, dynamic>.from(data['data']);
-            } else if (data['data'] is List && (data['data'] as List).isNotEmpty) {
-              order = Map<String, dynamic>.from((data['data'] as List).first);
             }
           }
         }
@@ -110,10 +110,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
       // 2. Fallback to Supabase Cloud if unified backend is unreachable
       if (order == null) {
         try {
-          final uri = orderId != null
-              ? Uri.parse('${ApiService.supabaseUrl}/orders?id=eq.$orderId&select=*')
-              : Uri.parse('${ApiService.supabaseUrl}/orders?status=in.(placed,preparing,ready_for_pickup,out_for_delivery)&order=created_at.desc&limit=1');
-
+          final uri = Uri.parse('${ApiService.supabaseUrl}/orders?id=eq.$orderId&select=*');
           final res = await http.get(
             uri,
             headers: {
@@ -136,6 +133,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
         final statusStr = liveOrder['status'] ?? 'placed';
 
         setState(() {
+          _rawStatus = statusStr;
           _orderNum = liveOrder['order_number'] ?? _orderNum;
           _storeName = (liveOrder['store'] is Map ? liveOrder['store']['name'] : null) ?? liveOrder['store_name'] ?? _storeName;
           _deliveryOtp = liveOrder['otp_code'] ?? _deliveryOtp;
@@ -177,7 +175,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
           } else if (statusStr == 'preparing') {
             _currentStatus = OrderStatus.preparing;
             _etaMinutes = _etaMinutes > 0 ? _etaMinutes : 20;
-          } else if (statusStr == 'ready_for_pickup' || statusStr == 'driver_assigned' || statusStr == 'out_for_delivery' || statusStr == 'picked_up') {
+          } else if (statusStr == 'ready_for_pickup') {
+            _currentStatus = OrderStatus.preparing;
+            _etaMinutes = _etaMinutes > 0 ? _etaMinutes : 15;
+          } else if (statusStr == 'driver_assigned' || statusStr == 'out_for_delivery' || statusStr == 'picked_up') {
             _currentStatus = OrderStatus.onTheWay;
             _etaMinutes = _etaMinutes > 0 ? _etaMinutes : 10;
           } else if (statusStr == 'delivered') {
@@ -187,11 +188,19 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
 
           if (_lastNotifiedTrackingStatus != null && _lastNotifiedTrackingStatus != _currentStatus) {
             if (_currentStatus == OrderStatus.preparing) {
-              CustomerNotificationService().showOrderStatusNotification(
-                title: '👨‍🍳 المطبخ يجهز طلبك الآن!',
-                body: 'طلبك رقم $_orderNum قيد التحضير والتغليف الساخن في نالوت.',
-                payload: liveOrder['id']?.toString(),
-              );
+              if (statusStr == 'ready_for_pickup') {
+                CustomerNotificationService().showOrderStatusNotification(
+                  title: '📦 طلبك جاهز للاستلام!',
+                  body: 'المطبخ أتم تحضير وجبتك $_orderNum وبانتظار استلام الكابتن.',
+                  payload: liveOrder['id']?.toString(),
+                );
+              } else {
+                CustomerNotificationService().showOrderStatusNotification(
+                  title: '👨‍🍳 المطبخ يجهز طلبك الآن!',
+                  body: 'طلبك رقم $_orderNum قيد التحضير والتغليف الساخن في نالوت.',
+                  payload: liveOrder['id']?.toString(),
+                );
+              }
             } else if (_currentStatus == OrderStatus.onTheWay) {
               CustomerNotificationService().showOrderStatusNotification(
                 title: '🛵 الكابتن في الطريق إليك!',
@@ -281,7 +290,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
       case OrderStatus.placed:
         return "تم استلام الطلب وتأكيده";
       case OrderStatus.preparing:
-        return "المطبخ يجهز طلبك الآن";
+        return _rawStatus == 'ready_for_pickup' ? "الطلب جاهز وبانتظار الكابتن" : "المطبخ يجهز طلبك الآن";
       case OrderStatus.onTheWay:
         return "الكابتن استلم الطلب وفي الطريق إليك!";
       case OrderStatus.delivered:
@@ -294,7 +303,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
       case OrderStatus.placed:
         return "تم إرسال الطلب للمطعم في نالوت للبدء في التجهيز";
       case OrderStatus.preparing:
-        return "يتم تحضير المكونات الطازجة والتغليف الحراري";
+        return _rawStatus == 'ready_for_pickup'
+            ? "تم تجهيز الوجبة وتغليفها، وبانتظار استلام كابتن واصل"
+            : "يتم تحضير المكونات الطازجة والتغليف الحراري";
       case OrderStatus.onTheWay:
         return "$_driverName في الطريق إليك عبر $_driverVehicle";
       case OrderStatus.delivered:

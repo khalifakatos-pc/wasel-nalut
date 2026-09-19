@@ -1120,48 +1120,7 @@
       "unit": "كيس"
     }
   ],
-  "orders": [
-    {
-      "id": "ord_5980dce6",
-      "order_number": "ORD-2026-LY-3053",
-      "customer_id": "usr_guest_nalut",
-      "customer_name": "سالم النالوتي",
-      "customer_phone": "0917778899",
-      "store_id": "store_nalut_alhanaa",
-      "store_name": "صيدلية الهناء",
-      "store_latitude": 31.877755,
-      "store_longitude": 10.978004,
-      "driver_id": "driver_nalut_02",
-      "status": "placed",
-      "otp_code": "1890",
-      "payment_method": "cash_on_delivery",
-      "payment_status": "pending_cod",
-      "subtotal_lyd": 57,
-      "delivery_fee_lyd": 3,
-      "service_fee_lyd": 1,
-      "discount_lyd": 0,
-      "total_amount_lyd": 61,
-      "delivery_address": "نالوت - بجانب جامع التوحيد - شارع تونس",
-      "delivery_latitude": 31.8686,
-      "delivery_longitude": 10.9818,
-      "distance_km": 1.1,
-      "estimated_eta_minutes": 3,
-      "notes": "الرجاء الاتصال عند الوصول لبوابة المنزل",
-      "items": [
-        {
-          "product_id": "prod_nalut_test_01",
-          "name_ar": "علبة دواء وفيتامين سي",
-          "name_en": "علبة دواء وفيتامين سي",
-          "unit_price_lyd": 28.5,
-          "quantity": 2,
-          "modifiers": [],
-          "item_total_lyd": 57
-        }
-      ],
-      "created_at": "2026-09-17T21:45:54.913Z",
-      "updated_at": "2026-09-17T21:45:54.913Z"
-    }
-  ],
+  "orders": [],
   "wallet_transactions": [],
   "vouchers": [],
   "audit_logs": []

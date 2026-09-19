@@ -154,12 +154,10 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         final status = ord['status']?.toString() ?? '';
         final driverId = ord['driver_id']?.toString();
 
-        if ((status == 'placed' || status == 'ready_for_pickup' || status == 'preparing') &&
+        if (status == 'ready_for_pickup' &&
             (driverId == null ||
              driverId.isEmpty ||
-             driverId == DriverSupabaseService.activeDriverId ||
-             driverId == 'driver_nalut_01' ||
-             driverId == 'driver_nalut_02') &&
+             driverId == DriverSupabaseService.activeDriverId) &&
             !_dismissedOrderIds.contains(orderId)) {
           if (!_notifiedOrderIds.contains(orderId)) {
             _notifiedOrderIds.add(orderId);
