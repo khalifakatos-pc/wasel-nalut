@@ -1961,6 +1961,7 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     req.io.to(`user:${customer.id}`).emit('order:created', newOrder);
     req.io.to('admin:fleet').emit('admin:order_created', newOrder);
     req.io.emit('merchant:new_order', newOrder);
+    req.io.emit('radar:incoming_order', newOrder);
 
     res.status(201).json({
       success: true,
