@@ -145,6 +145,8 @@ class RadarOrder {
   final double codCollectAmountLyd;
   final int countdownSeconds;
   final List<DeliveryItem> items;
+  final String status;
+  final String? prepStatusBadge;
 
   const RadarOrder({
     required this.orderId,
@@ -165,6 +167,8 @@ class RadarOrder {
     required this.codCollectAmountLyd,
     this.countdownSeconds = 15,
     required this.items,
+    this.status = 'ready_for_pickup',
+    this.prepStatusBadge,
   });
 
   double get totalDriverPayoutLyd => basePayoutLyd + surgeBonusLyd + tipLyd;

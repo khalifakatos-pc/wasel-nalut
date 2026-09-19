@@ -175,7 +175,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         final status = ord['status']?.toString() ?? '';
         final driverId = ord['driver_id']?.toString();
 
-        if ((status == 'placed' || status == 'ready_for_pickup' || status == 'preparing') &&
+        if ((status == 'ready_for_pickup' || status == 'preparing') &&
             (driverId == null ||
              driverId.isEmpty ||
              driverId == DriverSupabaseService.activeDriverId) &&
@@ -185,9 +185,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
             final double ordAmount = (ord['total_amount_lyd'] is num)
                 ? (ord['total_amount_lyd'] as num).toDouble()
                 : ((ord['total_amount'] is num) ? (ord['total_amount'] as num).toDouble() : 0.0);
+            final isPrep = status == 'preparing';
             DriverNotificationService().showOrderAlert(
-              title: '🚨 مشوار جديد متاح - كابتن واصل',
-              body: 'طلب ${ord['order_number'] ?? ''} بقيمة ${ordAmount.toStringAsFixed(2)} د.ل من ${ord['store_name'] ?? 'مطاعم نالوت'} متاح للتوصيل الآن.',
+              title: isPrep ? '⏳ مشوار جديد قيد التحضير - كابتن واصل' : '🚨 مشوار جاهز للاستلام - كابتن واصل',
+              body: isPrep
+                  ? 'طلب ${ord['order_number'] ?? ''} من ${ord['store_name'] ?? 'المطعم'} قيد الطهي (يجهز بعد دقائق) - تحرّك للاستلام.'
+                  : 'طلب ${ord['order_number'] ?? ''} بقيمة ${ordAmount.toStringAsFixed(2)} د.ل من ${ord['store_name'] ?? 'مطاعم نالوت'} جاهز للاستلام والتوصيل.',
               payload: orderId,
             );
           }
@@ -216,6 +219,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
             ? ord['delivery_pin'].toString()
             : '1234');
     final bool isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
+    final String status = ord['status']?.toString() ?? 'ready_for_pickup';
+    final String prepStatusBadge = ord['prep_status_badge']?.toString() ??
+        (status == 'preparing'
+            ? '⏳ جاري التحضير بالمطعم (يجهز بعد 5-7 دقائق) - تحرّك للاستلام'
+            : '🟢 جاهز للاستلام والتسليم فوراً');
 
     final radarOrder = RadarOrder(
       orderId: orderId,
@@ -235,6 +243,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
       paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
       codCollectAmountLyd: totalAmount,
       countdownSeconds: 15,
+      status: status,
+      prepStatusBadge: prepStatusBadge,
       items: [
         DeliveryItem(
           name: 'طلب وجبة / مشتريات من نالوت',

@@ -2331,10 +2331,22 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
     }
     req.io.to('admin:fleet').emit('admin:order_status_changed', statusPayload);
 
-    // Broadcast to Captain Radar ONLY when the merchant marks order 'ready_for_pickup'
-    if (order.status === 'ready_for_pickup') {
-      req.io.emit('radar:incoming_order', order);
-    } else if (order.status === 'out_for_delivery' || (order.driver_id && previousStatus === 'ready_for_pickup')) {
+    // Broadcast to Captain Radar:
+    // 1. When kitchen starts preparing: Early dispatch so captain drives during cooking time (الوجبة تصل ساخنة)
+    // 2. When packaging completed: Ready for immediate pickup
+    if (order.status === 'preparing') {
+      req.io.emit('radar:incoming_order', {
+        ...order,
+        status: 'preparing',
+        prep_status_badge: '⏳ جاري التحضير بالمطعم (يجهز بعد 5-7 دقائق) - تحرّك للاستلام'
+      });
+    } else if (order.status === 'ready_for_pickup') {
+      req.io.emit('radar:incoming_order', {
+        ...order,
+        status: 'ready_for_pickup',
+        prep_status_badge: '🟢 جاهز للاستلام والتسليم فوراً'
+      });
+    } else if (order.status === 'out_for_delivery' || (order.driver_id && (previousStatus === 'ready_for_pickup' || previousStatus === 'preparing'))) {
       // Once accepted by a captain, inform all other drivers to dismiss this order from their radar
       req.io.emit('radar:order_claimed', { order_id: order.id, driver_id: order.driver_id });
     }

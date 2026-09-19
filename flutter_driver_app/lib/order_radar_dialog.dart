@@ -188,7 +188,11 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
                       _buildCircularTimer(progress, isUrgent),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  // Kitchen Preparation Status Indicator Banner
+                  if (widget.order.prepStatusBadge != null && widget.order.prepStatusBadge!.isNotEmpty) ...[
+                    _buildPrepStatusBanner(isDark),
+                    const SizedBox(height: 12),
+                  ],
 
                   // Payout Banner Card (Prominent LYD)
                   _buildPayoutHeroCard(isDark),
@@ -206,6 +210,47 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPrepStatusBanner(bool isDark) {
+    final isPreparing = widget.order.status == 'preparing';
+    final bgColor = isPreparing
+        ? (isDark ? const Color(0xFF451A03) : const Color(0xFFFEF3C7))
+        : (isDark ? const Color(0xFF064E3B) : const Color(0xFFECFDF5));
+    final borderColor = isPreparing ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+    final textColor = isPreparing
+        ? (isDark ? const Color(0xFFFDE68A) : const Color(0xFF92400E))
+        : (isDark ? const Color(0xFFA7F3D0) : const Color(0xFF065F46));
+    final iconColor = isPreparing ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            isPreparing ? Icons.hourglass_top_rounded : Icons.check_circle_rounded,
+            color: iconColor,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              widget.order.prepStatusBadge!,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
