@@ -1,0 +1,276 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Wasel Nalut Super-App Unified Architecture",
+    "output": "wasel-superapp-architecture.html",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-architecture",
+        "label": "المعمارية الشاملة لمنظومة واصل",
+        "focus": [
+          "customer-app",
+          "merchant-app",
+          "captain-app",
+          "admin-portal",
+          "render-cloud",
+          "order-engine",
+          "wallet-engine",
+          "telemetry-socket",
+          "supabase-cloud",
+          "cloud-storage"
+        ],
+        "note": "الرؤية الشاملة لترابط التطبيقات الأربعة مع الخادم السحابي وقواعد البيانات."
+      },
+      {
+        "id": "order-flow",
+        "label": "مسار معالجة الطلب والتوجيه",
+        "focus": [
+          "customer-app",
+          "merchant-app",
+          "captain-app",
+          "render-cloud",
+          "order-engine"
+        ],
+        "note": "مسار حركة الطلب من الزبون إلى المطبخ ثم رادار الكابتن."
+      },
+      {
+        "id": "financial-flow",
+        "label": "مسار المحفظة والضمان المالي",
+        "focus": [
+          "customer-app",
+          "render-cloud",
+          "wallet-engine",
+          "supabase-cloud"
+        ],
+        "note": "مسار حجز الأموال في حساب الضمان وتسوية مستحقات التاجر والكابتن."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "customer-app",
+      "type": "frontend",
+      "label": "تطبيق الزبون (Customer)",
+      "sublabel": "Flutter Mobile • Food & Stores",
+      "pos": [60, 80],
+      "size": [190, 65],
+      "tag": "Port 80/443"
+    },
+    {
+      "id": "merchant-app",
+      "type": "frontend",
+      "label": "تطبيق التاجر (Merchant)",
+      "sublabel": "Flutter Tablet/App • Kitchen POS",
+      "pos": [60, 200],
+      "size": [190, 65]
+    },
+    {
+      "id": "captain-app",
+      "type": "frontend",
+      "label": "تطبيق الكابتن (Captain)",
+      "sublabel": "Flutter Driver • Radar & GPS",
+      "pos": [60, 320],
+      "size": [190, 65],
+      "tag": "Active Flow"
+    },
+    {
+      "id": "admin-portal",
+      "type": "frontend",
+      "label": "لوحة الإدارة (Admin Web)",
+      "sublabel": "Flutter Web • Fleet & Stores",
+      "pos": [60, 440],
+      "size": [190, 65]
+    },
+    {
+      "id": "render-cloud",
+      "type": "cloud",
+      "label": "Render Cloud Backend",
+      "sublabel": "Express 5.x • REST & Socket.io",
+      "pos": [420, 240],
+      "size": [180, 80],
+      "tag": "wasel-nalut.onrender.com"
+    },
+    {
+      "id": "order-engine",
+      "type": "backend",
+      "label": "محرك الطلبات والرادار",
+      "sublabel": "Orders FSM & Smart Dispatch",
+      "pos": [740, 110],
+      "size": [170, 65]
+    },
+    {
+      "id": "wallet-engine",
+      "type": "backend",
+      "label": "محرك المحافظ والضمان",
+      "sublabel": "Escrow & Double-Entry Ledger",
+      "pos": [740, 250],
+      "size": [170, 65]
+    },
+    {
+      "id": "telemetry-socket",
+      "type": "backend",
+      "label": "خادم التتبع اللحظي",
+      "sublabel": "Socket.io GPS Telemetry",
+      "pos": [740, 390],
+      "size": [170, 65],
+      "tag": "Port 3000"
+    },
+    {
+      "id": "supabase-cloud",
+      "type": "database",
+      "label": "سحابة Supabase Cloud",
+      "sublabel": "PostgreSQL 15 • Tables & RLS",
+      "pos": [1080, 110],
+      "size": [180, 75],
+      "tag": "24/7 Cloud DB"
+    },
+    {
+      "id": "cloud-storage",
+      "type": "cloud",
+      "label": "Firebase & Media",
+      "sublabel": "FCM Notifications & Storage",
+      "pos": [1080, 380],
+      "size": [180, 65],
+      "tag": "Push Alerts"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "تطبيقات فلاتر للهواتف والويب (Client Applications)",
+      "wraps": ["customer-app", "merchant-app", "captain-app", "admin-portal"]
+    },
+    {
+      "kind": "region",
+      "label": "السيرفر السحابي الموحد (Render Core Services)",
+      "wraps": ["render-cloud", "order-engine", "wallet-engine", "telemetry-socket"]
+    },
+    {
+      "kind": "region",
+      "label": "سحابة البيانات والخدمات (Data & Cloud)",
+      "wraps": ["supabase-cloud", "cloud-storage"]
+    }
+  ],
+  "connections": [
+    {
+      "id": "customer-to-gateway",
+      "from": "customer-app",
+      "to": "render-cloud",
+      "label": "Orders & Menus",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "merchant-to-gateway",
+      "from": "merchant-app",
+      "to": "render-cloud",
+      "label": "KDS & Status",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "captain-to-gateway",
+      "from": "captain-app",
+      "to": "render-cloud",
+      "label": "Radar & GPS",
+      "variant": "emphasis",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "admin-to-gateway",
+      "from": "admin-portal",
+      "to": "render-cloud",
+      "label": "Admin Operations",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "gateway-to-orders",
+      "from": "render-cloud",
+      "to": "order-engine",
+      "label": "Dispatch FSM",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "gateway-to-wallet",
+      "from": "render-cloud",
+      "to": "wallet-engine",
+      "label": "Escrow Ledger",
+      "labelDx": 25,
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "gateway-to-telemetry",
+      "from": "render-cloud",
+      "to": "telemetry-socket",
+      "label": "Live Telemetry",
+      "fromSide": "bottom",
+      "toSide": "left"
+    },
+    {
+      "id": "orders-to-supabase",
+      "from": "order-engine",
+      "to": "supabase-cloud",
+      "label": "Sync Orders (SQL)",
+      "labelAt": [934, 106],
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "wallet-to-supabase",
+      "from": "wallet-engine",
+      "to": "supabase-cloud",
+      "label": "Ledger Entries",
+      "labelAt": [1170, 199],
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "telemetry-to-cloud",
+      "from": "telemetry-socket",
+      "to": "cloud-storage",
+      "label": "FCM & Media",
+      "variant": "dashed",
+      "labelAt": [934, 386],
+      "fromSide": "right",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "تطبيقات فلاتر الأربعة (Multi-Client)",
+      "items": [
+        "تطبيق الزبون: تصفح المتاجر، السلة الذكية، الدفع كاش أو سداد",
+        "تطبيق الشريك KDS: استلام الطلبات، إدارة وقت الطهي، وحالة التوفر",
+        "تطبيق الكابتن: رادار الطلبات الذكي، ملاحة الأقمار الصناعية، وتحصيل الكاش",
+        "لوحة الإدارة: مراقبة الأسطول، العمليات المالية، والتحكم الفوري"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "السيرفر السحابي الموحد (Render Backend)",
+      "items": [
+        "خادم Express 5.x يعمل 24/7 على منصة Render السحابية",
+        "محرك التوجيه الذكي ومطابقة أقرب كابتن في نالوت",
+        "دفتر الأستاذ المزدوج لحساب الضمان (Escrow) والعمولات",
+        "بث حي ومباشر للمواقع عبر WebSockets & Socket.io"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "السحابة وقواعد البيانات (Cloud Persistence)",
+      "items": [
+        "قاعدة بيانات PostgreSQL سحابية على Supabase لضمان ديمومة البيانات",
+        "مزامنة فورية لحالات الطلبات وأرصدة المحافظ",
+        "خدمات Firebase لإرسال الإشعارات الفورية (FCM) وتخزين الوسائط"
+      ]
+    }
+  ]
+}
