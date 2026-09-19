@@ -197,6 +197,7 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   int _currentIndex = 0;
   StoreStatus _storeStatus = StoreStatus.open;
   Timer? _pollTimer;
+  Timer? _heartbeatTimer;
 
   late PartnerStore _currentStore;
   late List<KdsOrder> _orders;
@@ -214,6 +215,16 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     _initNotifications();
     _loadLiveMerchantData();
 
+    // Auto-open store via immediate heartbeat upon entering the app shell
+    MerchantSupabaseService.sendHeartbeat(_currentStore.id);
+
+    // Continuous presence heartbeat every 25 seconds while app is active
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      if (_storeStatus != StoreStatus.closed) {
+        MerchantSupabaseService.sendHeartbeat(_currentStore.id);
+      }
+    });
+
     // Poll Supabase / backend every 4 seconds for new incoming orders
     _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       _pollOrdersSilently();
@@ -229,6 +240,9 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   @override
   void dispose() {
     _pollTimer?.cancel();
+    _heartbeatTimer?.cancel();
+    // Auto-close store when merchant exits or logs out
+    MerchantSupabaseService.toggleStoreStatus(_currentStore.id, false);
     super.dispose();
   }
 
@@ -347,7 +361,12 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     });
 
     // Sync live with Unified Backend (emits store:status_changed) and Supabase
-    MerchantSupabaseService.toggleStoreStatus(_currentStore.id, isOpen);
+    if (isOpen) {
+      MerchantSupabaseService.sendHeartbeat(_currentStore.id);
+      MerchantSupabaseService.toggleStoreStatus(_currentStore.id, true);
+    } else {
+      MerchantSupabaseService.toggleStoreStatus(_currentStore.id, false);
+    }
 
     final msg = newStatus == StoreStatus.open
         ? '🟢 المتجر مفتوح ويستقبل الطلبات في نالوت'

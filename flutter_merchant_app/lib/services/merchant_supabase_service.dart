@@ -656,4 +656,19 @@ class MerchantSupabaseService {
     } catch (_) {}
     return null;
   }
+
+  /// Send active merchant heartbeat to backend to keep store open (حضور حي لحظي)
+  static Future<bool> sendHeartbeat(String storeId) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$backendBaseUrl/stores/$storeId/heartbeat'),
+            headers: {'Content-Type': 'application/json'},
+          )
+          .timeout(const Duration(seconds: 4));
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
 }

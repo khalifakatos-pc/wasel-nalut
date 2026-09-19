@@ -151,6 +151,16 @@ function loadSeedData() {
         vouchers: parsed.vouchers || [],
         audit_logs: parsed.audit_logs || []
       };
+      // Zero-Ghost Principle: on boot, stores default to closed and drivers to offline until active app heartbeat
+      db.stores.forEach(s => {
+        s.is_open = false;
+        s.last_heartbeat = null;
+      });
+      db.drivers.forEach(d => {
+        d.status = 'offline';
+        d.is_active = false;
+        d.last_heartbeat = null;
+      });
       console.log(`[Database] Loaded seed data successfully:`);
       console.log(` - Stores: ${db.stores.length}`);
       console.log(` - Products: ${db.products.length}`);
@@ -238,7 +248,7 @@ async function saveStoreToPg(s) {
       s.phone || '', s.pin || '1234', s.app_mode || 'kitchen', s.commission_rate || 10.0, s.rating || 5.0,
       s.review_count || 0, s.delivery_time_min || 20, s.delivery_time_max || 35, s.min_order_lyd || 10.0,
       s.base_delivery_fee_lyd || 4.0, s.latitude || 31.8686, s.longitude || 10.9818, s.logo_url || '',
-      s.banner_url || '', s.badge || '', s.is_open !== false, s.is_featured !== false
+      s.banner_url || '', s.badge || '', s.is_open === true, s.is_featured !== false
     ]);
   } catch (err) {
     console.error('[PostgreSQL saveStore error]:', err.message);
@@ -317,7 +327,7 @@ async function saveDriverToPg(d) {
     `, [
       d.id, d.user_id || '', d.full_name, d.phone, d.vehicle_type || 'motorcycle', d.vehicle_plate || d.plate_number || '',
       d.license_number || '', d.national_id || '', d.rating || 5.0, d.total_deliveries || d.total_trips || 0,
-      d.is_approved !== false, d.is_active !== false, d.status || 'online_idle', d.wallet_balance_lyd || 0,
+      d.is_approved !== false, d.is_active === true, d.status || 'offline', d.wallet_balance_lyd || 0,
       d.cod_balance_lyd || 0, d.latitude || 31.8686, d.longitude || 10.9818
     ]);
   } catch (err) {
@@ -383,7 +393,7 @@ async function initPgTables(forceSeed = false) {
         logo_url TEXT,
         banner_url TEXT,
         badge VARCHAR(100),
-        is_open BOOLEAN DEFAULT true,
+        is_open BOOLEAN DEFAULT false,
         is_featured BOOLEAN DEFAULT true,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
@@ -419,8 +429,8 @@ async function initPgTables(forceSeed = false) {
         rating NUMERIC DEFAULT 5.0,
         total_deliveries INT DEFAULT 0,
         is_approved BOOLEAN DEFAULT true,
-        is_active BOOLEAN DEFAULT true,
-        status VARCHAR(50) DEFAULT 'online_idle',
+        is_active BOOLEAN DEFAULT false,
+        status VARCHAR(50) DEFAULT 'offline',
         wallet_balance_lyd NUMERIC DEFAULT 0.0,
         cod_balance_lyd NUMERIC DEFAULT 0.0,
         latitude NUMERIC,
@@ -484,7 +494,9 @@ async function initPgTables(forceSeed = false) {
         longitude: parseFloat(r.longitude) || 10.9818,
         min_order_lyd: parseFloat(r.min_order_lyd) || 10.0,
         base_delivery_fee_lyd: parseFloat(r.base_delivery_fee_lyd) || 4.0,
-        commission_rate: parseFloat(r.commission_rate) || 10.0
+        commission_rate: parseFloat(r.commission_rate) || 10.0,
+        is_open: false, // Default to closed on startup until merchant app sends heartbeat
+        last_heartbeat: null
       }));
 
       const productsRes = await pgPool.query('SELECT * FROM products ORDER BY name ASC');
@@ -501,7 +513,10 @@ async function initPgTables(forceSeed = false) {
         wallet_balance_lyd: parseFloat(r.wallet_balance_lyd) || 0,
         cod_balance_lyd: parseFloat(r.cod_balance_lyd) || 0,
         latitude: parseFloat(r.latitude) || 31.8686,
-        longitude: parseFloat(r.longitude) || 10.9818
+        longitude: parseFloat(r.longitude) || 10.9818,
+        status: 'offline', // Default to offline on startup until captain app sends heartbeat
+        is_active: false,
+        last_heartbeat: null
       }));
 
       const ordersRes = await pgPool.query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 300');
@@ -1303,6 +1318,7 @@ app.patch('/api/v1/stores/:id', (req, res) => {
     Object.assign(store, req.body);
     if (req.body.is_open !== undefined) {
       store.is_open = req.body.is_open === true || req.body.is_open === 'true' || req.body.is_open === 1;
+      store.last_heartbeat = store.is_open ? Date.now() : 0;
     }
     saveSeedData();
     saveStoreToPg(store);
@@ -1311,6 +1327,38 @@ app.patch('/api/v1/stores/:id', (req, res) => {
       req.io.emit('store:status_changed', { store_id: store.id, is_open: store.is_open });
     }
     res.json({ success: true, data: store });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Merchant Active Heartbeat (Auto-opens store while merchant app is running)
+app.post('/api/v1/stores/:id/heartbeat', (req, res) => {
+  try {
+    const store = db.stores.find(s => s.id === req.params.id);
+    if (!store) {
+      return res.status(404).json({ success: false, error: 'Store not found' });
+    }
+    const wasClosed = !store.is_open;
+    store.last_heartbeat = Date.now();
+    store.is_open = true;
+
+    if (wasClosed) {
+      saveStoreToPg(store);
+      saveSeedData();
+      if (req.io) {
+        req.io.emit('store:status_changed', { store_id: store.id, is_open: true });
+        req.io.emit('store:updated', store);
+      }
+      console.log(`[Presence Engine] Store "${store.name}" (${store.id}) opened via active merchant heartbeat.`);
+    }
+
+    res.json({
+      success: true,
+      store_id: store.id,
+      is_open: store.is_open,
+      last_heartbeat: store.last_heartbeat
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -2325,6 +2373,15 @@ app.patch('/api/v1/drivers/:id', (req, res) => {
     return res.status(404).json({ success: false, error: 'Driver not found' });
   }
   Object.assign(driver, req.body);
+  if (req.body.status !== undefined) {
+    const isOnline = req.body.status !== 'offline';
+    driver.is_active = isOnline;
+    driver.last_heartbeat = isOnline ? Date.now() : 0;
+    if (req.io) {
+      req.io.emit('driver:status_changed', { driver_id: driver.id, status: driver.status });
+      req.io.to('admin:fleet').emit('admin:driver_status_changed', { driver_id: driver.id, status: driver.status });
+    }
+  }
   if (req.body.latitude && req.body.longitude && req.io) {
     req.io.emit('driver:location_changed', {
       driver_id: driver.id,
@@ -2349,6 +2406,7 @@ app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
   if (longitude !== undefined) driver.longitude = parseFloat(longitude);
   if (heading !== undefined) driver.heading = parseFloat(heading);
   if (speed_kmh !== undefined) driver.speed_kmh = parseFloat(speed_kmh);
+  driver.last_heartbeat = Date.now();
 
   const telemetryData = {
     driver_id: driver.id,
@@ -2370,6 +2428,68 @@ app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
   saveSeedData();
   saveDriverToPg(driver);
   res.json({ success: true, data: telemetryData });
+});
+
+// Captain Active Heartbeat (Auto-online while captain app is running)
+app.post('/api/v1/drivers/:id/heartbeat', (req, res) => {
+  try {
+    const driver = db.drivers.find(d => d.id === req.params.id);
+    if (!driver) {
+      return res.status(404).json({ success: false, error: 'Driver not found' });
+    }
+    const wasOffline = driver.status === 'offline' || !driver.is_active;
+    driver.last_heartbeat = Date.now();
+    driver.is_active = true;
+    if (driver.status === 'offline') {
+      driver.status = 'online_idle';
+    }
+
+    const { latitude, longitude, heading = 0, speed_kmh = 0, order_id } = req.body || {};
+    if (latitude !== undefined && longitude !== undefined) {
+      driver.latitude = parseFloat(latitude);
+      driver.longitude = parseFloat(longitude);
+      driver.heading = parseFloat(heading);
+      driver.speed_kmh = parseFloat(speed_kmh);
+
+      const telemetryData = {
+        driver_id: driver.id,
+        order_id: order_id || null,
+        latitude: driver.latitude,
+        longitude: driver.longitude,
+        heading: driver.heading,
+        speed_kmh: driver.speed_kmh,
+        recorded_at: new Date().toISOString()
+      };
+
+      if (req.io) {
+        req.io.to(`driver:${driver.id}`).emit('driver:location_changed', telemetryData);
+        req.io.to('admin:fleet').emit('admin:driver_moved', telemetryData);
+        if (order_id) {
+          req.io.to(`order:${order_id}`).emit('order:driver_location', telemetryData);
+        }
+      }
+    }
+
+    if (wasOffline) {
+      saveDriverToPg(driver);
+      saveSeedData();
+      if (req.io) {
+        req.io.emit('driver:status_changed', { driver_id: driver.id, status: driver.status });
+        req.io.to('admin:fleet').emit('admin:driver_status_changed', { driver_id: driver.id, status: driver.status });
+      }
+      console.log(`[Presence Engine] Captain "${driver.full_name}" (${driver.id}) online via active heartbeat.`);
+    }
+
+    res.json({
+      success: true,
+      driver_id: driver.id,
+      status: driver.status,
+      is_active: driver.is_active,
+      last_heartbeat: driver.last_heartbeat
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 app.get('/api/v1/drivers', (req, res) => {
@@ -3133,7 +3253,47 @@ setInterval(() => {
 }, 3000);
 
 // ----------------------------------------------------------------------------
-// 9. START SERVER
+// 9. REAL-TIME PRESENCE & AUTO-HEARTBEAT SWEEPER (60s TIMEOUT)
+// Zero-Ghost Architecture: Stores and drivers automatically go closed/offline
+// if no active heartbeat is received for more than 60 seconds.
+// ----------------------------------------------------------------------------
+const HEARTBEAT_TIMEOUT_MS = 60000;
+
+setInterval(() => {
+  const now = Date.now();
+
+  // 1. Sweep Stores (Merchant App)
+  db.stores.forEach(store => {
+    if (store.is_open) {
+      const lastBeat = store.last_heartbeat || 0;
+      if (now - lastBeat > HEARTBEAT_TIMEOUT_MS) {
+        store.is_open = false;
+        saveStoreToPg(store);
+        io.emit('store:status_changed', { store_id: store.id, is_open: false, reason: 'heartbeat_timeout' });
+        io.emit('store:updated', store);
+        console.log(`[Presence Engine] Store closed due to heartbeat timeout: ${store.name} (${store.id})`);
+      }
+    }
+  });
+
+  // 2. Sweep Drivers (Captain App)
+  db.drivers.forEach(driver => {
+    if (driver.status !== 'offline') {
+      const lastBeat = driver.last_heartbeat || 0;
+      if (now - lastBeat > HEARTBEAT_TIMEOUT_MS) {
+        driver.status = 'offline';
+        driver.is_active = false;
+        saveDriverToPg(driver);
+        io.emit('driver:status_changed', { driver_id: driver.id, status: 'offline', reason: 'heartbeat_timeout' });
+        io.to('admin:fleet').emit('admin:driver_status_changed', { driver_id: driver.id, status: 'offline' });
+        console.log(`[Presence Engine] Driver set offline due to heartbeat timeout: ${driver.full_name} (${driver.id})`);
+      }
+    }
+  });
+}, 20000);
+
+// ----------------------------------------------------------------------------
+// 10. START SERVER
 // ----------------------------------------------------------------------------
 server.listen(PORT, () => {
   console.log(`================================================================`);

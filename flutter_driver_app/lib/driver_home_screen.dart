@@ -68,6 +68,14 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     _telemetryTimer?.cancel();
     if (_onlineStatus == DriverOnlineStatus.offline) return;
 
+    // Immediate initial presence heartbeat to backend
+    DriverSupabaseService.sendHeartbeat(
+      latitude: _currentLat,
+      longitude: _currentLng,
+      heading: 45.0,
+      speedKmh: 38.0,
+    );
+
     _telemetryTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (_onlineStatus == DriverOnlineStatus.offline || !mounted) return;
       _telemetryPingCount++;
@@ -83,6 +91,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         heading: 45.0,
         speedKmh: 38.0,
       );
+
+      // Refresh presence heartbeat every 12 seconds
+      if (_telemetryPingCount % 3 == 0) {
+        DriverSupabaseService.sendHeartbeat(
+          latitude: _currentLat,
+          longitude: _currentLng,
+          heading: 45.0,
+          speedKmh: 38.0,
+        );
+      }
+
       if (mounted) setState(() {});
     });
   }
@@ -92,6 +111,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     _radarTimer?.cancel();
     _telemetryTimer?.cancel();
     _pulseController.dispose();
+    // Auto-set driver to offline when captain exits app
+    DriverSupabaseService.updateStatus('offline');
     super.dispose();
   }
 
@@ -299,10 +320,17 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     );
 
     if (_onlineStatus == DriverOnlineStatus.onlineIdle) {
+      DriverSupabaseService.sendHeartbeat(
+        latitude: _currentLat,
+        longitude: _currentLng,
+        heading: 45.0,
+        speedKmh: 38.0,
+      );
       _startTelemetryStream();
       _checkIncomingOrders();
     } else {
       _telemetryTimer?.cancel();
+      DriverSupabaseService.updateStatus('offline');
     }
 
     ScaffoldMessenger.of(context).showSnackBar(

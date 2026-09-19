@@ -441,6 +441,40 @@ class DriverSupabaseService {
     }
   }
 
+  /// Send active captain presence heartbeat to Unified Backend (حضور حي لحظي)
+  static Future<bool> sendHeartbeat({
+    double? latitude,
+    double? longitude,
+    double? heading,
+    double? speedKmh,
+    String? orderId,
+  }) async {
+    try {
+      final payload = <String, dynamic>{
+        'driver_id': activeDriverId,
+      };
+      if (latitude != null && longitude != null) {
+        payload['latitude'] = latitude;
+        payload['longitude'] = longitude;
+        payload['heading'] = heading ?? 0.0;
+        payload['speed_kmh'] = speedKmh ?? 0.0;
+        if (orderId != null) payload['order_id'] = orderId;
+      }
+
+      final res = await http
+          .post(
+            Uri.parse('$backendBaseUrl/drivers/$activeDriverId/heartbeat'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(payload),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Complete a delivery: marks order delivered & updates captain's COD cash
   static Future<bool> completeDelivery({
     required String orderId,
