@@ -12,11 +12,13 @@ import 'widgets/merchant_motion_widgets.dart';
 class KdsScreen extends StatefulWidget {
   final List<KdsOrder> orders;
   final Function(KdsOrder) onOrderUpdated;
+  final Future<void> Function()? onRefresh;
 
   const KdsScreen({
     super.key,
     required this.orders,
     required this.onOrderUpdated,
+    this.onRefresh,
   });
 
   @override
@@ -102,20 +104,20 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
     widget.onOrderUpdated(order);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('🛵 تم تسليم الطلب ${order.orderNumber} للكابتن بنجاح'),
-        backgroundColor: MerchantColors.revenueGreen,
+        content: Text('🎉 تم تسليم الطلب ${order.orderNumber} للكابتن بنجاح!'),
+        backgroundColor: MerchantColors.readyGreen,
       ),
     );
   }
 
   void _simulateNewIncomingOrder() {
     final newOrd = KdsOrder(
-      id: 'ord_${DateTime.now().millisecondsSinceEpoch}',
-      orderNumber: '#WSL-${(1000 + (DateTime.now().millisecond * 9)).toString().padLeft(4, '0')}',
-      customerName: 'طارق العكرمي (نالوت)',
-      customerPhone: '+218 92 555 4433',
-      deliveryAddress: 'طريق وازن، نالوت',
-      customerNotes: 'طلب فوري ساخن عبر سوبر آب واصل',
+      id: 'ord_kds_${DateTime.now().millisecondsSinceEpoch}',
+      orderNumber: '#W-${(100 + widget.orders.length + 1)}',
+      customerName: 'محمد التارغي',
+      customerPhone: '091-8877665',
+      deliveryAddress: 'نالوت - حي الزهور، قرب المسجد العتيق',
+      customerNotes: 'يرجى التوصيل سريعاً للأهمية، الطعام للأطفال',
       status: KdsTicketStatus.newOrder,
       timePlaced: DateTime.now(),
       prepTimeMinutes: 15,
@@ -155,6 +157,22 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
         title: const Text('شاشة تحضير الطلبات 📋'),
         centerTitle: true,
         backgroundColor: MerchantColors.darkSurface,
+        actions: [
+          if (widget.onRefresh != null)
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded, color: MerchantColors.primary),
+              onPressed: () async {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('🔄 جاري تحديث طلبات المتجر...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                await widget.onRefresh!();
+              },
+              tooltip: 'تحديث الطلبات',
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: MerchantColors.primary,
@@ -234,7 +252,7 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _completedOrders.isNotEmpty ? Colors.white24 : Colors.white12,
+                      color: Colors.white12,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -268,39 +286,48 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
   }
 
   Widget _buildOrderList(List<KdsOrder> orders, {bool isNew = false, bool isPrep = false, bool isReady = false, bool isCompleted = false}) {
+    Widget content;
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              isNew
-                  ? Icons.notifications_none_rounded
-                  : (isPrep
-                      ? Icons.soup_kitchen_rounded
-                      : (isReady ? Icons.check_circle_outline_rounded : Icons.task_alt_rounded)),
-              size: 64,
-              color: Colors.white24,
+      content = LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    isNew
+                        ? Icons.notifications_none_rounded
+                        : (isPrep
+                            ? Icons.soup_kitchen_rounded
+                            : (isReady ? Icons.check_circle_outline_rounded : Icons.task_alt_rounded)),
+                    size: 64,
+                    color: Colors.white24,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    isNew
+                        ? 'لا توجد طلبات جديدة حالياً'
+                        : (isPrep
+                            ? 'لا توجد وجبات قيد الطهي'
+                            : (isReady ? 'لا توجد طلبات جاهزة للاستلام' : 'لا توجد طلبات مكتملة اليوم')),
+                    style: const TextStyle(color: Colors.white54, fontSize: 15),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Text(
-              isNew
-                  ? 'لا توجد طلبات جديدة حالياً'
-                  : (isPrep
-                      ? 'لا توجد وجبات قيد الطهي'
-                      : (isReady ? 'لا توجد طلبات جاهزة للاستلام' : 'لا توجد طلبات مكتملة اليوم')),
-              style: const TextStyle(color: Colors.white54, fontSize: 15),
-            ),
-          ],
+          ),
         ),
       );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-      itemCount: orders.length,
-      itemBuilder: (context, index) {
-        final order = orders[index];
+    } else {
+      content = ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+        itemCount: orders.length,
+        itemBuilder: (context, index) {
+          final order = orders[index];
         final card = Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
@@ -666,4 +693,15 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
       },
     );
   }
+
+  if (widget.onRefresh != null) {
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh!,
+      color: MerchantColors.primary,
+      backgroundColor: MerchantColors.darkSurface,
+      child: content,
+    );
+  }
+  return content;
+}
 }

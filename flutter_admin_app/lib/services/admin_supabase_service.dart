@@ -43,16 +43,19 @@ class AdminSupabaseService {
             final gmv = (metrics['gmv_total_lyd'] as num?)?.toDouble() ?? 0.0;
             final platformFee = (metrics['platform_revenue_lyd'] as num?)?.toDouble() ?? (gmv * 0.10);
             final activeOrders = (metrics['active_orders_count'] as num?)?.toInt() ?? 0;
-            final onlineDrivers = ((fleet['available'] as num?)?.toInt() ?? 0) + ((fleet['busy'] as num?)?.toInt() ?? 0);
+            final onlineDrivers = (metrics['online_drivers_count'] as num?)?.toInt() ??
+                (((fleet['available'] as num?)?.toInt() ?? 0) + ((fleet['busy'] as num?)?.toInt() ?? 0));
+            final openStores = (metrics['open_stores_count'] as num?)?.toInt() ??
+                ((metrics['stores_count'] as num?)?.toInt() ?? 0);
 
             return {
               'total_orders': totalOrders,
               'gmv_lyd': gmv,
               'platform_fee_lyd': platformFee,
-              'cod_with_drivers_lyd': (d['metrics']?['cod_pending_lyd'] as num?)?.toDouble() ?? 0.0,
+              'cod_with_drivers_lyd': (metrics['cod_pending_lyd'] as num?)?.toDouble() ?? 0.0,
               'active_orders': activeOrders,
               'online_drivers': onlineDrivers,
-              'open_stores': (d['metrics']?['stores_count'] as num?)?.toInt() ?? 0,
+              'open_stores': openStores,
             };
           }
         }

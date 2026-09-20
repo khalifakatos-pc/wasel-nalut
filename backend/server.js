@@ -2858,9 +2858,10 @@ app.get('/api/v1/admin/overview', adminAuthMiddleware, (req, res) => {
     const platformRevenueWallet = db.wallets.find(w => w.wallet_type === 'platform_revenue');
 
     const totalDrivers = db.drivers.length;
-    const availableDrivers = db.drivers.filter(d => d.status === 'available').length;
-    const busyDrivers = db.drivers.filter(d => d.status === 'busy_delivery').length;
-    const offlineDrivers = db.drivers.filter(d => d.status === 'offline').length;
+    const availableDrivers = db.drivers.filter(d => d.status === 'available' || d.status === 'online_idle' || d.status === 'online').length;
+    const busyDrivers = db.drivers.filter(d => d.status === 'busy_delivery' || d.status === 'busy').length;
+    const offlineDrivers = db.drivers.filter(d => d.status === 'offline' || !d.status).length;
+    const openStores = db.stores.filter(s => s.is_open === true).length;
 
     // Vertical breakdown
     const verticalBreakdown = {
@@ -2888,7 +2889,11 @@ app.get('/api/v1/admin/overview', adminAuthMiddleware, (req, res) => {
           active_orders_count: activeOrders.length,
           completed_orders_count: completedOrders.length,
           gmv_total_lyd: Math.round(gmv * 100) / 100,
-          platform_revenue_lyd: platformRevenueWallet ? platformRevenueWallet.balance : 0
+          platform_revenue_lyd: platformRevenueWallet ? platformRevenueWallet.balance : 0,
+          stores_count: openStores,
+          open_stores_count: openStores,
+          total_stores_count: db.stores.length,
+          online_drivers_count: availableDrivers + busyDrivers
         },
         fleet_stats: {
           total_drivers: totalDrivers,

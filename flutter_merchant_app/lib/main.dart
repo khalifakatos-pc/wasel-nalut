@@ -264,7 +264,11 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     } catch (_) {}
   }
 
+  bool _isPolling = false;
+
   Future<void> _pollOrdersSilently() async {
+    if (_isPolling) return;
+    _isPolling = true;
     try {
       final liveOrders = await MerchantSupabaseService.fetchOrders(_currentStore.id);
       if (!mounted) return;
@@ -304,7 +308,10 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
       setState(() {
         _orders = liveOrders;
       });
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      _isPolling = false;
+    }
   }
 
   void _onOrderUpdated(KdsOrder updatedOrder) {
@@ -496,6 +503,7 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
           ? KdsScreen(
               orders: _orders,
               onOrderUpdated: _onOrderUpdated,
+              onRefresh: _loadLiveMerchantData,
             )
           : RetailPickingScreen(
               orders: _orders,

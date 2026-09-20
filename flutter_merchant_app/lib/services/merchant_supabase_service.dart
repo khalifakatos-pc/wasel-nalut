@@ -205,21 +205,24 @@ class MerchantSupabaseService {
     List<dynamic> list = [];
 
     // 1. Try Live Unified Backend First (Instant sync with Customer App)
-    try {
-      final res = await http
-          .get(Uri.parse('$backendBaseUrl/orders?store_id=$targetStoreId'))
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .get(Uri.parse('$backendBaseUrl/orders?store_id=$targetStoreId'))
+            .timeout(const Duration(seconds: 12));
 
-      if (res.statusCode == 200) {
-        final dynamic data = jsonDecode(res.body);
-        if (data is Map && data['data'] is List) {
-          list = data['data'];
-        } else if (data is List) {
-          list = data;
+        if (res.statusCode == 200) {
+          final dynamic data = jsonDecode(res.body);
+          if (data is Map && data['data'] is List) {
+            list = data['data'];
+          } else if (data is List) {
+            list = data;
+          }
+          if (list.isNotEmpty) break;
         }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {
-      // Fallback
     }
 
     // 2. Fallback to Supabase Cloud if unified backend is offline
@@ -230,7 +233,7 @@ class MerchantSupabaseService {
               Uri.parse('$supabaseUrl/orders?store_id=eq.$targetStoreId&order=created_at.desc'),
               headers: _headers,
             )
-            .timeout(const Duration(seconds: 3));
+            .timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
           list = jsonDecode(res.body);
@@ -295,6 +298,15 @@ class MerchantSupabaseService {
         if (o['items'] is List && (o['items'] as List).isNotEmpty) {
           orderItems = (o['items'] as List).map((it) {
             final itMap = Map<String, dynamic>.from(it);
+            String itemNotes = 'طلب طازج';
+            final rawMod = itMap['modifiers'];
+            if (rawMod is List && rawMod.isNotEmpty) {
+              itemNotes = rawMod.map((m) => m is Map ? (m['name_ar'] ?? m['name'] ?? '') : m.toString()).where((s) => s.isNotEmpty).join(', ');
+              if (itemNotes.isEmpty) itemNotes = 'طلب طازج';
+            } else if (rawMod is String && rawMod.trim().isNotEmpty) {
+              itemNotes = rawMod.trim();
+            }
+
             return KdsOrderItem(
               name: itMap['name_ar']?.toString() ?? itMap['name']?.toString() ?? 'صنف نالوت',
               quantity: (itMap['quantity'] as num?)?.toInt() ?? 1,
@@ -302,9 +314,7 @@ class MerchantSupabaseService {
                   (itMap['price'] as num?)?.toDouble() ??
                   (itMap['item_total_lyd'] as num?)?.toDouble() ??
                   20.0,
-              notes: (itMap['modifiers'] is List && (itMap['modifiers'] as List).isNotEmpty)
-                  ? (itMap['modifiers'] as List).map((m) => m['name_ar'] ?? m['name']).join(', ')
-                  : 'طلب طازج',
+              notes: itemNotes,
             );
           }).toList();
         } else {
@@ -348,19 +358,23 @@ class MerchantSupabaseService {
   /// Update order status (KDS Kitchen Display System)
   static Future<bool> updateOrderStatus(String orderId, String newStatus) async {
     // 1. Try Live Unified Backend First
-    try {
-      final res = await http
-          .post(
-            Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-            headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'status': newStatus}),
-          )
-          .timeout(const Duration(seconds: 4));
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/orders/$orderId/status'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({'status': newStatus}),
+            )
+            .timeout(const Duration(seconds: 10));
 
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        return true;
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          return true;
+        }
+      } catch (_) {
+        if (attempt == 1) break;
       }
-    } catch (_) {}
+    }
 
     // 2. Fallback to Supabase Cloud
     try {
