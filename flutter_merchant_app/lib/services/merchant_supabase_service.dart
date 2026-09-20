@@ -328,6 +328,10 @@ class MerchantSupabaseService {
           ];
         }
 
+        final String? handoverCode = o['handover_code']?.toString() ?? o['pickup_code']?.toString();
+        final int prepMins = (o['prep_time_minutes'] as num?)?.toInt() ?? 15;
+        final bool isDriverArrived = o['driver_arrived_at'] != null || o['driver_status'] == 'arrived';
+
         result.add(
           KdsOrder(
             id: o['id']?.toString() ?? '',
@@ -338,13 +342,16 @@ class MerchantSupabaseService {
             customerNotes: o['notes']?.toString() ?? 'طلب مباشر عبر تطبيق واصل',
             status: ticketStatus,
             timePlaced: placedTime,
-            prepTimeMinutes: 15,
+            prepTimeMinutes: prepMins,
             items: orderItems,
             totalAmountLyd: totalAmt,
             paymentMethod: payMethod,
             courierName: courierName,
             courierVehicle: courierName != null ? 'سيارة نالوت' : null,
             courierPhone: courierName != null ? '091-5544332' : null,
+            handoverCode: handoverCode,
+            driverArrived: isDriverArrived,
+            driverStatus: isDriverArrived ? 'وصل المطعم' : (courierName != null ? 'في الطريق للمتجر' : null),
           ),
         );
       }
@@ -356,7 +363,12 @@ class MerchantSupabaseService {
   }
 
   /// Update order status (KDS Kitchen Display System)
-  static Future<bool> updateOrderStatus(String orderId, String newStatus) async {
+  static Future<bool> updateOrderStatus(String orderId, String newStatus, {int? prepTimeMinutes}) async {
+    final Map<String, dynamic> body = {'status': newStatus};
+    if (prepTimeMinutes != null) {
+      body['prep_time_minutes'] = prepTimeMinutes;
+    }
+
     // 1. Try Live Unified Backend First
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
@@ -364,7 +376,7 @@ class MerchantSupabaseService {
             .post(
               Uri.parse('$backendBaseUrl/orders/$orderId/status'),
               headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'status': newStatus}),
+              body: jsonEncode(body),
             )
             .timeout(const Duration(seconds: 10));
 
@@ -382,12 +394,32 @@ class MerchantSupabaseService {
           .patch(
             Uri.parse('$supabaseUrl/orders?id=eq.$orderId'),
             headers: _headers,
-            body: jsonEncode({'status': newStatus}),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 4));
       return res.statusCode == 200 || res.statusCode == 204;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Confirm Handover to Captain (Transfers custody to out_for_delivery)
+  static Future<bool> confirmHandover(String orderId, [String? handoverCode]) async {
+    try {
+      final Map<String, dynamic> body = {};
+      if (handoverCode != null) body['handover_code'] = handoverCode;
+      final res = await http
+          .post(
+            Uri.parse('$backendBaseUrl/orders/$orderId/handover'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      return res.statusCode == 200 || res.statusCode == 201;
+    } catch (_) {
+      // Fallback: update status to out_for_delivery
+      return updateOrderStatus(orderId, 'out_for_delivery');
     }
   }
 

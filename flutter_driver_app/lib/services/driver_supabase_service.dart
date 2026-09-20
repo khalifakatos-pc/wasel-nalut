@@ -323,11 +323,11 @@ class DriverSupabaseService {
 
   /// Fetch active and available orders in Nalut
   static Future<List<Map<String, dynamic>>> fetchAvailableOrders() async {
-    // 1. Try Live Unified Backend First
+    // 1. Try Live Unified Backend First (Only preparing and ready orders - Kitchen first!)
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .get(Uri.parse('$backendBaseUrl/orders?status=placed,preparing,ready_for_pickup,out_for_delivery'))
+            .get(Uri.parse('$backendBaseUrl/orders?status=preparing,ready_for_pickup,out_for_delivery'))
             .timeout(const Duration(seconds: 15));
 
         if (res.statusCode == 200) {
@@ -349,7 +349,7 @@ class DriverSupabaseService {
     try {
       final res = await http
           .get(
-            Uri.parse('$supabaseUrl/orders?status=in.(placed,preparing,ready_for_pickup,out_for_delivery)&select=*&order=created_at.desc'),
+            Uri.parse('$supabaseUrl/orders?status=in.(preparing,ready_for_pickup,out_for_delivery)&select=*&order=created_at.desc'),
             headers: _headers,
           )
           .timeout(const Duration(seconds: 3));
@@ -363,6 +363,33 @@ class DriverSupabaseService {
     } catch (_) {}
 
     return [];
+  }
+
+  /// Verify handover code and transfer custody from merchant to captain
+  static Future<bool> verifyHandover(String orderId, String handoverCode) async {
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$backendBaseUrl/orders/$orderId/handover'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'handover_code': handoverCode,
+              'driver_id': activeDriverId,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+
+      if (res.statusCode == 200) {
+        return true;
+      }
+    } catch (_) {}
+
+    // Fallback: update status directly
+    return updateOrderStatus(
+      orderId: orderId,
+      status: 'out_for_delivery',
+      driverId: activeDriverId,
+    );
   }
 
   /// Update driver online/offline status

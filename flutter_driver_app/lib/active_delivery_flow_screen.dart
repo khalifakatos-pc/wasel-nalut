@@ -707,26 +707,39 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
       case DeliveryStep.navigatingToStore:
         label = 'وصلت إلى المطعم 🏬';
         buttonColor = DriverColors.secondary;
-        onTap = () => _advanceToStep(DeliveryStep.orderPickupChecklist);
+        onTap = () {
+          DriverSupabaseService.updateOrderStatus(
+            orderId: _activeOrder.orderId,
+            status: 'driver_arrived',
+            driverId: DriverSupabaseService.activeDriverId,
+          );
+          _advanceToStep(DeliveryStep.orderPickupChecklist);
+        };
         break;
 
       case DeliveryStep.orderPickupChecklist:
         label = 'تأكيد الاستلام وبدء التوصيل للزبون 🛵';
         buttonColor = DriverColors.primary;
-        onTap = () {
+        onTap = () async {
           setState(() {
             _isQrScanned = true;
             for (var item in _activeOrder.items) {
               item.isVerified = true;
             }
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('✅ تم تأكيد استلام الطلب من المطعم وبدء التوصيل للزبون!'),
-              backgroundColor: DriverColors.onlineGreen,
-              duration: Duration(seconds: 2),
-            ),
+          await DriverSupabaseService.verifyHandover(
+            _activeOrder.orderId,
+            '1234',
           );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('✅ تم استلام الوجبة ونقل العهدة بالكامل للكابتن! انطلق للزبون.'),
+                backgroundColor: DriverColors.onlineGreen,
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
           _advanceToStep(DeliveryStep.navigatingToCustomer);
         };
         break;

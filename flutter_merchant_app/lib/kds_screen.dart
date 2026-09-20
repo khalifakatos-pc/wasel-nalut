@@ -508,31 +508,40 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                     children: [
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _acceptOrder(order, 15),
+                          onPressed: () => _acceptOrder(order, 10),
                           style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.prepBlue, foregroundColor: Colors.white),
-                          child: const Text('15 دقيقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: const Text('10 د', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _acceptOrder(order, 25),
+                          onPressed: () => _acceptOrder(order, 15),
                           style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.primary, foregroundColor: Colors.white),
-                          child: const Text('25 دقيقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: const Text('15 د', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 6),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => _acceptOrder(order, 35),
+                          onPressed: () => _acceptOrder(order, 20),
                           style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.accentAmber, foregroundColor: Colors.black),
-                          child: const Text('35 دقيقة', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          child: const Text('20 د', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () => _acceptOrder(order, 30),
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.deepOrange, foregroundColor: Colors.white),
+                          child: const Text('30 د', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                         ),
                       ),
                       const SizedBox(width: 6),
                       IconButton.outlined(
                         icon: const Icon(Icons.close_rounded, color: MerchantColors.rejectedRed, size: 20),
                         onPressed: () => _rejectOrder(order),
+                        tooltip: 'رفض الطلب',
                       ),
                     ],
                   ),
@@ -575,7 +584,7 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                                     ),
                                     const SizedBox(width: 6),
                                     Text(
-                                      isOverdue ? '⚠️ متأخر عن وقت التحضير:' : '⏳ العد التنازلي للتحضير:',
+                                      isOverdue ? '⚠️ متأخر عن وقت التحضير:' : '⏳ العد التنازلي للطهي:',
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
@@ -610,6 +619,42 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                       );
                     },
                   ),
+                  // Captain Status during cooking
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: MerchantColors.darkCardElevated,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: order.driverArrived ? MerchantColors.readyGreen : Colors.white12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          order.driverArrived
+                              ? Icons.check_circle_rounded
+                              : (order.courierName != null ? Icons.delivery_dining_rounded : Icons.radar_rounded),
+                          color: order.driverArrived ? MerchantColors.readyGreen : MerchantColors.primary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            order.driverArrived
+                                ? '📍 الكابتن ${order.courierName ?? ""} وصل المطعم وبانتظار الوجبة'
+                                : (order.courierName != null
+                                    ? '🛵 الكابتن ${order.courierName} في الطريق للمطعم'
+                                    : '📡 رادار الكباتن نشط (تحرّك مبكر أثناء الطهي)'),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: order.driverArrived ? MerchantColors.readyGreen : Colors.white70,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   Row(
                     children: [
                       Expanded(
@@ -632,34 +677,91 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                     ],
                   ),
                 ] else if (isReady) ...[
+                  // Prominent Handover Code Box
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: MerchantColors.readyGreen.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: MerchantColors.readyGreen, width: 1.5),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text(
+                              'كود تسليم الوجبة للكابتن (OTP):',
+                              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'أعطِ هذا الكود للكابتن عند تسليم الطعام',
+                              style: TextStyle(color: Colors.white60, fontSize: 10),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: MerchantColors.readyGreen,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            order.handoverCode ?? (order.orderNumber.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0')),
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                              letterSpacing: 2,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                   if (order.courierName != null) ...[
                     Container(
                       padding: const EdgeInsets.all(10),
+                      margin: const EdgeInsets.only(bottom: 10),
                       decoration: BoxDecoration(
                         color: MerchantColors.darkCardElevated,
                         borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: order.driverArrived ? MerchantColors.readyGreen : Colors.white12),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.delivery_dining_rounded, color: MerchantColors.readyGreen, size: 20),
+                          Icon(
+                            order.driverArrived ? Icons.pin_drop_rounded : Icons.delivery_dining_rounded,
+                            color: order.driverArrived ? MerchantColors.readyGreen : MerchantColors.primary,
+                            size: 20,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'الكابتن: ${order.courierName} (${order.courierVehicle})',
-                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                              order.driverArrived
+                                  ? '📍 الكابتن ${order.courierName} (${order.courierVehicle ?? "سيارة"}) متواجد بالمطعم!'
+                                  : 'الكابتن: ${order.courierName} (${order.courierVehicle ?? "سيارة"})',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: order.driverArrived ? MerchantColors.readyGreen : Colors.white,
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 10),
                   ],
                   Row(
                     children: [
                       Expanded(
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.handshake_rounded, size: 18),
-                          label: const Text('تم التسليم للكابتن ✅', style: TextStyle(fontWeight: FontWeight.bold)),
+                          label: const Text('تأكيد تسليم الوجبة للكابتن 🤝', style: TextStyle(fontWeight: FontWeight.bold)),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: MerchantColors.revenueGreen,
                             foregroundColor: Colors.white,

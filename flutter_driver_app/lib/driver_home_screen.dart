@@ -175,7 +175,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         final status = ord['status']?.toString() ?? '';
         final driverId = ord['driver_id']?.toString();
 
-        if ((status == 'ready_for_pickup' || status == 'preparing' || status == 'placed') &&
+        if ((status == 'ready_for_pickup' || status == 'preparing') &&
             (driverId == null ||
              driverId.isEmpty ||
              driverId == 'null' ||
@@ -186,17 +186,13 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
             final double ordAmount = (ord['total_amount_lyd'] is num)
                 ? (ord['total_amount_lyd'] as num).toDouble()
                 : ((ord['total_amount'] is num) ? (ord['total_amount'] as num).toDouble() : 0.0);
-            final isPlaced = status == 'placed';
             final isPrep = status == 'preparing';
+            final prepMinutes = ord['prep_time_minutes'] ?? 15;
             DriverNotificationService().showOrderAlert(
-              title: isPlaced
-                  ? '🛎️ طلب جديد ورد للمتجر - كابتن واصل'
-                  : (isPrep ? '⏳ مشوار جديد قيد التحضير - كابتن واصل' : '🚨 مشوار جاهز للاستلام - كابتن واصل'),
-              body: isPlaced
-                  ? 'طلب جديد ${ord['order_number'] ?? ''} لدى ${ord['store_name'] ?? 'المتجر'} - استعد للمهمة.'
-                  : (isPrep
-                      ? 'طلب ${ord['order_number'] ?? ''} من ${ord['store_name'] ?? 'المطعم'} قيد الطهي (يجهز بعد 5-7 دقائق) - تحرّك للاستلام.'
-                      : 'طلب ${ord['order_number'] ?? ''} بقيمة ${ordAmount.toStringAsFixed(2)} د.ل من ${ord['store_name'] ?? 'مطاعم نالوت'} جاهز للاستلام والتوصيل.'),
+              title: isPrep ? '⏳ مشوار جديد قيد التحضير - كابتن واصل' : '🚨 مشوار جاهز للاستلام - كابتن واصل',
+              body: isPrep
+                  ? 'طلب ${ord['order_number'] ?? ''} من ${ord['store_name'] ?? 'المطعم'} قيد الطهي (يجهز بعد $prepMinutes دقيقة) - تحرّك للاستلام.'
+                  : 'طلب ${ord['order_number'] ?? ''} بقيمة ${ordAmount.toStringAsFixed(2)} د.ل من ${ord['store_name'] ?? 'مطاعم نالوت'} جاهز للاستلام والتوصيل.',
               payload: orderId,
             );
           }
@@ -226,12 +222,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
             : '1234');
     final bool isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
     final String status = ord['status']?.toString() ?? 'ready_for_pickup';
+    final prepMinutes = ord['prep_time_minutes'] ?? 15;
     final String prepStatusBadge = ord['prep_status_badge']?.toString() ??
-        (status == 'placed'
-            ? '🛎️ تم إرسال الطلب للمتجر (استعد للاستلام خلال 10 دقائق)'
-            : (status == 'preparing'
-                ? '⏳ جاري التحضير بالمطعم (يجهز بعد 5-7 دقائق) - تحرّك للاستلام'
-                : '🟢 جاهز للاستلام والتسليم فوراً'));
+        (status == 'preparing'
+            ? '⏳ جاري التحضير بالمطعم (يجهز بعد $prepMinutes دقيقة) - تحرّك للاستلام'
+            : '🟢 جاهز للاستلام والتسليم فوراً');
 
     final radarOrder = RadarOrder(
       orderId: orderId,

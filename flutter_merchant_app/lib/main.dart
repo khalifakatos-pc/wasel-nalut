@@ -334,14 +334,18 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
         statusStr = 'ready_for_pickup';
         break;
       case KdsTicketStatus.completed:
-        statusStr = 'delivered';
+        statusStr = 'out_for_delivery';
         break;
       case KdsTicketStatus.cancelled:
         statusStr = 'cancelled';
         break;
     }
 
-    MerchantSupabaseService.updateOrderStatus(updatedOrder.id, statusStr);
+    MerchantSupabaseService.updateOrderStatus(
+      updatedOrder.id,
+      statusStr,
+      prepTimeMinutes: updatedOrder.prepTimeMinutes,
+    );
   }
 
   void _onProductUpdated(CatalogProduct updatedProduct) {

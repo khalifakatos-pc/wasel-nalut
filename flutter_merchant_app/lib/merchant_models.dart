@@ -228,6 +228,9 @@ class KdsOrder {
   final String? courierName;
   final String? courierVehicle;
   final String? courierPhone;
+  final String? handoverCode;
+  final bool driverArrived;
+  final String? driverStatus;
 
   KdsOrder({
     required this.id,
@@ -245,6 +248,9 @@ class KdsOrder {
     this.courierName,
     this.courierVehicle,
     this.courierPhone,
+    this.handoverCode,
+    this.driverArrived = false,
+    this.driverStatus,
   });
 
   int get elapsedMinutes => DateTime.now().difference(timePlaced).inMinutes;

@@ -206,6 +206,85 @@ class _OrdersTabState extends State<OrdersTab> {
                 ),
               ],
             ),
+
+            // Accountability & Timeline (Kitchen vs Captain)
+            Builder(
+              builder: (context) {
+                final prepMins = order['prep_time_minutes'];
+                final kitchenDelay = (order['kitchen_delay_seconds'] as num?)?.toInt() ?? 0;
+                final driverDelay = (order['driver_delay_seconds'] as num?)?.toInt() ?? 0;
+                final handoverAt = order['handover_at'];
+                final driverArrivedAt = order['driver_arrived_at'];
+                final readyAt = order['ready_at'];
+
+                if (prepMins == null && kitchenDelay == 0 && driverDelay == 0 && handoverAt == null) {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(top: 10),
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AdminColors.surface,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AdminColors.divider),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            '⏱️ خط المسؤولية (المطبخ ⟷ الكابتن):',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AdminColors.primaryGold),
+                          ),
+                          if (kitchenDelay > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AdminColors.alertRed.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: AdminColors.alertRed),
+                              ),
+                              child: Text(
+                                'تأخير مطبخ: ${(kitchenDelay / 60).ceil()} د',
+                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AdminColors.alertRed),
+                              ),
+                            )
+                          else if (driverDelay > 0)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                                border: Border.all(color: Colors.orange),
+                              ),
+                              child: Text(
+                                'تأخير كابتن: ${(driverDelay / 60).ceil()} د',
+                                style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.orange),
+                              ),
+                            )
+                          else
+                            const Text(
+                              'الأداء منضبط ⚡',
+                              style: TextStyle(fontSize: 10, color: AdminColors.emeraldGreen, fontWeight: FontWeight.bold),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '• وقت الطهي: ${prepMins ?? 15} د'
+                        '${readyAt != null ? " • تجهز ✅" : ""}'
+                        '${driverArrivedAt != null ? " • الكابتن بالمطعم 📍" : ""}'
+                        '${handoverAt != null ? " • عهدة الكابتن 🛵" : ""}',
+                        style: const TextStyle(fontSize: 11, color: AdminColors.textSecondary),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
             const Divider(color: AdminColors.divider, height: 20),
 
             // Bottom Financials and Actions

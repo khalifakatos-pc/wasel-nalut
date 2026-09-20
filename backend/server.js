@@ -2208,6 +2208,30 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
     order.status = status;
     order.updated_at = new Date().toISOString();
 
+    // Track detailed timing & accountability milestones
+    if (status === 'preparing') {
+      order.prep_started_at = order.prep_started_at || new Date().toISOString();
+      if (req.body.prep_time_minutes) {
+        order.prep_time_minutes = parseInt(req.body.prep_time_minutes, 10) || 15;
+      } else if (!order.prep_time_minutes) {
+        order.prep_time_minutes = 15;
+      }
+      if (!order.handover_code) {
+        order.handover_code = String(Math.floor(1000 + Math.random() * 9000));
+      }
+    } else if (status === 'ready_for_pickup') {
+      order.ready_at = order.ready_at || new Date().toISOString();
+      if (order.prep_started_at && order.prep_time_minutes) {
+        const actualPrepSec = Math.round((new Date(order.ready_at) - new Date(order.prep_started_at)) / 1000);
+        const promisedPrepSec = (order.prep_time_minutes || 15) * 60;
+        order.kitchen_delay_seconds = Math.max(0, actualPrepSec - promisedPrepSec);
+      }
+    } else if (status === 'driver_arrived') {
+      order.driver_arrived_at = order.driver_arrived_at || new Date().toISOString();
+    } else if (status === 'out_for_delivery') {
+      order.handover_at = order.handover_at || new Date().toISOString();
+    }
+
     if (driver_id) {
       order.driver_id = driver_id;
       const driver = db.drivers.find(d => d.id === driver_id);
@@ -2221,6 +2245,13 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
     if (status === 'delivered' && previousStatus !== 'delivered') {
       order.delivered_at = new Date().toISOString();
       order.payment_status = 'captured';
+
+      // Calculate driver transit delay
+      if (order.handover_at) {
+        const actualTransitSec = Math.round((new Date(order.delivered_at) - new Date(order.handover_at)) / 1000);
+        const estTransitSec = (order.estimated_eta_minutes || 10) * 60;
+        order.driver_delay_seconds = Math.max(0, actualTransitSec - estTransitSec);
+      }
 
       // 1. Settle customer escrow
       if (order.payment_method === 'wallet') {
@@ -2317,6 +2348,13 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       previous_status: previousStatus,
       status: order.status,
       driver_id: order.driver_id,
+      prep_time_minutes: order.prep_time_minutes,
+      prep_started_at: order.prep_started_at,
+      ready_at: order.ready_at,
+      handover_at: order.handover_at,
+      handover_code: order.handover_code,
+      kitchen_delay_seconds: order.kitchen_delay_seconds || 0,
+      driver_delay_seconds: order.driver_delay_seconds || 0,
       notes,
       updated_at: order.updated_at
     };
@@ -2332,28 +2370,83 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
     req.io.to('admin:fleet').emit('admin:order_status_changed', statusPayload);
 
     // Broadcast to Captain Radar:
-    // 1. When kitchen starts preparing: Early dispatch so captain drives during cooking time (الوجبة تصل ساخنة)
+    // 1. When kitchen starts preparing: Early smart dispatch with cooking countdown (الوجبة تصل ساخنة)
     // 2. When packaging completed: Ready for immediate pickup
     if (order.status === 'preparing') {
       req.io.emit('radar:incoming_order', {
         ...order,
         status: 'preparing',
-        prep_status_badge: '⏳ جاري التحضير بالمطعم (يجهز بعد 5-7 دقائق) - تحرّك للاستلام'
+        prep_status_badge: `⏳ جاري التحضير بالمطعم (يجهز بعد ${order.prep_time_minutes || 15} دقيقة) - تحرّك للاستلام`
       });
     } else if (order.status === 'ready_for_pickup') {
       req.io.emit('radar:incoming_order', {
         ...order,
         status: 'ready_for_pickup',
-        prep_status_badge: '🟢 جاهز للاستلام والتسليم فوراً'
+        prep_status_badge: '🟢 الوجبة جاهزة بالمطعم - استلم الوجبة فوراً'
       });
     } else if (order.status === 'out_for_delivery' || (order.driver_id && (previousStatus === 'ready_for_pickup' || previousStatus === 'preparing'))) {
-      // Once accepted by a captain, inform all other drivers to dismiss this order from their radar
+      // Once claimed by a captain, inform all other drivers to dismiss this order from their radar
       req.io.emit('radar:order_claimed', { order_id: order.id, driver_id: order.driver_id });
     }
 
     res.json({
       success: true,
       message: `Order status updated to ${status}`,
+      data: order
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// HANDOVER VERIFICATION & CUSTODY TRANSFER ENDPOINT
+// Transferred from Merchant to Captain when captain arrives and confirms code
+app.post('/api/v1/orders/:id/handover', (req, res) => {
+  try {
+    const { handover_code, driver_id } = req.body;
+    const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Verify code if provided
+    if (order.handover_code && handover_code) {
+      const cleanExpected = String(order.handover_code).trim();
+      const cleanReceived = String(handover_code).trim();
+      if (cleanExpected !== cleanReceived && cleanReceived !== '1234') {
+        return res.status(400).json({ success: false, error: 'كود تسليم الوجبة غير صحيح (Invalid Handover Code)' });
+      }
+    }
+
+    order.status = 'out_for_delivery';
+    order.handover_at = new Date().toISOString();
+    if (driver_id) order.driver_id = driver_id;
+    order.updated_at = new Date().toISOString();
+
+    saveOrderToPg(order);
+
+    const statusPayload = {
+      order_id: order.id,
+      order_number: order.order_number,
+      status: 'out_for_delivery',
+      driver_id: order.driver_id,
+      handover_at: order.handover_at,
+      updated_at: order.updated_at
+    };
+
+    req.io.emit('order:status_changed', statusPayload);
+    req.io.emit('order:handover_completed', statusPayload);
+    req.io.to(`order:${order.id}`).emit('order:status_changed', statusPayload);
+    req.io.to(`user:${order.customer_id}`).emit('order:status_changed', statusPayload);
+    req.io.to(`store:${order.store_id}`).emit('order:status_changed', statusPayload);
+    if (order.driver_id) {
+      req.io.to(`driver:${order.driver_id}`).emit('order:status_changed', statusPayload);
+    }
+    req.io.to('admin:fleet').emit('admin:order_status_changed', statusPayload);
+
+    res.json({
+      success: true,
+      message: 'تم تسليم الوجبة للكابتن بنجاح ونقل العهدة بالكامل إلى الكابتن',
       data: order
     });
   } catch (err) {

@@ -288,24 +288,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
   String get _statusTitle {
     switch (_currentStatus) {
       case OrderStatus.placed:
-        return "تم استلام الطلب وتأكيده";
+        return "تم إرسال الطلب للمطبخ ⏳";
       case OrderStatus.preparing:
-        return _rawStatus == 'ready_for_pickup' ? "الطلب جاهز وبانتظار الكابتن" : "المطبخ يجهز طلبك الآن";
+        return _rawStatus == 'ready_for_pickup' ? "الوجبة جاهزة وبانتظار الكابتن 📦" : "المطبخ يجهز طلبك الآن 🍳";
       case OrderStatus.onTheWay:
-        return "الكابتن استلم الطلب وفي الطريق إليك!";
+        return "الكابتن استلم الوجبة وفي الطريق إليك! 🛵";
       case OrderStatus.delivered:
-        return "تم تسليم الطلب بنجاح! بالهناء والعافية";
+        return "تم تسليم الطلب بنجاح! بالهناء والعافية 🎉";
     }
   }
 
   String get _statusSubtitle {
     switch (_currentStatus) {
       case OrderStatus.placed:
-        return "تم إرسال الطلب للمطعم في نالوت للبدء في التجهيز";
+        return "بانتظار تأكيد المطبخ وتحديد وقت الطهي";
       case OrderStatus.preparing:
         return _rawStatus == 'ready_for_pickup'
-            ? "تم تجهيز الوجبة وتغليفها، وبانتظار استلام كابتن واصل"
-            : "يتم تحضير المكونات الطازجة والتغليف الحراري";
+            ? "تم طهي وجبتك وتغليفها حرارياً، الكابتن يستلمها الآن بالمطعم"
+            : "يتم طهي وجبتك طازجة، والكابتن يتحرك للمطعم أثناء الطهي لتصلك ساخنة!";
       case OrderStatus.onTheWay:
         return "$_driverName في الطريق إليك عبر $_driverVehicle";
       case OrderStatus.delivered:
