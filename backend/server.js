@@ -2061,6 +2061,20 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     req.io.to('admin:fleet').emit('admin:order_created', newOrder);
     req.io.emit('merchant:new_order', newOrder);
 
+    // FIREBASE CLOUD MESSAGING: Loud Buzzer for Merchant Tablet (KDS)
+    try {
+      const WaselFcmDispatcher = require('./fcm_dispatcher');
+      const fcm = new WaselFcmDispatcher();
+      fcm.notifyMerchantNewOrder({
+        storeId: store.id,
+        orderId: orderNumber,
+        itemsCount: orderItems.length,
+        totalAmountLyd: totalAmount
+      }).catch(err => console.error('[FCM] Error sending merchant notification:', err));
+    } catch (fcmErr) {
+      console.error('[FCM] Failed to initialize dispatcher:', fcmErr);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully and waiting for kitchen preparation',
@@ -2301,6 +2315,10 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
           driver.status = 'online_idle';
           driver.active_order_id = null;
           driver.total_trips = (driver.total_trips || 0) + 1;
+
+          if (order.payment_method === 'cash' || order.payment_method === 'cod') {
+            driver.wallet_balance_lyd = (driver.wallet_balance_lyd || 0) + (order.total_amount_lyd || 0);
+          }
 
           const driverEarnings = order.delivery_fee_lyd * 0.80;
           const driverWallet = db.wallets.find(w => w.user_id === driver.user_id);
