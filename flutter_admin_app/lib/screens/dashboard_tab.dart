@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
@@ -12,23 +13,61 @@ class DashboardTab extends StatefulWidget {
 
 class _DashboardTabState extends State<DashboardTab> {
   Map<String, dynamic>? _kpiData;
+  List<Map<String, dynamic>> _stores = [];
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadKpis();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) {
+        _loadKpisSilently();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadKpis() async {
     setState(() => _isLoading = true);
     final data = await AdminSupabaseService.fetchKpis();
+    final stores = await AdminSupabaseService.fetchStores();
     if (mounted) {
       setState(() {
         _kpiData = data;
+        _stores = stores;
         _isLoading = false;
       });
     }
+  }
+
+  Future<void> _loadKpisSilently() async {
+    final data = await AdminSupabaseService.fetchKpis();
+    final stores = await AdminSupabaseService.fetchStores();
+    if (mounted) {
+      setState(() {
+        _kpiData = data;
+        _stores = stores;
+      });
+    }
+  }
+
+  Future<void> _toggleStore(String storeId, bool currentStatus) async {
+    final newStatus = !currentStatus;
+    setState(() {
+      final idx = _stores.indexWhere((s) => s['id'] == storeId);
+      if (idx != -1) {
+        _stores[idx]['is_open'] = newStatus;
+      }
+    });
+    await AdminSupabaseService.toggleStoreOpen(storeId, newStatus);
+    _loadKpisSilently();
   }
 
   @override
@@ -216,6 +255,9 @@ class _DashboardTabState extends State<DashboardTab> {
                         ),
                       ],
                     ),
+
+                    // Live Stores Presence Section
+                    _buildLiveStoresSection(),
 
                     const SizedBox(height: 24),
 
@@ -439,6 +481,134 @@ class _DashboardTabState extends State<DashboardTab> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLiveStoresSection() {
+    if (_stores.isEmpty) return const SizedBox.shrink();
+
+    final openCount = _stores.where((s) => s['is_open'] == true || s['is_open'] == 'true').length;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Row(
+              children: [
+                Icon(Icons.storefront_rounded, color: AdminColors.primaryGold, size: 20),
+                SizedBox(width: 8),
+                Text(
+                  'متابعة حالة المطاعم والمتاجر (مباشر)',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: AdminColors.textPrimary),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: AdminColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AdminColors.emeraldGreen.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                '$openCount من ${_stores.length} مفتوح 🟢',
+                style: const TextStyle(fontSize: 11, color: AdminColors.emeraldGreen, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ..._stores.map((store) {
+          final isOpen = store['is_open'] == true || store['is_open'] == 'true';
+          final storeId = store['id']?.toString() ?? '';
+          final storeName = store['name_ar'] ?? store['name'] ?? 'متجر نالوت';
+          final storeType = store['type']?.toString().toLowerCase() ?? 'restaurant';
+
+          String emoji = '🍔';
+          if (storeType.contains('pizza')) {
+            emoji = '🍕';
+          } else if (storeType.contains('pharmacy')) {
+            emoji = '💊';
+          } else if (storeType.contains('grocery')) {
+            emoji = '🛒';
+          }
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AdminColors.surfaceElevated,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isOpen ? AdminColors.emeraldGreen.withValues(alpha: 0.35) : Colors.white12,
+              ),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AdminColors.surface,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: isOpen ? AdminColors.emeraldGreen : AdminColors.alertRed),
+                  ),
+                  child: Center(child: Text(emoji, style: const TextStyle(fontSize: 18))),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        storeName,
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13.5, color: Colors.white),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isOpen ? AdminColors.emeraldGreen : AdminColors.alertRed,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            isOpen ? 'مفتوح يستقبل طلبات' : 'مغلق حالياً',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isOpen ? AdminColors.emeraldGreen : AdminColors.alertRed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Transform.scale(
+                  scale: 0.8,
+                  child: Switch(
+                    value: isOpen,
+                    activeThumbColor: AdminColors.emeraldGreen,
+                    inactiveThumbColor: AdminColors.alertRed,
+                    inactiveTrackColor: AdminColors.alertRed.withValues(alpha: 0.2),
+                    onChanged: (val) => _toggleStore(storeId, isOpen),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ],
     );
   }
 }

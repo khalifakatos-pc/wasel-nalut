@@ -58,7 +58,7 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
   late LatLng _driverPos;
 
   // Waypoints connecting Store -> Customer in Nalut
-  late final List<LatLng> _routePoints;
+  late List<LatLng> _routePoints;
 
   @override
   void initState() {

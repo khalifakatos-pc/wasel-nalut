@@ -2060,7 +2060,6 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     req.io.to(`user:${customer.id}`).emit('order:created', newOrder);
     req.io.to('admin:fleet').emit('admin:order_created', newOrder);
     req.io.emit('merchant:new_order', newOrder);
-    req.io.emit('radar:incoming_order', newOrder);
 
     res.status(201).json({
       success: true,
@@ -2954,7 +2953,7 @@ app.get('/api/v1/admin/overview', adminAuthMiddleware, (req, res) => {
     const availableDrivers = db.drivers.filter(d => d.status === 'available' || d.status === 'online_idle' || d.status === 'online').length;
     const busyDrivers = db.drivers.filter(d => d.status === 'busy_delivery' || d.status === 'busy').length;
     const offlineDrivers = db.drivers.filter(d => d.status === 'offline' || !d.status).length;
-    const openStores = db.stores.filter(s => s.is_open === true).length;
+    const openStores = db.stores.filter(s => s.is_open === true || s.is_open === 'true' || s.is_open === 1).length;
 
     // Vertical breakdown
     const verticalBreakdown = {
@@ -2983,7 +2982,7 @@ app.get('/api/v1/admin/overview', adminAuthMiddleware, (req, res) => {
           completed_orders_count: completedOrders.length,
           gmv_total_lyd: Math.round(gmv * 100) / 100,
           platform_revenue_lyd: platformRevenueWallet ? platformRevenueWallet.balance : 0,
-          stores_count: openStores,
+          stores_count: db.stores.length,
           open_stores_count: openStores,
           total_stores_count: db.stores.length,
           online_drivers_count: availableDrivers + busyDrivers
@@ -2996,7 +2995,8 @@ app.get('/api/v1/admin/overview', adminAuthMiddleware, (req, res) => {
         },
         vertical_order_counts: verticalBreakdown,
         active_orders: activeOrders.slice(0, 10),
-        live_drivers: db.drivers
+        live_drivers: db.drivers,
+        stores: db.stores
       }
     });
   } catch (err) {
