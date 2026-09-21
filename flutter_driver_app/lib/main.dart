@@ -162,6 +162,7 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
           _currentActiveDelivery = ActiveDeliveryOrder(
             orderId: ongoing['id']?.toString() ?? '',
             orderNumber: ongoing['order_number']?.toString() ?? '#W-100',
+            orderStatus: ongoing['status']?.toString() ?? 'preparing',
             storeName: ongoing['store_name']?.toString() ?? 'قصر نالوت للمأكولات',
             storePhone: '091-2233445',
             storeAddress: 'نالوت - الشارع الرئيسي بجوار القلعة',

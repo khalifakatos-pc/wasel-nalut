@@ -366,7 +366,7 @@ class DriverSupabaseService {
   }
 
   /// Verify handover code and transfer custody from merchant to captain
-  static Future<bool> verifyHandover(String orderId, String handoverCode) async {
+  static Future<Map<String, dynamic>> verifyHandover(String orderId, String handoverCode) async {
     try {
       final res = await http
           .post(
@@ -380,16 +380,43 @@ class DriverSupabaseService {
           .timeout(const Duration(seconds: 10));
 
       if (res.statusCode == 200) {
-        return true;
+        return {'success': true};
+      } else {
+        try {
+          final data = jsonDecode(res.body);
+          return {
+            'success': false,
+            'error': data['error'] ?? 'فشل تأكيد الاستلام من المطعم',
+          };
+        } catch (_) {
+          return {
+            'success': false,
+            'error': 'فشل تأكيد الاستلام (رمز: ${res.statusCode})',
+          };
+        }
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': 'تعذر الاتصال بالخادم: $e',
+      };
+    }
+  }
+
+  /// Fetch live order status from backend
+  static Future<Map<String, dynamic>?> fetchLiveOrderStatus(String orderId) async {
+    try {
+      final res = await http
+          .get(Uri.parse('$backendBaseUrl/orders/$orderId'))
+          .timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final body = jsonDecode(res.body);
+        if (body['success'] == true && body['data'] != null) {
+          return body['data'] as Map<String, dynamic>;
+        }
       }
     } catch (_) {}
-
-    // Fallback: update status directly
-    return updateOrderStatus(
-      orderId: orderId,
-      status: 'out_for_delivery',
-      driverId: activeDriverId,
-    );
+    return null;
   }
 
   /// Update driver online/offline status

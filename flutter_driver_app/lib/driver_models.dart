@@ -196,6 +196,7 @@ class ActiveDeliveryOrder {
   final double driverPayoutLyd;
   final List<DeliveryItem> items;
   DeliveryStep currentStep;
+  String orderStatus;
 
   ActiveDeliveryOrder({
     required this.orderId,
@@ -217,6 +218,7 @@ class ActiveDeliveryOrder {
     required this.driverPayoutLyd,
     required this.items,
     this.currentStep = DeliveryStep.navigatingToStore,
+    this.orderStatus = 'preparing',
   });
 
   bool get isAllItemsVerified => items.every((i) => i.isVerified);

@@ -35,6 +35,8 @@ class ActiveDeliveryFlowScreen extends StatefulWidget {
 
 class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   late ActiveDeliveryOrder _activeOrder;
+  late String _orderBackendStatus;
+  Timer? _statusPollTimer;
   bool _isQrScanned = false;
   bool _isOtpVerified = false;
   bool _isCashCollected = false;
@@ -43,8 +45,32 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   void initState() {
     super.initState();
     _activeOrder = widget.order;
+    _orderBackendStatus = _activeOrder.orderStatus;
     if (_activeOrder.paymentType != PaymentType.cashOnDelivery) {
       _isCashCollected = true;
+    }
+    _fetchOrderStatus();
+    _statusPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (mounted) _fetchOrderStatus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _statusPollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchOrderStatus() async {
+    final data = await DriverSupabaseService.fetchLiveOrderStatus(_activeOrder.orderId);
+    if (data != null && mounted) {
+      final newStatus = data['status']?.toString();
+      if (newStatus != null && newStatus != _orderBackendStatus) {
+        setState(() {
+          _orderBackendStatus = newStatus;
+          _activeOrder.orderStatus = newStatus;
+        });
+      }
     }
   }
 
@@ -373,6 +399,93 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Restaurant Kitchen Readiness Live Status Banner
+          if (_orderBackendStatus != 'ready_for_pickup') ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.shade900.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.shade600, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Colors.amber,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: const [
+                        Text(
+                          'الوجبة لا تزال قيد التحضير في المطبخ ⏳',
+                          style: TextStyle(
+                            color: Colors.amber,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'المطعم لم يؤكد "تم التجهيز" بعد. انتظر حتى تكتمل الوجبة ليتم تفعيل زر الاستلام تلقائياً.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            Container(
+              margin: const EdgeInsets.only(bottom: 14),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: DriverColors.onlineGreen.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: DriverColors.onlineGreen, width: 1.5),
+              ),
+              child: Row(
+                children: const [
+                  Icon(Icons.check_circle_rounded, color: DriverColors.onlineGreen, size: 26),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'تم تجهيز الوجبة بالكامل من المطعم! 🍳✅',
+                          style: TextStyle(
+                            color: DriverColors.onlineGreen,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
+                        ),
+                        SizedBox(height: 3),
+                        Text(
+                          'أكّد المطعم جهوزية الطلب للاستلام. يمكنك مطابقة الأصناف وبدء التوصيل.',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -718,30 +831,61 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         break;
 
       case DeliveryStep.orderPickupChecklist:
-        label = 'تأكيد الاستلام وبدء التوصيل للزبون 🛵';
-        buttonColor = DriverColors.primary;
-        onTap = () async {
-          setState(() {
-            _isQrScanned = true;
-            for (var item in _activeOrder.items) {
-              item.isVerified = true;
-            }
-          });
-          await DriverSupabaseService.verifyHandover(
-            _activeOrder.orderId,
-            '1234',
-          );
-          if (mounted) {
+        final isKitchenReady = _orderBackendStatus == 'ready_for_pickup';
+        if (!isKitchenReady) {
+          label = 'بانتظار تأكيد التجهيز من المطعم ⏳';
+          buttonColor = Colors.grey[800]!;
+          onTap = () {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('✅ تم استلام الوجبة ونقل العهدة بالكامل للكابتن! انطلق للزبون.'),
-                backgroundColor: DriverColors.onlineGreen,
-                duration: Duration(seconds: 2),
+                content: Text(
+                  '⚠️ لا يمكن استلام الطلب حتى يضغط المطعم على "تم التجهيز" (الطلب لا يزال قيد التحضير).',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: Colors.amber,
+                duration: Duration(seconds: 3),
               ),
             );
-          }
-          _advanceToStep(DeliveryStep.navigatingToCustomer);
-        };
+            _fetchOrderStatus();
+          };
+        } else {
+          label = 'تأكيد الاستلام وبدء التوصيل للزبون 🛵';
+          buttonColor = DriverColors.primary;
+          onTap = () async {
+            setState(() {
+              _isQrScanned = true;
+              for (var item in _activeOrder.items) {
+                item.isVerified = true;
+              }
+            });
+            final res = await DriverSupabaseService.verifyHandover(
+              _activeOrder.orderId,
+              '1234',
+            );
+            if (res['success'] != true) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(res['error'] ?? 'تعذر استلام الطلب من المطعم'),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
+              _fetchOrderStatus();
+              return;
+            }
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('✅ تم استلام الوجبة ونقل العهدة بالكامل للكابتن! انطلق للزبون.'),
+                  backgroundColor: DriverColors.onlineGreen,
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+            _advanceToStep(DeliveryStep.navigatingToCustomer);
+          };
+        }
         break;
 
       case DeliveryStep.navigatingToCustomer:

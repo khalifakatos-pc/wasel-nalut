@@ -281,6 +281,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         final active = ActiveDeliveryOrder(
           orderId: orderId,
           orderNumber: orderNumber,
+          orderStatus: status,
           storeName: storeName,
           storePhone: '091-2233445',
           storeAddress: 'نالوت - الشارع الرئيسي بجوار القلعة',

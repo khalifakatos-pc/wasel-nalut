@@ -2203,6 +2203,17 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       return res.status(400).json({ success: false, error: `Invalid status. Valid statuses: ${validStatuses.join(', ')}` });
     }
 
+    if (status === 'out_for_delivery' || status === 'picked_up') {
+      if (order.status !== 'ready_for_pickup' && order.status !== 'out_for_delivery' && order.status !== 'picked_up') {
+        return res.status(400).json({
+          success: false,
+          error: order.status === 'preparing'
+            ? 'الوجبة لا تزال قيد التحضير بالمطعم! لا يمكن نقل الطلب للتوصيل حتى يضغط المطعم على "تم التجهيز".'
+            : `لا يمكن استلام الطلب ونقله للتوصيل وهو في حالة: ${order.status}`
+        });
+      }
+    }
+
     const previousStatus = order.status;
     order.status = status;
     order.updated_at = new Date().toISOString();
@@ -2406,6 +2417,16 @@ app.post('/api/v1/orders/:id/handover', (req, res) => {
     const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    // Require restaurant to have marked order as ready_for_pickup
+    if (order.status !== 'ready_for_pickup') {
+      return res.status(400).json({
+        success: false,
+        error: order.status === 'preparing'
+          ? 'الوجبة لا تزال قيد التحضير بالمطعم! لا يمكن للكابتن استلام الطلب حتى يضغط المطعم على "تم التجهيز".'
+          : `لا يمكن استلام الطلب وهو في حالة: ${order.status}`
+      });
     }
 
     // Verify code if provided
