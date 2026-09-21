@@ -157,22 +157,6 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                 const SizedBox(height: 20),
 
                 if (widget.isFood) ...[
-                  // Food Size Selection (Required Single Choice)
-                  _buildSizeSection(isDark),
-                  const SizedBox(height: 20),
-
-                  // 1. Spice & Harissa Level (Single Choice)
-                  _buildSpiceLevelSection(isDark),
-                  const SizedBox(height: 20),
-
-                  // 2. Exclusions (بدون...) (Multi Choice)
-                  _buildExclusionsSection(isDark),
-                  const SizedBox(height: 20),
-
-                  // Food Addons Selection (Multi Choice)
-                  _buildAddonsSection(isDark),
-                  const SizedBox(height: 20),
-
                   // Kitchen Special Instructions
                   _buildSpecialInstructions(isDark),
                 ] else ...[
@@ -1023,18 +1007,7 @@ class _ProductDetailSheetState extends State<ProductDetailSheet> {
                 onPressed: () {
                   final selectedAddonList = <String>[];
                   if (widget.isFood) {
-                    // Include spice level
-                    selectedAddonList.add(_selectedSpiceLevel);
-                    // Include exclusions
-                    for (var ex in _selectedExclusions) {
-                      selectedAddonList.add(ex);
-                    }
-                    // Include selected addons
-                    _selectedAddons.forEach((addon, selected) {
-                      if (selected) {
-                        selectedAddonList.add(addon);
-                      }
-                    });
+                    // Options removed to simplify UI
                   }
 
                   final result = {

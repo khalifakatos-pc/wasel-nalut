@@ -1919,7 +1919,7 @@ app.post('/api/v1/orders/checkout', authMiddleware, (req, res) => {
     // Calculate delivery fee
     const feeCalculation = calculateDynamicDeliveryFee(store, destLat, destLng, totalWeight);
     const deliveryFee = feeCalculation.delivery_fee_lyd;
-    const serviceFee = db.system_config.service_fee_lyd || 1.50;
+    const serviceFee = 0.00; // Customer should not see app commission
     const discount = req.body.discount_lyd ? parseFloat(req.body.discount_lyd) : 0.00;
     const totalAmount = subtotal + deliveryFee + serviceFee - discount;
 

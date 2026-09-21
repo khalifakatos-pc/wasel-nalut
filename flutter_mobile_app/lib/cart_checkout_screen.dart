@@ -75,7 +75,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
 
   double get _subtotal => CartService.subtotal;
   double get _effectiveDeliveryFee => _useFreeDeliveryVoucher ? 0.00 : _deliveryFee;
-  double get _grandTotal => (_subtotal + _effectiveDeliveryFee + _serviceFee - _discountAmount - _pointsDiscountAmount).clamp(0.0, double.infinity);
+  double get _grandTotal => (_subtotal + _effectiveDeliveryFee - _discountAmount - _pointsDiscountAmount).clamp(0.0, double.infinity);
 
   void _applyCoupon() {
     final code = _couponController.text.trim().toUpperCase();
@@ -1251,8 +1251,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                 ),
                 const Divider(height: 20),
                 _buildBillRow('مجموع الأصناف', '${_subtotal.toStringAsFixed(2)} د.ل'),
-                _buildBillRow('رسوم التوصيل', _useFreeDeliveryVoucher ? '0.00 د.ل (مجاني 🛵)' : '${_deliveryFee.toStringAsFixed(2)} د.ل', isDiscount: _useFreeDeliveryVoucher),
-                _buildBillRow('رسوم الخدمة والمنصة', '${_serviceFee.toStringAsFixed(2)} د.ل'),
+                _buildBillRow('أجرة التوصيل', _useFreeDeliveryVoucher ? '0.00 د.ل (مجاني 🛵)' : '${_deliveryFee.toStringAsFixed(2)} د.ل', isDiscount: _useFreeDeliveryVoucher),
                 if (_discountAmount > 0)
                   _buildBillRow('خصم الكوبون', '-${_discountAmount.toStringAsFixed(2)} د.ل', isDiscount: true),
                 if (_pointsDiscountAmount > 0)
@@ -1295,7 +1294,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                 SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'ميثاق الالتزام بالطلب: يُسمح بإلغاء الطلب مجاناً فقط خلال دقيقتين قبل بدء الطهي. عدم الرد على الكابتن عند الوصول يعرّض الحساب للحظر والرصيد السالب حفاظاً على حقوق المطعم والكابتن.',
+                    'ميثاق واصل الشرعي: تتم هذه المعاملة كعقد (بيع وإجارة توصيل) بدون عمولات مخفية على الزبون. يُسمح بإلغاء الطلب مجاناً قبل بدء التجهيز. عدم الرد على الكابتن عند الوصول يعرّض الحساب للحظر والتعويض المالي حفظاً لحقوق المطعم والكابتن.',
                     style: TextStyle(fontSize: 11, color: Colors.amber, height: 1.4),
                   ),
                 ),
