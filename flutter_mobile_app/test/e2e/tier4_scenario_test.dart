@@ -74,10 +74,10 @@ void main() {
       await tester.tap(applyBtnFinder);
       await tester.pump();
 
-      // Verify discount is applied: Subtotal 68.00 + Delivery 3.00 + Service 1.00 - Discount 5.00 = 67.00 LYD
+      // Verify discount is applied: Subtotal 68.00 + Delivery 3.00 + Service 0.00 - Discount 5.00 = 66.00 LYD
       expect(find.textContaining('تم تطبيق خصم واصل بقيمة 5.00 د.ل بنجاح!'), findsOneWidget);
       expect(find.text('-5.00 د.ل'), findsWidgets);
-      expect(find.text('67.00 د.ل'), findsWidgets);
+      expect(find.text('66.00 د.ل'), findsWidgets);
 
       // 4. Submit order (Cash On Delivery)
       final placeOrderBtn = find.textContaining('تأكيد الطلب والدفع');

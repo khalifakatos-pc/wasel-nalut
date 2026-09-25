@@ -42,7 +42,6 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
   String? _couponMessage;
 
   final double _deliveryFee = 3.00;
-  final double _serviceFee = 1.00;
 
   @override
   void initState() {

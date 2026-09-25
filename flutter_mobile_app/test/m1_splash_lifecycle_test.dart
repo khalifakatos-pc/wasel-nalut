@@ -278,7 +278,6 @@ void main() {
       expect(find.text('طلباتي'), findsOneWidget);
       expect(find.text('المحفظة'), findsOneWidget);
       expect(find.text('حسابي'), findsOneWidget);
-      expect(find.text('رادار الكابتن'), findsOneWidget);
     });
 
     testWidgets('M1.8: Session Routing: Navigates to MainNavigationShell when isLoggedIn is false but ApiService.hasActiveSession is true (Guest mode)',

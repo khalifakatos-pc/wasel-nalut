@@ -1,4 +1,5 @@
 const { config } = require('../config');
+const hfService = require('../services/hfService');
 
 async function parseMenuAI(req, res) {
   try {
@@ -139,7 +140,30 @@ async function bulkAddProducts(req, res, db) {
   }
 }
 
+async function enhanceProductDescription(req, res) {
+  try {
+    const { productName, category, productId } = req.body;
+
+    if (!productName) {
+      return res.status(400).json({ success: false, error: 'Product name is required.' });
+    }
+
+    // Integration is asynchronous via async/await and non-blocking axios calls.
+    const enhancedDesc = await hfService.enhanceDescription(productName, category || 'عام');
+
+    res.json({
+      success: true,
+      enhanced_description: enhancedDesc,
+      source: 'Hugging Face LLaMA-E'
+    });
+  } catch (err) {
+    console.error('[AI Enhance Error]:', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 module.exports = {
   parseMenuAI,
-  bulkAddProducts
+  bulkAddProducts,
+  enhanceProductDescription
 };

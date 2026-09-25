@@ -263,8 +263,8 @@ void main() {
       // Subtotal: 0.00 + 1000.00 + (5.00 * 99 = 495.00) = 1495.00 LYD
       expect(find.text('1495.00 د.ل'), findsWidgets);
 
-      // Delivery: 3.00, Service: 1.00 -> Grand Total: 1499.00 LYD
-      expect(find.text('1499.00 د.ل'), findsWidgets);
+      // Delivery: 3.00, Service: 0.00 (Sharia compliant) -> Grand Total: 1498.00 LYD
+      expect(find.text('1498.00 د.ل'), findsWidgets);
 
       await tester.pumpWidget(const SizedBox());
       await tester.pump();

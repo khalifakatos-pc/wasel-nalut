@@ -63,72 +63,73 @@ class _PinLockScreenState extends State<PinLockScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Spacer(),
-                // Crown icon and logo
-                Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: AdminColors.surface,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AdminColors.primaryGold, width: 2.5),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AdminColors.primaryGold.withValues(alpha: 0.25),
-                        blurRadius: 20,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: const Center(
-                    child: Text('👑', style: TextStyle(fontSize: 44)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'غرفة عمليات واصل نالوت',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: AdminColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'يرجى إدخال رمز الأمان للمدير (رمز المشرف: 7788)',
-                  style: TextStyle(fontSize: 14, color: AdminColors.textSecondary),
-                ),
-                const SizedBox(height: 36),
-
-                // PIN Dots
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(4, (index) {
-                    final isFilled = index < _enteredPin.length;
-                    return Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 10),
-                      width: 20,
-                      height: 20,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isFilled
-                            ? (_isError ? AdminColors.alertRed : AdminColors.primaryGold)
-                            : Colors.transparent,
-                        border: Border.all(
-                          color: _isError ? AdminColors.alertRed : AdminColors.primaryGold,
-                          width: 2,
+          child: Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 20.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 12),
+                  // Crown icon and logo
+                  Container(
+                    width: 90,
+                    height: 90,
+                    decoration: BoxDecoration(
+                      color: AdminColors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AdminColors.primaryGold, width: 2.5),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AdminColors.primaryGold.withValues(alpha: 0.25),
+                          blurRadius: 20,
+                          spreadRadius: 4,
                         ),
-                      ),
-                    );
-                  }),
-                ),
+                      ],
+                    ),
+                    child: const Center(
+                      child: Text('👑', style: TextStyle(fontSize: 44)),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'غرفة عمليات واصل نالوت',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: AdminColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'يرجى إدخال رمز الأمان للمدير (رمز المشرف: 7788)',
+                    style: TextStyle(fontSize: 14, color: AdminColors.textSecondary),
+                  ),
+                  const SizedBox(height: 36),
 
-                const Spacer(),
+                  // PIN Dots
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(4, (index) {
+                      final isFilled = index < _enteredPin.length;
+                      return Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
+                        width: 20,
+                        height: 20,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isFilled
+                              ? (_isError ? AdminColors.alertRed : AdminColors.primaryGold)
+                              : Colors.transparent,
+                          border: Border.all(
+                            color: _isError ? AdminColors.alertRed : AdminColors.primaryGold,
+                            width: 2,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+
+                  const SizedBox(height: 28),
 
                 // Number Pad
                 Column(
@@ -183,8 +184,9 @@ class _PinLockScreenState extends State<PinLockScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildPadRow(List<String> digits) {
     return Row(

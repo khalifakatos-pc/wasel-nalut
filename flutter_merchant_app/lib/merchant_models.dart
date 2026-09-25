@@ -119,7 +119,52 @@ class PartnerStore {
     isOpen: true,
   );
 
-  static const List<PartnerStore> nalutStores = [];
+  static const List<PartnerStore> nalutStores = [
+    PartnerStore(
+      id: 'store_nalut_ranchello',
+      name: 'مطعم ومقهى رانشيلو',
+      nameEn: 'Ranchello Restaurant & Cafe',
+      type: 'restaurant',
+      district: 'وسط نالوت',
+      phone: '0919570011',
+      mode: PartnerAppMode.kitchen,
+      icon: Icons.lunch_dining_rounded,
+      isOpen: true,
+    ),
+    PartnerStore(
+      id: 'store_nalut_rixos',
+      name: 'ريكسوس للتسوق',
+      nameEn: 'Rixos Shopping Market',
+      type: 'grocery',
+      district: 'شارع تونس - نالوت',
+      phone: '0910000002',
+      mode: PartnerAppMode.retail,
+      icon: Icons.shopping_cart_rounded,
+      isOpen: true,
+    ),
+    PartnerStore(
+      id: 'store_nalut_akakus',
+      name: 'بيتزا أكاكوس',
+      nameEn: 'Pizza Akakus',
+      type: 'pizza',
+      district: 'حي القلعة - نالوت',
+      phone: '0910000003',
+      mode: PartnerAppMode.kitchen,
+      icon: Icons.local_pizza_rounded,
+      isOpen: true,
+    ),
+    PartnerStore(
+      id: 'store_nalut_alhanaa',
+      name: 'صيدلية الهناء',
+      nameEn: 'Al-Hanaa Pharmacy',
+      type: 'pharmacy',
+      district: 'وسط نالوت',
+      phone: '0910000001',
+      mode: PartnerAppMode.retail,
+      icon: Icons.medication_rounded,
+      isOpen: true,
+    ),
+  ];
 }
 
 class MerchantUser {

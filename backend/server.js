@@ -23,6 +23,7 @@ const { v4: uuidv4 } = require('uuid');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
+const SocketService = require('./services/socketService');
 
 // Load environment variables from .env if present
 const envPath = path.join(__dirname, '.env');
@@ -617,6 +618,11 @@ function calculateDynamicDeliveryFee(store, deliveryLat, deliveryLng, totalWeigh
 // ----------------------------------------------------------------------------
 // 4. SERVER & SOCKET.IO SETUP
 // ----------------------------------------------------------------------------
+const VoucherRoutes = require('./routes/vouchers.routes');
+const ReviewRoutes = require('./routes/reviews.routes');
+
+// ... (other imports)
+
 const app = express();
 const server = http.createServer(app);
 
@@ -742,6 +748,9 @@ const io = new Server(server, {
   transports: ['websocket', 'polling']
 });
 
+// Initialize SocketService
+SocketService.init(io);
+
 // Attach io to request for route handlers
 app.use((req, res, next) => {
   req.io = io;
@@ -751,6 +760,7 @@ app.use((req, res, next) => {
 // Universal API Route Aliasing Middleware
 // Automatically proxies root API calls (e.g. /stores, /products, /drivers, /orders, /admin/*)
 // to /api/v1/* so Flutter apps and MCP tools work with or without the prefix seamlessly!
+// ... (previous code)
 app.use((req, res, next) => {
   if (
     !req.url.startsWith('/api/v1') &&
@@ -770,9 +780,23 @@ app.use((req, res, next) => {
   next();
 });
 
+// Register Voucher Routes
+app.use('/api/v1/vouchers', (req, res, next) => {
+  // Inject db into request for routes to use
+  req.db = db;
+  next();
+}, VoucherRoutes);
+
+app.use('/api/v1/reviews', (req, res, next) => {
+  // Inject db into request for routes to use
+  req.db = db;
+  next();
+}, ReviewRoutes);
+
 // ----------------------------------------------------------------------------
 // 5. AUTHENTICATION HELPERS & MIDDLEWARE
 // ----------------------------------------------------------------------------
+
 function generateToken(user) {
   return jwt.sign(
     {
@@ -2387,6 +2411,8 @@ app.post('/api/v1/orders/:id/status', (req, res) => {
       updated_at: order.updated_at
     };
 
+    SocketService.sendOrderStatusNotification(order, previousStatus, db);
+
     req.io.emit('order:status_changed', statusPayload);
     req.io.emit('order:updated', order);
     req.io.to(`order:${order.id}`).emit('order:status_changed', statusPayload);
@@ -2462,6 +2488,8 @@ app.post('/api/v1/orders/:id/handover', (req, res) => {
     order.updated_at = new Date().toISOString();
 
     saveOrderToPg(order);
+
+    SocketService.sendOrderStatusNotification(order, 'ready_for_pickup', db);
 
     const statusPayload = {
       order_id: order.id,
@@ -2562,11 +2590,15 @@ app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
   };
 
   if (req.io) {
-    req.io.to(`driver:${driver.id}`).emit('driver:location_changed', telemetryData);
-    req.io.to('admin:fleet').emit('admin:driver_moved', telemetryData);
-    if (order_id) {
-      req.io.to(`order:${order_id}`).emit('order:driver_location', telemetryData);
-    }
+    SocketService.broadcastDriverLocation({
+      driver_id: driver.id,
+      order_id: order_id || null,
+      latitude: driver.latitude,
+      longitude: driver.longitude,
+      heading: driver.heading,
+      speed_kmh: driver.speed_kmh,
+      recorded_at: new Date().toISOString()
+    });
   }
   saveSeedData();
   saveDriverToPg(driver);
@@ -3198,9 +3230,13 @@ io.on('connection', (socket) => {
         recorded_at: new Date().toISOString()
       };
 
-      // Broadcast to driver room & admin fleet map
-      io.to(`driver:${driverId}`).emit('driver:location_changed', telemetryData);
-      io.to('admin:fleet').emit('admin:driver_moved', telemetryData);
+      // Persist in PostgreSQL via existing helper
+      if (driver) {
+        saveDriverToPg(driver);
+      }
+
+      // Use SocketService to broadcast location updates
+      SocketService.broadcastDriverLocation(telemetryData);
 
       // If tied to an active order, calculate ETA and broadcast to customer
       if (order_id) {

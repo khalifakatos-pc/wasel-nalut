@@ -251,6 +251,37 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                           const SizedBox(height: 16),
                         ],
 
+                        // Quick Store Shortcuts
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            ActionChip(
+                              avatar: const Text('🌯'),
+                              label: const Text('مطعم رانشيلو 🌯', style: TextStyle(fontSize: 12)),
+                              backgroundColor: MerchantColors.darkSurface,
+                              onPressed: () {
+                                setState(() {
+                                  _phoneController.text = '0919570011';
+                                  _pinController.text = '1234';
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              avatar: const Text('🛒'),
+                              label: const Text('ريكسوس للتسوق 🛒', style: TextStyle(fontSize: 12)),
+                              backgroundColor: MerchantColors.darkSurface,
+                              onPressed: () {
+                                setState(() {
+                                  _phoneController.text = '0910000002';
+                                  _pinController.text = '1234';
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+
                         // Phone Field
                         const Text(
                           'رقم هاتف المتجر / المسؤول',

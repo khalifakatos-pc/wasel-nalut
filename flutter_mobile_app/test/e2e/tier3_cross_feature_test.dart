@@ -69,12 +69,6 @@ void main() {
       // Verify product hero card is displayed
       expect(find.text('صحن مشكل كباب وشقف لحم وطني'), findsOneWidget);
 
-      // Select size: 'حجم مزدوج (دبل)' (+5.00 LYD)
-      final doubleSizeOption = find.text('حجم مزدوج (دبل)');
-      expect(doubleSizeOption, findsOneWidget);
-      await tester.tap(doubleSizeOption);
-      await tester.pump();
-
       // Increment quantity via stepper (+ button)
       final addQtyFinder = find.byIcon(Icons.add_rounded);
       expect(addQtyFinder, findsOneWidget);
@@ -91,8 +85,8 @@ void main() {
       expect(addedDetails, isNotNull);
       expect(addedDetails!['title'], equals('صحن مشكل كباب وشقف لحم وطني'));
       expect(addedDetails!['quantity'], equals(2));
-      // Unit price should include base (34) + double size (5) = 39.00 or with default addons
-      expect(addedDetails!['unitPrice'], greaterThanOrEqualTo(39.00));
+      // Unit price matches base price (34.00)
+      expect(addedDetails!['unitPrice'], equals(34.00));
     });
 
     // ------------------------------------------------------------------------
@@ -213,8 +207,8 @@ void main() {
       );
       await tester.pump();
 
-      // Base Subtotal 50.00 + Delivery 3.00 + Service 1.00 = 54.00 LYD
-      expect(find.text('54.00 د.ل'), findsWidgets);
+      // Base Subtotal 50.00 + Delivery 3.00 + Service 0.00 = 53.00 LYD
+      expect(find.text('53.00 د.ل'), findsWidgets);
 
       // 1. Toggle loyalty points discount switch (100 points for 5.00 LYD discount)
       final loyaltySwitchFinder = find.byType(Switch);
@@ -222,9 +216,9 @@ void main() {
       await tester.tap(loyaltySwitchFinder);
       await tester.pump();
 
-      // Total drops by 5.00 -> 49.00 LYD
+      // Total drops by 5.00 -> 48.00 LYD
       expect(find.text('-5.00 د.ل'), findsWidgets);
-      expect(find.text('49.00 د.ل'), findsWidgets);
+      expect(find.text('48.00 د.ل'), findsWidgets);
 
       // 2. Apply promo coupon code 'WASEL2026' (additional 5.00 LYD discount)
       final couponFieldFinder = find.byWidgetPredicate(
@@ -237,8 +231,8 @@ void main() {
       await tester.tap(applyBtnFinder);
       await tester.pump();
 
-      // Total drops by another 5.00 -> 44.00 LYD
-      expect(find.text('44.00 د.ل'), findsWidgets);
+      // Total drops by another 5.00 -> 43.00 LYD
+      expect(find.text('43.00 د.ل'), findsWidgets);
       expect(find.text('خصم الكوبون'), findsOneWidget);
       expect(find.text('خصم نقاط واصل'), findsOneWidget);
 

@@ -170,8 +170,24 @@ class OrderService {
     const feeCalculation = this.calculateDeliveryFee(db, store, destLat, destLng, totalWeight);
     const deliveryFee = feeCalculation.delivery_fee_lyd;
     const serviceFee = 0.00;
-    const discount = body.discount_lyd ? parseFloat(body.discount_lyd) : 0.00;
-    const totalAmount = subtotal + deliveryFee + serviceFee - discount;
+
+    let discount = 0.00;
+    let deliveryDiscount = 0.00;
+    let appliedVoucherId = null;
+
+    if (body.voucher_code) {
+      const VoucherService = require('./voucherService');
+      const validation = await VoucherService.validateVoucher(db, body.voucher_code, user.id, subtotal, deliveryFee);
+      if (validation.isValid) {
+        discount = validation.discountAmount;
+        deliveryDiscount = validation.deliveryDiscount;
+        appliedVoucherId = validation.voucherId;
+      } else {
+        throw new Error(validation.error);
+      }
+    }
+
+    const totalAmount = subtotal + (deliveryFee - deliveryDiscount) + serviceFee - discount;
 
     let customerWallet = db.wallets.find(w => w.user_id === user.id);
     if (!customerWallet) {
@@ -233,10 +249,11 @@ class OrderService {
       payment_method,
       payment_status: payment_method === 'wallet' ? 'held_escrow' : 'pending_cod',
       subtotal_lyd: subtotal,
-      delivery_fee_lyd: deliveryFee,
+      delivery_fee_lyd: deliveryFee - deliveryDiscount,
       service_fee_lyd: serviceFee,
       discount_lyd: discount,
       total_amount_lyd: totalAmount,
+      voucher_id: appliedVoucherId,
       delivery_address: destAddress,
       delivery_latitude: destLat,
       delivery_longitude: destLng,
@@ -247,6 +264,12 @@ class OrderService {
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
+
+    // Mark voucher as used
+    if (appliedVoucherId) {
+      const VoucherService = require('./voucherService');
+      await VoucherService.applyVoucher(db, appliedVoucherId, user.id, orderId);
+    }
 
     return { newOrder, customerWallet };
   }

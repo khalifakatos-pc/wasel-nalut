@@ -1,4 +1,5 @@
 const OrderService = require('../services/orderService');
+const DispatchService = require('../services/dispatchService');
 
 /**
  * Order Controller
@@ -204,6 +205,11 @@ const orderController = {
             status: 'ready_for_pickup',
             prep_status_badge: '🟢 الوجبة جاهزة بالمطعم - استلم الوجبة فوراً'
           });
+
+          // Trigger Smart Dispatching Engine
+          DispatchService.dispatchOrder(order, db).catch(err =>
+            console.error(`[OrderController] Dispatch failed for Order ${order.id}:`, err)
+          );
         } else if (order.status === 'out_for_delivery' || (order.driver_id && (previousStatus === 'ready_for_pickup' || previousStatus === 'preparing'))) {
           req.io.emit('radar:order_claimed', { order_id: order.id, driver_id: order.driver_id });
         }

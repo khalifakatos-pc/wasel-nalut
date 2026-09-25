@@ -228,13 +228,21 @@
         <span data-i18n="tab_orders_feed">بث الطلبات</span>
         <span id="badge-orders-total" class="bg-brand-500/30 text-brand-300 text-[10px] px-1.5 py-0.2 rounded-full border border-brand-500/40 font-mono">4</span>
       </button>
+      <button onclick="switchAdminTab('monitor')" id="tab-btn-monitor" class="nav-tab px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+        <i data-lucide="activity" class="w-4 h-4 text-rose-400"></i>
+        <span data-i18n="tab_monitor">مراقب التأخير (Dispatch Monitor)</span>
+      </button>
       <button onclick="switchAdminTab('zaudit')" id="tab-btn-zaudit" class="nav-tab px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
         <i data-lucide="receipt-text" class="w-4 h-4 text-emerald-400"></i>
         <span>محضر الجرد Z اليومي</span>
       </button>
       <button onclick="switchAdminTab('vouchers')" id="tab-btn-vouchers" class="nav-tab px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
-        <i data-lucide="file-check" class="w-4 h-4 text-amber-400"></i>
-        <span>السندات والطباعة الحرارية</span>
+        <i data-lucide="ticket" class="w-4 h-4 text-amber-400"></i>
+        <span data-i18n="tab_vouchers">مدير القسائم الترويجية</span>
+      </button>
+      <button onclick="switchAdminTab('trends')" id="tab-btn-trends" class="nav-tab px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
+        <i data-lucide="trending-up" class="w-4 h-4 text-indigo-400"></i>
+        <span data-i18n="tab_trends">تحليلات السوق</span>
       </button>
       <button onclick="switchAdminTab('ledger')" id="tab-btn-ledger" class="nav-tab px-3.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 text-slate-300 hover:text-white">
         <i data-lucide="wallet-cards" class="w-4 h-4"></i>
