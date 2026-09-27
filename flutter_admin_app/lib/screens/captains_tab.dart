@@ -14,6 +14,7 @@ class CaptainsTab extends StatefulWidget {
 class _CaptainsTabState extends State<CaptainsTab> {
   List<Map<String, dynamic>> _drivers = [];
   bool _isLoading = true;
+  bool _isSettling = false;
 
   @override
   void initState() {
@@ -33,6 +34,8 @@ class _CaptainsTabState extends State<CaptainsTab> {
   }
 
   Future<void> _settleCash(Map<String, dynamic> driver) async {
+    if (_isSettling) return;
+
     final balance = (driver['wallet_balance_lyd'] is num) ? (driver['wallet_balance_lyd'] as num).toDouble() : 0.0;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -60,22 +63,29 @@ class _CaptainsTabState extends State<CaptainsTab> {
       ),
     );
 
-    if (confirmed == true) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('جارٍ تسوية العهدة وإصدار السند السحابي...'),
-            duration: Duration(milliseconds: 1200),
-          ),
-        );
-      }
-      final voucher = await AdminSupabaseService.settleDriverCashWithVoucher(driver);
-      setState(() {
-        driver['wallet_balance_lyd'] = 0.0;
-      });
-      await _loadDrivers();
-      if (mounted) {
-        DigitalVoucherDialog.show(context, voucher);
+    if (confirmed == true && !_isSettling) {
+      _isSettling = true;
+      try {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('جارٍ تسوية العهدة وإصدار السند السحابي...'),
+              duration: Duration(milliseconds: 1200),
+            ),
+          );
+        }
+        final voucher = await AdminSupabaseService.settleDriverCashWithVoucher(driver);
+        setState(() {
+          driver['wallet_balance_lyd'] = 0.0;
+        });
+        await _loadDrivers();
+        if (mounted) {
+          DigitalVoucherDialog.show(context, voucher);
+        }
+      } finally {
+        if (mounted) {
+          setState(() => _isSettling = false);
+        }
       }
     }
   }

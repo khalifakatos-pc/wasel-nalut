@@ -128,7 +128,7 @@ class _HomeScreenState extends State<HomeScreen> {
       try {
         final queryParam = activeId != null
             ? 'id=$activeId'
-            : 'customer_phone=${Uri.encodeComponent(phone)}&status=placed,preparing,ready_for_pickup,out_for_delivery';
+            : 'customer_phone=${Uri.encodeComponent(phone)}&status=placed,assigned,accepted,preparing,ready_for_pickup,arrived_at_store,picked_up,out_for_delivery,delivering';
         final res = await http
             .get(Uri.parse('${ApiService.baseUrl}/orders?$queryParam'))
             .timeout(const Duration(seconds: 3));
@@ -148,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
         try {
           final filter = activeId != null
               ? 'id=eq.$activeId'
-              : 'customer_phone=eq.${Uri.encodeComponent(phone)}&status=in.(placed,preparing,ready_for_pickup,out_for_delivery)';
+              : 'customer_phone=eq.${Uri.encodeComponent(phone)}&status=in.(placed,assigned,accepted,preparing,ready_for_pickup,arrived_at_store,picked_up,out_for_delivery,delivering)';
           final res = await http.get(
             Uri.parse('${ApiService.supabaseUrl}/orders?$filter&order=created_at.desc&limit=1'),
             headers: {
@@ -198,7 +198,18 @@ class _HomeScreenState extends State<HomeScreen> {
           }
           _lastNotifiedStatus = status;
 
-          final bool isOngoing = status == 'placed' || status == 'preparing' || status == 'ready_for_pickup' || status == 'out_for_delivery';
+          const nonTerminalStatuses = [
+            'placed',
+            'assigned',
+            'accepted',
+            'preparing',
+            'ready_for_pickup',
+            'arrived_at_store',
+            'picked_up',
+            'out_for_delivery',
+            'delivering',
+          ];
+          final bool isOngoing = nonTerminalStatuses.contains(status);
 
           if (!isOngoing) {
             ApiService.clearActiveOrderId();

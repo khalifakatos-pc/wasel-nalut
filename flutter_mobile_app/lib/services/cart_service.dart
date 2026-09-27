@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Represents a single item in the shopping cart
 class CartItem {
@@ -25,6 +27,36 @@ class CartItem {
     this.spiceLevel,
     this.exclusions = const [],
   });
+
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'title': title,
+    'storeName': storeName,
+    'price': price,
+    'quantity': quantity,
+    'selectedAddons': selectedAddons,
+    'image': image,
+    'notes': notes,
+    'spiceLevel': spiceLevel,
+    'exclusions': exclusions,
+  };
+
+  factory CartItem.fromJson(Map<String, dynamic> json) => CartItem(
+    id: json['id']?.toString() ?? '',
+    title: json['title']?.toString() ?? '',
+    storeName: json['storeName']?.toString() ?? '',
+    price: (json['price'] is num) ? (json['price'] as num).toDouble() : 0.0,
+    quantity: (json['quantity'] is num) ? (json['quantity'] as num).toInt() : 1,
+    selectedAddons: (json['selectedAddons'] is List)
+        ? (json['selectedAddons'] as List).map((e) => e.toString()).toList()
+        : const [],
+    image: json['image']?.toString(),
+    notes: json['notes']?.toString(),
+    spiceLevel: json['spiceLevel']?.toString(),
+    exclusions: (json['exclusions'] is List)
+        ? (json['exclusions'] as List).map((e) => e.toString()).toList()
+        : const [],
+  );
 
   double get total => price * quantity;
 
@@ -155,7 +187,41 @@ class CartService {
     _notifyUpdate();
   }
 
+  static const String _storageKey = 'wasel_customer_cart_v1';
+
+  /// Save current cart items to SharedPreferences
+  static Future<void> _saveCartToStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = _items.map((i) => i.toJson()).toList();
+      await prefs.setString(_storageKey, jsonEncode(list));
+    } catch (_) {}
+  }
+
+  /// Restore cart items from SharedPreferences
+  static Future<void> loadFromStorage() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(_storageKey);
+      if (str != null && str.isNotEmpty) {
+        final dynamic decoded = jsonDecode(str);
+        if (decoded is List) {
+          _items.clear();
+          for (final item in decoded) {
+            if (item is Map<String, dynamic>) {
+              _items.add(CartItem.fromJson(item));
+            } else if (item is Map) {
+              _items.add(CartItem.fromJson(Map<String, dynamic>.from(item)));
+            }
+          }
+          cartCountNotifier.value = count;
+        }
+      }
+    } catch (_) {}
+  }
+
   static void _notifyUpdate() {
     cartCountNotifier.value = count;
+    _saveCartToStorage();
   }
 }

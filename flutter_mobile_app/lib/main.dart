@@ -35,11 +35,12 @@ void main() async {
     debugPrint('Firebase init bypassed: $e');
   }
 
-  // Await ApiService.loadToken() so session state is known before building widget tree
+  // Await ApiService.loadToken() and CartService.loadFromStorage() so session state is known before building widget tree
   try {
     await ApiService.loadToken().timeout(const Duration(seconds: 2));
+    await CartService.loadFromStorage();
   } catch (e) {
-    debugPrint('ApiService.loadToken error: $e');
+    debugPrint('Startup hydration error: $e');
   }
 
   runApp(const WaselCustomerApp());

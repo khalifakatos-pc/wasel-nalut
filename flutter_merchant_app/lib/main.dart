@@ -132,6 +132,10 @@ class _MerchantAuthGateState extends State<MerchantAuthGate> {
     await prefs.remove('wasel_merchant_user_name');
     await prefs.remove('wasel_merchant_user_role');
 
+    try {
+      await MerchantSupabaseService.toggleStoreStatus(_activeStore.id, false);
+    } catch (_) {}
+
     MerchantSupabaseService.currentUser = null;
 
     if (mounted) {
@@ -245,12 +249,22 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     _heartbeatTimer?.cancel();
     // Unsubscribe from store push alerts
     MerchantNotificationService().unsubscribeFromStore(_currentStore.id);
-    // Auto-close store when merchant exits or logs out
-    MerchantSupabaseService.toggleStoreStatus(_currentStore.id, false);
+    // Note: Store status is NOT automatically set to false here so incoming customer orders are not disrupted by app minimization
     super.dispose();
   }
 
   Future<void> _loadLiveMerchantData() async {
+    // 1. Immediately hydrate cached orders from disk (zero-latency kitchen tickets)
+    try {
+      final cachedOrders = await MerchantSupabaseService.loadCachedOrders(_currentStore.id);
+      if (cachedOrders.isNotEmpty && mounted) {
+        setState(() {
+          _orders = cachedOrders;
+        });
+      }
+    } catch (_) {}
+
+    // 2. Fetch live data from backend and Supabase
     try {
       final liveOrders = await MerchantSupabaseService.fetchOrders(_currentStore.id);
       final liveCatalog = await MerchantSupabaseService.fetchCatalog(_currentStore.id);

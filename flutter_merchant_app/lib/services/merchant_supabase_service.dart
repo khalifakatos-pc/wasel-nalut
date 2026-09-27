@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../merchant_models.dart';
 
 /// ============================================================================
@@ -281,7 +282,35 @@ class MerchantSupabaseService {
     }
 
     if (list.isNotEmpty) {
-      final List<KdsOrder> result = [];
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('wasel_merchant_cached_orders_$targetStoreId', jsonEncode(list));
+      } catch (_) {}
+      return parseOrdersList(list);
+    }
+
+    return [];
+  }
+
+  /// Load cached KDS orders from disk for instant recovery upon launch or offline state
+  static Future<List<KdsOrder>> loadCachedOrders([String? storeId]) async {
+    final targetStoreId = storeId ?? currentStoreId;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString('wasel_merchant_cached_orders_$targetStoreId');
+      if (str != null && str.isNotEmpty) {
+        final dynamic decoded = jsonDecode(str);
+        if (decoded is List) {
+          return parseOrdersList(decoded);
+        }
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  /// Parses list of raw order maps into typed KdsOrder models
+  static List<KdsOrder> parseOrdersList(List<dynamic> list) {
+    final List<KdsOrder> result = [];
 
       for (final raw in list) {
         final o = Map<String, dynamic>.from(raw);
@@ -396,9 +425,6 @@ class MerchantSupabaseService {
       }
 
       return result;
-    }
-
-    return [];
   }
 
   /// Update order status (KDS Kitchen Display System)
