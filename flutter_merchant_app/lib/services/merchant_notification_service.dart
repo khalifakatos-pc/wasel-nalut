@@ -140,4 +140,26 @@ class MerchantNotificationService {
       payload: payload,
     );
   }
+
+  /// Subscribes this merchant device to the store's high-priority FCM topic
+  Future<void> subscribeToStore(String storeId) async {
+    try {
+      final topic = 'store_${storeId.replaceAll('-', '_')}';
+      await _fcm.subscribeToTopic(topic);
+      debugPrint('[MerchantNotificationService] Successfully subscribed to topic: $topic');
+    } catch (e) {
+      debugPrint('[MerchantNotificationService] Failed to subscribe to topic: $e');
+    }
+  }
+
+  /// Unsubscribes from the store's FCM topic on logout
+  Future<void> unsubscribeFromStore(String storeId) async {
+    try {
+      final topic = 'store_${storeId.replaceAll('-', '_')}';
+      await _fcm.unsubscribeFromTopic(topic);
+      debugPrint('[MerchantNotificationService] Successfully unsubscribed from topic: $topic');
+    } catch (e) {
+      debugPrint('[MerchantNotificationService] Failed to unsubscribe from topic: $e');
+    }
+  }
 }

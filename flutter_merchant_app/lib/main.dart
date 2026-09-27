@@ -233,7 +233,9 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
 
   Future<void> _initNotifications() async {
     try {
-      await MerchantNotificationService().initialize().timeout(const Duration(seconds: 4));
+      final notif = MerchantNotificationService();
+      await notif.initialize().timeout(const Duration(seconds: 4));
+      await notif.subscribeToStore(_currentStore.id).timeout(const Duration(seconds: 4));
     } catch (_) {}
   }
 
@@ -241,6 +243,8 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   void dispose() {
     _pollTimer?.cancel();
     _heartbeatTimer?.cancel();
+    // Unsubscribe from store push alerts
+    MerchantNotificationService().unsubscribeFromStore(_currentStore.id);
     // Auto-close store when merchant exits or logs out
     MerchantSupabaseService.toggleStoreStatus(_currentStore.id, false);
     super.dispose();

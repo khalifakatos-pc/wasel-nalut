@@ -22,6 +22,7 @@ class AdminSupabaseService {
 
   static final List<Map<String, dynamic>> _dynamicStores = [];
   static final List<Map<String, dynamic>> _dynamicDrivers = [];
+  static final List<Map<String, dynamic>> _dynamicVouchers = [];
 
   // --------------------------------------------------------------------------
   // KPI CALCULATOR
@@ -210,7 +211,7 @@ class AdminSupabaseService {
     return List<Map<String, dynamic>>.from(_dynamicDrivers);
   }
 
-  static Future<bool> settleDriverCash(String driverId) async {
+  static Future<Map<String, dynamic>?> settleDriverCash(String driverId) async {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
@@ -220,12 +221,16 @@ class AdminSupabaseService {
             )
             .timeout(const Duration(seconds: 15));
 
-        if (res.statusCode == 200 || res.statusCode == 201) return true;
+        if (res.statusCode == 200 || res.statusCode == 201) {
+          final data = jsonDecode(res.body);
+          if (data is Map<String, dynamic>) return data;
+          if (data is Map) return Map<String, dynamic>.from(data);
+        }
       } catch (_) {
         if (attempt == 1) break;
       }
     }
-    return true; // Local simulation fallback
+    return null;
   }
 
   static Future<bool> addDriver({
@@ -499,13 +504,26 @@ class AdminSupabaseService {
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
         if (list.isNotEmpty) {
-          return List<Map<String, dynamic>>.from(list);
+          final fetched = List<Map<String, dynamic>>.from(list);
+          final dynamicFiltered = (type != null && type.isNotEmpty && type != 'all')
+              ? _dynamicVouchers.where((v) => v['type'] == type).toList()
+              : List<Map<String, dynamic>>.from(_dynamicVouchers);
+          final existingIds = fetched.map((e) => e['id']).toSet();
+          final merged = <Map<String, dynamic>>[
+            ...dynamicFiltered.where((e) => !existingIds.contains(e['id'])),
+            ...fetched,
+          ];
+          return merged;
         }
       }
     } catch (_) {}
 
+    final dynamicFiltered = (type != null && type.isNotEmpty && type != 'all')
+        ? _dynamicVouchers.where((v) => v['type'] == type).toList()
+        : List<Map<String, dynamic>>.from(_dynamicVouchers);
+
     // Offline / fallback vouchers
-    return [
+    final fallbacks = [
       {
         'id': 'v_1',
         'voucher_number': 'REC-2026-0001',
@@ -546,6 +564,11 @@ class AdminSupabaseService {
         'created_at': DateTime.now().subtract(const Duration(hours: 12)).toIso8601String(),
       },
     ];
+    final combinedFallbacks = <Map<String, dynamic>>[
+      ...dynamicFiltered,
+      ...fallbacks.where((v) => type == null || type.isEmpty || type == 'all' || v['type'] == type),
+    ];
+    return combinedFallbacks;
   }
 
   static Future<Map<String, dynamic>> createVoucher({
@@ -586,11 +609,14 @@ class AdminSupabaseService {
       if (res.statusCode == 200 || res.statusCode == 201) {
         final List<dynamic> inserted = jsonDecode(res.body);
         if (inserted.isNotEmpty) {
-          return Map<String, dynamic>.from(inserted.first);
+          final v = Map<String, dynamic>.from(inserted.first);
+          _dynamicVouchers.insert(0, v);
+          return v;
         }
       }
     } catch (_) {}
 
+    _dynamicVouchers.insert(0, payload);
     return payload; // Fallback with created payload
   }
 
@@ -599,10 +625,15 @@ class AdminSupabaseService {
         ? (driver['wallet_balance_lyd'] as num).toDouble()
         : 0.0;
 
-    // Reset balance in cloud
-    await settleDriverCash(driver['id']);
+    // Reset balance in cloud and retrieve server-side recorded voucher
+    final serverRes = await settleDriverCash(driver['id']);
+    if (serverRes != null && serverRes['voucher'] is Map) {
+      final sVoucher = Map<String, dynamic>.from(serverRes['voucher'] as Map);
+      _dynamicVouchers.insert(0, sVoucher);
+      return sVoucher;
+    }
 
-    // Create official receipt voucher
+    // Fallback: Create official receipt voucher locally / in Supabase
     final voucher = await createVoucher(
       type: 'receipt',
       beneficiaryName: driver['full_name'] ?? 'كابتن نالوت',

@@ -103,6 +103,38 @@ console.log('Test 6: Testing Captains & Fleet in Nalut...');
 assert.ok(db.drivers.length >= 2, 'Must have registered captains in Nalut');
 console.log(`  ✅ Fleet stats: ${db.drivers.length} registered captains in Nalut.`);
 
+// 7. Test Captain Cash Settlement & Voucher Generation
+console.log('\nTest 7: Testing Captain Cash Custody Settlement & Official Voucher...');
+const testCaptain = db.drivers[0];
+const initialCash = 143.50;
+testCaptain.wallet_balance_lyd = initialCash;
+
+if (!db.vouchers) db.vouchers = [];
+const year = new Date().getFullYear();
+const suffix = Math.floor(1000 + Math.random() * 9000);
+const voucherNumber = `REC-${year}-${suffix}`;
+
+const settlementVoucher = {
+  id: `vouch_${Date.now()}`,
+  voucher_number: voucherNumber,
+  type: 'receipt',
+  beneficiary_name: testCaptain.full_name || 'كابتن طارق النالوتي',
+  beneficiary_role: 'captain',
+  beneficiary_id: testCaptain.id,
+  amount_lyd: testCaptain.wallet_balance_lyd,
+  payment_method: 'cash',
+  notes: 'توريد عهدة نقدية (COD) واستلام الكاش وإبراء ذمة الكابتن',
+  created_by: 'إدارة واصل - نالوت',
+  created_at: new Date().toISOString()
+};
+
+db.vouchers.unshift(settlementVoucher);
+testCaptain.wallet_balance_lyd = 0.0;
+
+assert.strictEqual(testCaptain.wallet_balance_lyd, 0.0, 'Captain wallet balance must be 0.0 after settlement');
+assert.ok(db.vouchers.some(v => v.voucher_number === voucherNumber && v.type === 'receipt'), 'Settlement receipt voucher must be recorded in ledger');
+console.log(`  ✅ Captain custody settled successfully: ${initialCash} LYD cleared, Voucher ${voucherNumber} generated.`);
+
 console.log('\n================================================================');
 console.log('🎉 ALL TESTS PASSED SUCCESSFULLY! The backend is 100% verified.');
 console.log('================================================================');

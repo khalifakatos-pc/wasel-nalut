@@ -61,6 +61,14 @@ class _CaptainsTabState extends State<CaptainsTab> {
     );
 
     if (confirmed == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('جارٍ تسوية العهدة وإصدار السند السحابي...'),
+            duration: Duration(milliseconds: 1200),
+          ),
+        );
+      }
       final voucher = await AdminSupabaseService.settleDriverCashWithVoucher(driver);
       setState(() {
         driver['wallet_balance_lyd'] = 0.0;

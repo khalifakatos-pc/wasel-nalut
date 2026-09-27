@@ -1443,13 +1443,53 @@ app.post('/api/v1/drivers/:id/settle', (req, res) => {
   if (!driver) {
     return res.status(404).json({ success: false, error: 'Driver not found' });
   }
+
+  const settledAmount = typeof driver.wallet_balance_lyd === 'number'
+      ? driver.wallet_balance_lyd
+      : (parseFloat(driver.wallet_balance_lyd) || 0.0);
+
+  if (!db.vouchers) db.vouchers = [];
+
+  const year = new Date().getFullYear();
+  const suffix = Math.floor(1000 + Math.random() * 9000);
+  const voucherNumber = `REC-${year}-${suffix}`;
+
+  const voucher = {
+    id: `vouch_${Date.now()}`,
+    voucher_number: voucherNumber,
+    type: 'receipt',
+    beneficiary_name: driver.full_name || 'كابتن نالوت',
+    beneficiary_role: 'captain',
+    beneficiary_id: driver.id,
+    amount_lyd: settledAmount,
+    payment_method: 'cash',
+    notes: 'توريد عهدة نقدية (COD) واستلام الكاش وإبراء ذمة الكابتن',
+    created_by: 'إدارة واصل - نالوت',
+    created_at: new Date().toISOString()
+  };
+
+  db.vouchers.unshift(voucher);
   driver.wallet_balance_lyd = 0.0;
+
   saveSeedData();
   saveDriverToPg(driver);
+
   if (req.io) {
-    req.io.emit('driver:settled', { driver_id: driver.id, balance: 0.0 });
+    req.io.emit('driver:settled', {
+      driver_id: driver.id,
+      settled_amount: settledAmount,
+      balance: 0.0,
+      voucher: voucher
+    });
   }
-  res.json({ success: true, message: 'Driver cash settled successfully', data: driver });
+
+  res.json({
+    success: true,
+    message: 'Driver cash settled successfully',
+    data: driver,
+    settled_amount: settledAmount,
+    voucher: voucher
+  });
 });
 
 app.patch('/api/v1/drivers/:id/settle', (req, res, next) => {
