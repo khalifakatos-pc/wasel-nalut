@@ -123,6 +123,22 @@ class DeliveryItem {
     required this.unitPriceLyd,
     this.isVerified = false,
   });
+
+  Map<String, dynamic> toJson() => {
+    'name': name,
+    'quantity': quantity,
+    'options': options,
+    'unitPriceLyd': unitPriceLyd,
+    'isVerified': isVerified,
+  };
+
+  factory DeliveryItem.fromJson(Map<String, dynamic> json) => DeliveryItem(
+    name: json['name']?.toString() ?? '',
+    quantity: (json['quantity'] is num) ? (json['quantity'] as num).toInt() : 1,
+    options: json['options']?.toString() ?? '',
+    unitPriceLyd: (json['unitPriceLyd'] is num) ? (json['unitPriceLyd'] as num).toDouble() : 0.0,
+    isVerified: json['isVerified'] == true,
+  );
 }
 
 /// Incoming Radar Order Offer
@@ -223,6 +239,94 @@ class ActiveDeliveryOrder {
 
   bool get isAllItemsVerified => items.every((i) => i.isVerified);
   bool get isCod => paymentType == PaymentType.cashOnDelivery;
+
+  Map<String, dynamic> toJson() => {
+    'orderId': orderId,
+    'orderNumber': orderNumber,
+    'storeName': storeName,
+    'storePhone': storePhone,
+    'storeAddress': storeAddress,
+    'storeLatitude': storeLatitude,
+    'storeLongitude': storeLongitude,
+    'customerName': customerName,
+    'customerPhone': customerPhone,
+    'customerAddress': customerAddress,
+    'customerNotes': customerNotes,
+    'customerLatitude': customerLatitude,
+    'customerLongitude': customerLongitude,
+    'paymentType': paymentType.name,
+    'codAmountLyd': codAmountLyd,
+    'customerOtpPin': customerOtpPin,
+    'driverPayoutLyd': driverPayoutLyd,
+    'items': items.map((i) => i.toJson()).toList(),
+    'currentStep': currentStep.name,
+    'orderStatus': orderStatus,
+  };
+
+  factory ActiveDeliveryOrder.fromJson(Map<String, dynamic> json) {
+    PaymentType pType = PaymentType.cashOnDelivery;
+    final pName = json['paymentType']?.toString();
+    if (pName != null) {
+      for (final val in PaymentType.values) {
+        if (val.name == pName) {
+          pType = val;
+          break;
+        }
+      }
+    }
+
+    DeliveryStep step = DeliveryStep.navigatingToStore;
+    final sName = json['currentStep']?.toString();
+    if (sName != null) {
+      for (final val in DeliveryStep.values) {
+        if (val.name == sName) {
+          step = val;
+          break;
+        }
+      }
+    }
+
+    List<DeliveryItem> itemList = [];
+    if (json['items'] is List) {
+      itemList = (json['items'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map((i) => DeliveryItem.fromJson(i))
+          .toList();
+    }
+    if (itemList.isEmpty) {
+      itemList = [
+        DeliveryItem(
+          name: 'طلب نالوت',
+          quantity: 1,
+          options: 'نشط',
+          unitPriceLyd: (json['codAmountLyd'] is num) ? (json['codAmountLyd'] as num).toDouble() : 35.0,
+        ),
+      ];
+    }
+
+    return ActiveDeliveryOrder(
+      orderId: json['orderId']?.toString() ?? '',
+      orderNumber: json['orderNumber']?.toString() ?? '#W-100',
+      storeName: json['storeName']?.toString() ?? 'متجر نالوت',
+      storePhone: json['storePhone']?.toString() ?? '091-2233445',
+      storeAddress: json['storeAddress']?.toString() ?? 'نالوت - المركز',
+      storeLatitude: (json['storeLatitude'] is num) ? (json['storeLatitude'] as num).toDouble() : 31.8680,
+      storeLongitude: (json['storeLongitude'] is num) ? (json['storeLongitude'] as num).toDouble() : 10.9850,
+      customerName: json['customerName']?.toString() ?? 'زبون نالوت',
+      customerPhone: json['customerPhone']?.toString() ?? '091-7788990',
+      customerAddress: json['customerAddress']?.toString() ?? 'نالوت',
+      customerNotes: json['customerNotes']?.toString() ?? '',
+      customerLatitude: (json['customerLatitude'] is num) ? (json['customerLatitude'] as num).toDouble() : 31.8620,
+      customerLongitude: (json['customerLongitude'] is num) ? (json['customerLongitude'] as num).toDouble() : 10.9780,
+      paymentType: pType,
+      codAmountLyd: (json['codAmountLyd'] is num) ? (json['codAmountLyd'] as num).toDouble() : 0.0,
+      customerOtpPin: json['customerOtpPin']?.toString() ?? '1234',
+      driverPayoutLyd: (json['driverPayoutLyd'] is num) ? (json['driverPayoutLyd'] as num).toDouble() : 7.5,
+      items: itemList,
+      currentStep: step,
+      orderStatus: json['orderStatus']?.toString() ?? 'preparing',
+    );
+  }
 }
 
 /// Ledger Transaction

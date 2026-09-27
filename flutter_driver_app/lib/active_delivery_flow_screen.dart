@@ -22,11 +22,13 @@ import 'widgets/driver_motion_widgets.dart';
 class ActiveDeliveryFlowScreen extends StatefulWidget {
   final ActiveDeliveryOrder order;
   final VoidCallback onFinishedDelivery;
+  final VoidCallback? onBackToHome;
 
   const ActiveDeliveryFlowScreen({
     super.key,
     required this.order,
     required this.onFinishedDelivery,
+    this.onBackToHome,
   });
 
   @override
@@ -70,6 +72,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
           _orderBackendStatus = newStatus;
           _activeOrder.orderStatus = newStatus;
         });
+        DriverSupabaseService.saveActiveOrderLocally(_activeOrder);
       }
     }
   }
@@ -79,6 +82,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
     setState(() {
       _activeOrder.currentStep = step;
     });
+    DriverSupabaseService.saveActiveOrderLocally(_activeOrder);
 
     if (step == DeliveryStep.navigatingToCustomer) {
       DriverSupabaseService.updateOrderStatus(
@@ -197,7 +201,14 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         backgroundColor: DriverColors.darkSurface,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: widget.onFinishedDelivery,
+          tooltip: 'الرئيسية والرادار',
+          onPressed: () {
+            if (widget.onBackToHome != null) {
+              widget.onBackToHome!();
+            } else {
+              Navigator.of(context).maybePop();
+            }
+          },
         ),
       ),
       body: Column(

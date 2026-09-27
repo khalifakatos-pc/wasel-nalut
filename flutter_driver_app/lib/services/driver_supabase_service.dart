@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../driver_models.dart';
 
 /// Service connecting Captain Wasel (flutter_driver_app) to Unified Backend & Supabase Cloud 24/7.
 class DriverSupabaseService {
@@ -231,6 +232,7 @@ class DriverSupabaseService {
       await prefs.remove('wasel_captain_phone');
       await prefs.remove('wasel_captain_vehicle');
       await prefs.remove('wasel_captain_plate');
+      await clearActiveOrderLocally();
     } catch (_) {}
   }
 
@@ -363,6 +365,82 @@ class DriverSupabaseService {
     } catch (_) {}
 
     return [];
+  }
+
+  static const String _activeOrderPrefKey = 'captain_active_order_data';
+
+  /// Persist active delivery order to local storage (Offline First & Crash Proof)
+  static Future<void> saveActiveOrderLocally(ActiveDeliveryOrder order) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_activeOrderPrefKey, jsonEncode(order.toJson()));
+    } catch (_) {}
+  }
+
+  /// Retrieve locally stored active delivery order
+  static Future<ActiveDeliveryOrder?> loadActiveOrderLocally() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final str = prefs.getString(_activeOrderPrefKey);
+      if (str != null && str.isNotEmpty) {
+        final dynamic decoded = jsonDecode(str);
+        if (decoded is Map<String, dynamic>) {
+          return ActiveDeliveryOrder.fromJson(decoded);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Clear locally stored active delivery order upon successful finish or cancellation
+  static Future<void> clearActiveOrderLocally() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_activeOrderPrefKey);
+    } catch (_) {}
+  }
+
+  /// Query the backend and cloud specifically for any active non-terminal order assigned to this driver
+  static Future<Map<String, dynamic>?> fetchDriverActiveOrder({String? driverId}) async {
+    final targetDriverId = driverId ?? activeDriverId;
+    const activeStatuses = 'assigned,accepted,preparing,ready_for_pickup,arrived_at_store,picked_up,out_for_delivery,delivering';
+
+    // 1. Try Live Unified Backend First
+    try {
+      final res = await http
+          .get(Uri.parse('$backendBaseUrl/orders?driver_id=$targetDriverId&status=$activeStatuses'))
+          .timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final dynamic data = jsonDecode(res.body);
+        final List<dynamic> list = (data is Map && data['data'] is List)
+            ? data['data']
+            : (data is List ? data : []);
+
+        if (list.isNotEmpty) {
+          return Map<String, dynamic>.from(list.first as Map);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Try Supabase Cloud Fallback
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$supabaseUrl/orders?driver_id=eq.$targetDriverId&status=in.($activeStatuses)&select=*&order=created_at.desc&limit=1'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(res.body);
+        if (list.isNotEmpty) {
+          return Map<String, dynamic>.from(list.first as Map);
+        }
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   /// Verify handover code and transfer custody from merchant to captain
@@ -535,6 +613,7 @@ class DriverSupabaseService {
     required double orderAmountLyd,
     required bool isCod,
   }) async {
+    await clearActiveOrderLocally();
     // 1. Try Live Unified Backend First
     try {
       await http.post(

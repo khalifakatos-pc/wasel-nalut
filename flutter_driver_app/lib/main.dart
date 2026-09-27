@@ -144,55 +144,98 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
   }
 
   Future<void> _checkExistingActiveDelivery() async {
+    // 1. Immediately restore from persistent local disk cache (Zero latency / Offline resilient)
+    final cached = await DriverSupabaseService.loadActiveOrderLocally();
+    if (cached != null && mounted) {
+      setState(() {
+        _currentActiveDelivery = cached;
+        _currentIndex = 1; // Seamlessly resume the delivery trip screen!
+      });
+    }
+
+    // 2. Concurrently reconcile with backend and cloud database
     try {
-      final orders = await DriverSupabaseService.fetchAvailableOrders();
-      final ongoing = orders.cast<Map<String, dynamic>>().firstWhere(
-        (o) => o['driver_id'] == DriverSupabaseService.activeDriverId &&
-               o['status'] == 'out_for_delivery',
-        orElse: () => <String, dynamic>{},
+      final ongoing = await DriverSupabaseService.fetchDriverActiveOrder(
+        driverId: DriverSupabaseService.activeDriverId,
       );
-      if (ongoing.isNotEmpty && mounted) {
+
+      if (ongoing != null && ongoing.isNotEmpty && mounted) {
         final paymentMethod = ongoing['payment_method']?.toString() ?? 'cash';
         final isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
         final dynamic rawAmt = ongoing['total_amount_lyd'] ?? ongoing['total_amount'];
         final double amount = (rawAmt is num) ? rawAmt.toDouble() : 35.0;
         final rawPin = (ongoing['otp_code'] ?? ongoing['delivery_pin'])?.toString();
         final otp = (rawPin != null && rawPin.isNotEmpty) ? rawPin : '1234';
-        setState(() {
-          _currentActiveDelivery = ActiveDeliveryOrder(
-            orderId: ongoing['id']?.toString() ?? '',
-            orderNumber: ongoing['order_number']?.toString() ?? '#W-100',
-            orderStatus: ongoing['status']?.toString() ?? 'preparing',
-            storeName: ongoing['store_name']?.toString() ?? 'قصر نالوت للمأكولات',
-            storePhone: '091-2233445',
-            storeAddress: 'نالوت - الشارع الرئيسي بجوار القلعة',
-            storeLatitude: 31.8680,
-            storeLongitude: 10.9850,
-            customerName: ongoing['customer_name']?.toString() ?? 'زبون نالوت',
-            customerPhone: ongoing['customer_phone']?.toString() ?? '091-7788990',
-            customerAddress: ongoing['delivery_address']?.toString() ?? 'نالوت - حي الزهور',
-            customerNotes: ongoing['notes']?.toString() ?? 'الدق على الباب الخارجي',
-            customerLatitude: 31.8620,
-            customerLongitude: 10.9780,
-            paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
-            codAmountLyd: amount,
-            customerOtpPin: otp,
-            driverPayoutLyd: 7.5,
-            items: [
-              DeliveryItem(
-                name: 'طلب وجبة / مشتريات نالوت',
-                quantity: 1,
-                options: 'طلب نشط',
-                unitPriceLyd: amount,
-              ),
-            ],
-          );
-        });
+        final String status = ongoing['status']?.toString() ?? 'preparing';
+
+        DeliveryStep step = cached?.orderId == ongoing['id']?.toString()
+            ? cached!.currentStep
+            : (status == 'out_for_delivery' || status == 'delivering'
+                ? DeliveryStep.navigatingToCustomer
+                : (status == 'ready_for_pickup' || status == 'arrived_at_store'
+                    ? DeliveryStep.orderPickupChecklist
+                    : DeliveryStep.navigatingToStore));
+
+        final restored = ActiveDeliveryOrder(
+          orderId: ongoing['id']?.toString() ?? '',
+          orderNumber: ongoing['order_number']?.toString() ?? '#W-100',
+          orderStatus: status,
+          storeName: ongoing['store_name']?.toString() ?? 'قصر نالوت للمأكولات',
+          storePhone: '091-2233445',
+          storeAddress: 'نالوت - الشارع الرئيسي بجوار القلعة',
+          storeLatitude: 31.8680,
+          storeLongitude: 10.9850,
+          customerName: ongoing['customer_name']?.toString() ?? 'زبون نالوت',
+          customerPhone: ongoing['customer_phone']?.toString() ?? '091-7788990',
+          customerAddress: ongoing['delivery_address']?.toString() ?? 'نالوت - حي الزهور',
+          customerNotes: ongoing['notes']?.toString() ?? 'الدق على الباب الخارجي',
+          customerLatitude: 31.8620,
+          customerLongitude: 10.9780,
+          paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
+          codAmountLyd: amount,
+          customerOtpPin: otp,
+          driverPayoutLyd: 7.5,
+          currentStep: step,
+          items: cached?.orderId == ongoing['id']?.toString()
+              ? cached!.items
+              : [
+                  DeliveryItem(
+                    name: 'طلب وجبة / مشتريات نالوت',
+                    quantity: 1,
+                    options: 'طلب نشط',
+                    unitPriceLyd: amount,
+                  ),
+                ],
+        );
+
+        await DriverSupabaseService.saveActiveOrderLocally(restored);
+        if (mounted) {
+          setState(() {
+            _currentActiveDelivery = restored;
+            _currentIndex = 1;
+          });
+        }
+      } else if (cached != null) {
+        // Backend returned no active orders: verify if this cached order reached terminal status
+        final live = await DriverSupabaseService.fetchLiveOrderStatus(cached.orderId);
+        if (live != null) {
+          final s = live['status']?.toString();
+          if (s == 'delivered' || s == 'cancelled' || s == 'rejected') {
+            await DriverSupabaseService.clearActiveOrderLocally();
+            if (mounted) {
+              setState(() {
+                _currentActiveDelivery = null;
+                _currentIndex = 0;
+              });
+            }
+          }
+        }
       }
     } catch (_) {}
   }
 
   void _onStartDelivery(ActiveDeliveryOrder order) {
+    DriverSupabaseService.saveActiveOrderLocally(order);
     setState(() {
       _currentActiveDelivery = order;
       _currentIndex = 1;
@@ -200,6 +243,7 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
   }
 
   void _onFinishedDelivery() {
+    DriverSupabaseService.clearActiveOrderLocally();
     setState(() {
       _currentActiveDelivery = null;
       _currentIndex = 0;
@@ -212,11 +256,14 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
       DriverHomeScreen(
         onToggleTheme: widget.onToggleTheme,
         onStartDelivery: _onStartDelivery,
+        activeDelivery: _currentActiveDelivery,
+        onResumeDelivery: () => setState(() => _currentIndex = 1),
       ),
       _currentActiveDelivery != null
           ? ActiveDeliveryFlowScreen(
               order: _currentActiveDelivery!,
               onFinishedDelivery: _onFinishedDelivery,
+              onBackToHome: () => setState(() => _currentIndex = 0),
             )
           : Scaffold(
               backgroundColor: DriverColors.darkBg,

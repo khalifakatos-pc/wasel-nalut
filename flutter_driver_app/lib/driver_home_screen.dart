@@ -14,11 +14,15 @@ import 'services/driver_notification_service.dart';
 class DriverHomeScreen extends StatefulWidget {
   final VoidCallback onToggleTheme;
   final Function(ActiveDeliveryOrder) onStartDelivery;
+  final ActiveDeliveryOrder? activeDelivery;
+  final VoidCallback? onResumeDelivery;
 
   const DriverHomeScreen({
     super.key,
     required this.onToggleTheme,
     required this.onStartDelivery,
+    this.activeDelivery,
+    this.onResumeDelivery,
   });
 
   @override
@@ -164,11 +168,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
   }
 
   Future<void> _checkIncomingOrders() async {
-    if (!mounted || _onlineStatus != DriverOnlineStatus.onlineIdle || _isRadarShowing) return;
+    if (!mounted || widget.activeDelivery != null || _onlineStatus != DriverOnlineStatus.onlineIdle || _isRadarShowing) return;
 
     try {
       final orders = await DriverSupabaseService.fetchAvailableOrders();
-      if (!mounted || _onlineStatus != DriverOnlineStatus.onlineIdle || _isRadarShowing) return;
+      if (!mounted || widget.activeDelivery != null || _onlineStatus != DriverOnlineStatus.onlineIdle || _isRadarShowing) return;
 
       for (final ord in orders) {
         final orderId = ord['id']?.toString() ?? '';
@@ -323,6 +327,16 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
   }
 
   void _toggleOnlineStatus() {
+    if (widget.activeDelivery != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ لديك مشوار نشط حالياً، لا يمكن إيقاف الاتصال حتى تسليم الطلب للزبون.'),
+          backgroundColor: DriverColors.primary,
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _onlineStatus = _onlineStatus == DriverOnlineStatus.offline
           ? DriverOnlineStatus.onlineIdle
@@ -439,6 +453,105 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           ),
 
           const SizedBox(height: 16),
+
+          // 1.1 Sticky Active Delivery Alert Banner (Protects against losing active order)
+          if (widget.activeDelivery != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    DriverColors.primary.withValues(alpha: 0.25),
+                    DriverColors.darkCardElevated,
+                  ],
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                ),
+                borderRadius: DriverRadius.radiusLg,
+                border: Border.all(color: DriverColors.primary, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: DriverColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: DriverColors.primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.delivery_dining_rounded, color: Colors.white, size: 26),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'مشوار توصيل جارٍ حالياً 🛵',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                                ),
+                                const Spacer(),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: DriverColors.onlineGreen.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: DriverColors.onlineGreen),
+                                  ),
+                                  child: const Text('طلب نشط ⚡', style: TextStyle(color: DriverColors.onlineGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${widget.activeDelivery!.orderNumber} • ${widget.activeDelivery!.storeName}',
+                              style: const TextStyle(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w600),
+                            ),
+                            Text(
+                              'التسليم: ${widget.activeDelivery!.customerAddress}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12, color: DriverColors.darkTextMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: widget.onResumeDelivery,
+                      icon: const Icon(Icons.navigation_rounded, color: Colors.white),
+                      label: const Text(
+                        'العودة لشاشة التوصيل ومتابعة المشوار 🚀',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: DriverColors.primary,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // 2. Online / Offline Switch Big Card
           Container(
@@ -798,19 +911,37 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
 
           const SizedBox(height: 16),
 
-          // 4. Test Radar Trigger Button
+          // 4. Test Radar Trigger Button (Protected against order loss)
           SizedBox(
             height: 52,
             child: ElevatedButton.icon(
-              icon: const Icon(Icons.radar_rounded, size: 22),
-              label: const Text('فحص وصول طلبات نالوت الجديدة ⚡', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+              icon: Icon(
+                widget.activeDelivery != null ? Icons.navigation_rounded : Icons.radar_rounded,
+                size: 22,
+              ),
+              label: Text(
+                widget.activeDelivery != null
+                    ? 'متابعة المشوار النشط (${widget.activeDelivery!.orderNumber}) 🛵'
+                    : 'فحص وصول طلبات نالوت الجديدة ⚡',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+              ),
               style: ElevatedButton.styleFrom(
-                backgroundColor: DriverColors.primary,
+                backgroundColor: widget.activeDelivery != null ? DriverColors.onlineGreen : DriverColors.primary,
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusLg),
                 elevation: 4,
               ),
               onPressed: () {
+                if (widget.activeDelivery != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('🛵 لديك مشوار نشط (${widget.activeDelivery!.orderNumber}) من ${widget.activeDelivery!.storeName}. يتم توجيهك لشاشة التوصيل.'),
+                      backgroundColor: DriverColors.primary,
+                    ),
+                  );
+                  widget.onResumeDelivery?.call();
+                  return;
+                }
                 if (_onlineStatus == DriverOnlineStatus.offline) {
                   _toggleOnlineStatus();
                 }
