@@ -72,7 +72,7 @@ void main() {
       await tester.pump();
 
       // Tap the OTP verification submit button
-      final submitBtn = find.text('إرسال رمز التحقق عبر واتساب (مجاني 100%)');
+      final submitBtn = find.text('تسجيل الدخول عبر رسالة SMS ⚡');
       expect(submitBtn, findsOneWidget);
       await tester.tap(submitBtn);
       await tester.pump();
@@ -128,7 +128,7 @@ void main() {
       await tester.pump();
 
       final phoneField = find.byType(TextField).first;
-      final submitBtn = find.text('إرسال رمز التحقق عبر واتساب (مجاني 100%)');
+      final submitBtn = find.text('تسجيل الدخول عبر رسالة SMS ⚡');
 
       // Test invalid carrier prefix '95' (9 digits total, but prefix 95 is unassigned)
       await tester.enterText(phoneField, '951234567');

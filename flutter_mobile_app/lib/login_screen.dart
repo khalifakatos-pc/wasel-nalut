@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'design_system.dart';
 import 'otp_verification_screen.dart';
 import 'services/whatsapp_auth_service.dart';
+import 'services/firebase_auth_service.dart';
 import 'services/api_service.dart';
 import 'main.dart';
 
@@ -39,7 +40,120 @@ class _LoginScreenState extends State<LoginScreen> {
 
   String get _fullPhoneNumber => '+218${_phoneController.text.trim()}';
 
-  Future<void> _sendOtp() async {
+  Future<void> _sendSmsOtp() async {
+    if (!_isValidPhone) {
+      setState(() => _errorMessage = 'أدخل رقم ليبي صالح (9 أرقام يبدأ بـ 092/094 ليبيانا أو 091/093 المدار)');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    final normalized = FirebaseAuthService.normalizeLibyanPhone(_phoneController.text.trim());
+
+    await FirebaseAuthService.sendSmsOtp(
+      phone: normalized,
+      onCodeSent: (verificationId, resendToken) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OtpVerificationScreen(
+              phoneNumber: normalized,
+              displayPhone: '0${_phoneController.text.trim()}',
+              initialMethod: AuthMethod.sms,
+              verificationId: verificationId,
+              resendToken: resendToken,
+            ),
+          ),
+        );
+      },
+      onError: (errMsg, isQuotaOrNetwork) {
+        if (!mounted) return;
+        setState(() {
+          _isLoading = false;
+          _errorMessage = errMsg;
+        });
+
+        if (isQuotaOrNetwork) {
+          _showQuotaFallbackDialog();
+        }
+      },
+      onAutoVerify: (credential) async {
+        if (!mounted) return;
+        try {
+          final userCred = await FirebaseAuthService.verifySmsCode(
+            verificationId: '',
+            smsCode: credential.smsCode ?? '',
+          );
+          final uid = userCred.user?.uid ?? 'firebase-user';
+          await ApiService.saveToken(
+            'wasel-firebase-token-$uid',
+            phone: normalized,
+            name: 'زبون واصل نالوت',
+          );
+          if (!mounted) return;
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MainNavigationShell(
+                onToggleTheme: widget.onToggleTheme ?? () {},
+                isDark: widget.isDark,
+              ),
+            ),
+            (route) => false,
+          );
+        } catch (_) {}
+      },
+    );
+  }
+
+  void _showQuotaFallbackDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
+          title: const Row(
+            children: [
+              Icon(Icons.info_outline_rounded, color: Color(0xFF25D366)),
+              SizedBox(width: 8),
+              Text('المتابعة عبر واتساب', style: TextStyle(color: Colors.white, fontSize: 18)),
+            ],
+          ),
+          content: const Text(
+            'تعذر إرسال رسالة SMS حالياً (قد يكون بسبب اكتمال حد الرسائل المجاني أو تأخر الشبكة المحلية). يمكنك تسجيل الدخول فوراً وبأمان عبر واتساب.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('إلغاء', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _sendWhatsAppOtp();
+              },
+              icon: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+              label: const Text('دخول عبر واتساب الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _sendWhatsAppOtp() async {
     if (!_isValidPhone) {
       setState(() => _errorMessage = 'أدخل رقم ليبي صالح (9 أرقام يبدأ بـ 092/094 ليبيانا أو 091/093 المدار)');
       return;
@@ -62,6 +176,7 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (_) => OtpVerificationScreen(
           phoneNumber: _fullPhoneNumber,
           displayPhone: '0${_phoneController.text.trim()}',
+          initialMethod: AuthMethod.whatsapp,
           generatedOtp: otp,
         ),
       ),
@@ -299,25 +414,25 @@ class _LoginScreenState extends State<LoginScreen> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.verified_user_outlined, color: Color(0xFF25D366), size: 14),
+                    Icon(Icons.shield_outlined, color: AppColors.waselPrimary, size: 14),
                     SizedBox(width: 6),
                     Text(
-                      'سيتم إرسال رمز التحقق فوراً ومجاناً عبر تطبيق الواتساب',
+                      'تحقق فوري عبر رسائل SMS مع دعم تسجيل الدخول عبر واتساب',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
                 ),
 
-                const SizedBox(height: 28),
+                const SizedBox(height: 24),
 
-                // Send WhatsApp OTP button
+                // Primary Button: Send SMS OTP via Firebase
                 SizedBox(
                   height: 54,
                   child: ElevatedButton.icon(
-                    onPressed: _isLoading ? null : _sendOtp,
+                    onPressed: _isLoading ? null : _sendSmsOtp,
                     icon: _isLoading
                         ? const SizedBox.shrink()
-                        : const Icon(Icons.chat_rounded, color: Colors.white, size: 22),
+                        : const Icon(Icons.sms_rounded, color: Colors.white, size: 22),
                     label: _isLoading
                         ? const SizedBox(
                             width: 24,
@@ -328,21 +443,46 @@ class _LoginScreenState extends State<LoginScreen> {
                             ),
                           )
                         : const Text(
-                            'إرسال رمز التحقق عبر واتساب (مجاني 100%)',
+                            'تسجيل الدخول عبر رسالة SMS ⚡',
                             style: TextStyle(
-                              fontSize: 15,
+                              fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
+                      backgroundColor: AppColors.waselPrimary,
                       foregroundColor: Colors.white,
-                      disabledBackgroundColor:
-                          const Color(0xFF25D366).withValues(alpha: 0.5),
+                      disabledBackgroundColor: AppColors.waselPrimary.withValues(alpha: 0.5),
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.radiusLg,
                       ),
                       elevation: 4,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 12),
+
+                // Secondary Button: WhatsApp OTP
+                SizedBox(
+                  height: 50,
+                  child: OutlinedButton.icon(
+                    onPressed: _isLoading ? null : _sendWhatsAppOtp,
+                    icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 20),
+                    label: const Text(
+                      'الدخول السريع عبر واتساب (WhatsApp) 💬',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.12),
+                      side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: AppRadius.radiusLg,
+                      ),
                     ),
                   ),
                 ),
