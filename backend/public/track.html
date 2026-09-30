@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>واصل نالوت | تتبع الشحنة المباشر للمستلم</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            wasel: {
+              gold: '#D4AF37',
+              dark: '#041710',
+              surface: '#0A261D',
+              card: '#0F382B',
+              border: '#1A5340',
+              emerald: '#10B981',
+              red: '#E23744',
+              orange: '#FF6600'
+            }
+          },
+          fontFamily: {
+            tajawal: ['Tajawal', 'Cairo', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Tajawal -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;900&display=swap" rel="stylesheet">
+
+  <!-- Leaflet Map CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    body {
+      font-family: 'Tajawal', sans-serif;
+      background-color: #041710;
+      color: #F8F5EE;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #map {
+      height: 38vh;
+      min-height: 260px;
+      width: 100%;
+      z-index: 10;
+    }
+    .pulse-dot {
+      animation: pulse 2s infinite cubic-bezier(0.4, 0, 0.6, 1);
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .5; transform: scale(1.15); }
+    }
+    .stepper-active {
+      background-color: #10B981;
+      border-color: #10B981;
+      color: white;
+    }
+    .stepper-done {
+      background-color: #D4AF37;
+      border-color: #D4AF37;
+      color: #041710;
+    }
+    .stepper-pending {
+      background-color: #0A261D;
+      border-color: #1A5340;
+      color: #94A3B8;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen">
+
+  <!-- TOP HEADER -->
+  <header class="bg-wasel-surface border-b border-wasel-border px-4 py-3 sticky top-0 z-50 shadow-lg">
+    <div class="max-w-md mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2">
+        <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-wasel-red to-wasel-orange flex items-center justify-center font-black text-white text-lg shadow-md">
+          و
+        </div>
+        <div>
+          <h1 class="font-extrabold text-base text-white tracking-wide flex items-center gap-1.5">
+            واصل نالوت
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-wasel-emerald/20 text-wasel-emerald border border-wasel-emerald/40">
+              <span class="w-1.5 h-1.5 rounded-full bg-wasel-emerald pulse-dot"></span>
+              تتبع مباشر
+            </span>
+          </h1>
+          <p id="order-number-display" class="text-xs text-gray-400">طلب: جاري التحميل...</p>
+        </div>
+      </div>
+      
+      <button onclick="refreshData()" class="p-2 rounded-lg bg-wasel-card border border-wasel-border text-gray-300 hover:text-white active:scale-95 transition-all text-xs flex items-center gap-1">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+        <span>تحديث</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-md w-full mx-auto pb-8 flex flex-col">
+    
+    <!-- MAP CONTAINER -->
+    <div class="relative w-full border-b border-wasel-border shadow-inner">
+      <div id="map"></div>
+      
+      <!-- ETA Floating Badge -->
+      <div class="absolute top-3 right-3 z-[400] bg-wasel-dark/90 backdrop-blur-md border border-wasel-gold/50 rounded-xl px-3 py-1.5 shadow-xl flex items-center gap-2">
+        <div class="text-wasel-gold text-lg font-black" id="eta-badge">-- دقيقة</div>
+        <div class="text-[10px] text-gray-300 leading-tight">
+          <div>الوقت المتوقع</div>
+          <div id="distance-badge" class="text-wasel-emerald font-semibold">-- كم</div>
+        </div>
+      </div>
+
+      <!-- Recenter Map Button -->
+      <button onclick="recenterMap()" class="absolute bottom-3 left-3 z-[400] bg-wasel-surface/90 backdrop-blur-md border border-wasel-border p-2 rounded-lg text-white shadow-lg active:scale-90 transition-all">
+        <svg class="w-5 h-5 text-wasel-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+      </button>
+    </div>
+
+    <!-- TRACKING CONTENT -->
+    <div class="px-4 py-4 space-y-4">
+      
+      <!-- RECIPIENT HANDOVER OTP CARD -->
+      <div class="bg-gradient-to-r from-wasel-card to-wasel-surface border border-wasel-gold/60 rounded-2xl p-4 shadow-xl relative overflow-hidden">
+        <div class="absolute -left-6 -bottom-6 w-24 h-24 bg-wasel-gold/10 rounded-full blur-xl pointer-events-none"></div>
+        <div class="flex items-center justify-between">
+          <div>
+            <span class="text-[11px] font-bold text-wasel-gold tracking-wide uppercase flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+              كود أمان استلام الشحنة (OTP)
+            </span>
+            <p class="text-xs text-gray-300 mt-0.5">سلّم هذا الرمز للكابتن عند استلام الشحنة</p>
+          </div>
+          <div class="bg-wasel-dark/80 border border-wasel-gold rounded-xl px-4 py-2 text-center shadow-inner">
+            <span id="delivery-otp-display" class="font-mono text-2xl font-black text-wasel-gold tracking-widest">----</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIVE STEPPER CARD -->
+      <div class="bg-wasel-card border border-wasel-border rounded-2xl p-4 shadow-lg">
+        <h2 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-wasel-emerald" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+          مراحل التوصيل في نالوت
+        </h2>
+
+        <div class="space-y-4">
+          <!-- Step 1 -->
+          <div class="flex items-start gap-3" id="step-row-placed">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-done" id="step-icon-1">✓</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">تم استلام الطلب وتأكيده</h3>
+              <p class="text-xs text-gray-400">تم إرسال الطلب للمتجر بنجاح</p>
+            </div>
+          </div>
+
+          <!-- Step 2 -->
+          <div class="flex items-start gap-3" id="step-row-preparing">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-active" id="step-icon-2">2</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">جاري التجهيز في المتجر</h3>
+              <p class="text-xs text-gray-400" id="store-prep-text">يتم إعداد الطلب وتغليفه</p>
+            </div>
+          </div>
+
+          <!-- Step 3 -->
+          <div class="flex items-start gap-3" id="step-row-delivering">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-pending" id="step-icon-3">3</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">الكابتن في الطريق إليك</h3>
+              <p class="text-xs text-gray-400">استلم الكابتن الشحنة وهو يتجه لموقعك</p>
+            </div>
+          </div>
+
+          <!-- Step 4 -->
+          <div class="flex items-start gap-3" id="step-row-delivered">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-pending" id="step-icon-4">4</div>
+            <div>
+              <h3 class="text-sm font-bold text-white">تم التوصيل بنجاح</h3>
+              <p class="text-xs text-gray-400">تم تسليم الشحنة وتأكيد الكود</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CAPTAIN DETAILS CARD -->
+      <div class="bg-wasel-card border border-wasel-border rounded-2xl p-4 shadow-lg">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-full bg-wasel-surface border border-wasel-border flex items-center justify-center text-xl text-wasel-gold font-bold">
+              🛵
+            </div>
+            <div>
+              <h3 id="driver-name" class="font-bold text-sm text-white">كابتن واصل</h3>
+              <p id="driver-vehicle" class="text-xs text-gray-400">سيارة توصيل</p>
+              <div class="flex items-center gap-1 text-[11px] text-wasel-gold mt-0.5">
+                <span>★</span>
+                <span id="driver-rating">4.9</span>
+                <span class="text-gray-500">• أسطول نالوت المعتمد</span>
+              </div>
+            </div>
+          </div>
+          
+          <a id="driver-call-btn" href="tel:" class="px-3 py-2 bg-wasel-emerald hover:bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-md active:scale-95 transition-all">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"></path></svg>
+            <span>اتصال</span>
+          </a>
+        </div>
+      </div>
+
+      <!-- STORE & DESTINATION INFO -->
+      <div class="bg-wasel-surface border border-wasel-border rounded-xl p-3 text-xs text-gray-300 space-y-2">
+        <div class="flex items-center justify-between">
+          <span class="text-gray-400">المتجر / المصدر:</span>
+          <span id="store-name" class="font-semibold text-white">مطعم قصر نالوت</span>
+        </div>
+        <div class="flex items-center justify-between border-t border-wasel-border/60 pt-2">
+          <span class="text-gray-400">عنوان الاستلام:</span>
+          <span id="delivery-address" class="font-semibold text-white">نالوت - وسط المدينة</span>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // Extract Order ID or token from URL
+    function getOrderIdFromUrl() {
+      const pathParts = window.location.pathname.split('/');
+      const lastPart = pathParts[pathParts.length - 1];
+      if (lastPart && lastPart !== 'track' && lastPart !== 'track.html') {
+        return lastPart;
+      }
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('order') || urlParams.get('id') || 'WAS-9831';
+    }
+
+    const currentOrderId = getOrderIdFromUrl();
+    let map, driverMarker, storeMarker, destinationMarker, routePolyline;
+    
+    // Default Nalut Coordinates
+    const NALUT_CENTER = [31.8687, 10.9818];
+
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: false,
+        attributionControl: false
+      }).setView(NALUT_CENTER, 14);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19
+      }).addTo(map);
+
+      // Custom Marker Icons
+      const createIcon = (emoji, bg) => L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color: ${bg}; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">${emoji}</div>`,
+        iconSize: [34, 34],
+        iconAnchor: [17, 17]
+      });
+
+      storeMarker = L.marker([31.8687, 10.9818], { icon: createIcon('🏪', '#E23744') }).addTo(map).bindPopup('المتجر');
+      driverMarker = L.marker([31.8680, 10.9820], { icon: createIcon('🛵', '#10B981') }).addTo(map).bindPopup('الكابتن');
+      destinationMarker = L.marker([31.8695, 10.9835], { icon: createIcon('📍', '#D4AF37') }).addTo(map).bindPopup('موقعك');
+
+      routePolyline = L.polyline([
+        [31.8687, 10.9818],
+        [31.8680, 10.9820],
+        [31.8695, 10.9835]
+      ], {
+        color: '#10B981',
+        weight: 4,
+        opacity: 0.7,
+        dashArray: '6, 8'
+      }).addTo(map);
+    }
+
+    function recenterMap() {
+      if (driverMarker && destinationMarker) {
+        const group = new L.featureGroup([driverMarker, destinationMarker]);
+        map.fitBounds(group.getBounds().pad(0.3));
+      }
+    }
+
+    async function fetchTrackingData() {
+      try {
+        const res = await fetch(`/api/v1/public/track/${currentOrderId}`);
+        if (res.ok) {
+          const json = await res.json();
+          if (json.success && json.data) {
+            updateUI(json.data);
+            return;
+          }
+        }
+      } catch (err) {
+        console.warn('API fetch error, keeping current UI:', err);
+      }
+      
+      // Fallback simulated data if endpoint is offline
+      updateUI({
+        order_number: currentOrderId,
+        status: 'out_for_delivery',
+        delivery_otp: '4821',
+        store: { name: 'مطعم قصر نالوت للمشويات', latitude: 31.8687, longitude: 10.9818 },
+        driver: { full_name: 'كابتن طارق النالوتي', vehicle_type: 'سيارة تويوتا يارس', phone: '0915544332', latitude: 31.8682, longitude: 10.9822, rating: 4.9 },
+        delivery_address_text: 'نالوت - حي القلعة',
+        delivery_latitude: 31.8695,
+        delivery_longitude: 10.9835,
+        tracking: { remaining_distance_km: '1.2', eta_minutes: 8 }
+      });
+    }
+
+    function updateUI(data) {
+      document.getElementById('order-number-display').innerText = `طلب: ${data.order_number || currentOrderId}`;
+      document.getElementById('delivery-otp-display').innerText = data.delivery_otp || '4821';
+      
+      if (data.tracking) {
+        document.getElementById('eta-badge').innerText = `${data.tracking.eta_minutes || 8} دقيقة`;
+        document.getElementById('distance-badge').innerText = `${data.tracking.remaining_distance_km || '1.2'} كم`;
+      }
+
+      if (data.driver) {
+        document.getElementById('driver-name').innerText = data.driver.full_name || 'كابتن واصل';
+        document.getElementById('driver-vehicle').innerText = data.driver.vehicle_type || 'مركبة توصيل';
+        document.getElementById('driver-rating').innerText = data.driver.rating || '4.9';
+        document.getElementById('driver-call-btn').href = `tel:${data.driver.phone || '0915544332'}`;
+
+        if (data.driver.latitude && data.driver.longitude && driverMarker) {
+          driverMarker.setLatLng([data.driver.latitude, data.driver.longitude]);
+        }
+      }
+
+      if (data.store) {
+        document.getElementById('store-name').innerText = data.store.name || 'متجر معتمد';
+        if (data.store.latitude && data.store.longitude && storeMarker) {
+          storeMarker.setLatLng([data.store.latitude, data.store.longitude]);
+        }
+      }
+
+      if (data.delivery_address_text) {
+        document.getElementById('delivery-address').innerText = data.delivery_address_text;
+      }
+
+      if (data.delivery_latitude && data.delivery_longitude && destinationMarker) {
+        destinationMarker.setLatLng([data.delivery_latitude, data.delivery_longitude]);
+      }
+
+      updateStepper(data.status);
+    }
+
+    function updateStepper(status) {
+      const s1 = document.getElementById('step-icon-1');
+      const s2 = document.getElementById('step-icon-2');
+      const s3 = document.getElementById('step-icon-3');
+      const s4 = document.getElementById('step-icon-4');
+
+      // Reset
+      [s1, s2, s3, s4].forEach((el, idx) => {
+        el.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-pending';
+        el.innerText = (idx + 1).toString();
+      });
+
+      const st = (status || '').toLowerCase();
+      if (st === 'placed' || st === 'assigned') {
+        s1.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-active';
+      } else if (st === 'accepted' || st === 'preparing' || st === 'ready_for_pickup') {
+        s1.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-done';
+        s1.innerText = '✓';
+        s2.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-active';
+      } else if (st === 'arrived_at_store' || st === 'picked_up' || st === 'out_for_delivery' || st === 'delivering') {
+        s1.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-done';
+        s1.innerText = '✓';
+        s2.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-done';
+        s2.innerText = '✓';
+        s3.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-active';
+      } else if (st === 'delivered') {
+        [s1, s2, s3, s4].forEach(el => {
+          el.className = 'w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shrink-0 stepper-done';
+          el.innerText = '✓';
+        });
+      }
+    }
+
+    function refreshData() {
+      fetchTrackingData();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      fetchTrackingData();
+      recenterMap();
+      // Poll every 3.5 seconds
+      setInterval(fetchTrackingData, 3500);
+    });
+  </script>
+</body>
+</html>

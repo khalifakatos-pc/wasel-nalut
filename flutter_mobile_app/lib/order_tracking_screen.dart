@@ -320,6 +320,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
     }
   }
 
+  Future<void> _shareTrackingWithRecipient() async {
+    final url = 'https://wasel-nalut.onrender.com/track/$_orderNum';
+    final text = 'شحنتك من واصل نالوت في الطريق إليك ⚡\n'
+        'المتجر: $_storeName\n'
+        'رقم الطلب: #$_orderNum\n'
+        'كود استلام الشحنة (OTP): $_deliveryOtp\n'
+        'تتبع مسار الكابتن مباشرة عبر الرابط:\n$url';
+    final whatsappUri = Uri.parse('whatsapp://send?text=${Uri.encodeComponent(text)}');
+    final webUri = Uri.parse('https://wa.me/?text=${Uri.encodeComponent(text)}');
+    try {
+      if (await canLaunchUrl(whatsappUri)) {
+        await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(webUri)) {
+        await launchUrl(webUri, mode: LaunchMode.externalApplication);
+      }
+    } catch (_) {}
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -395,8 +413,10 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
                       const SizedBox(height: 16),
 
                       // Driver / Captain Profile Card
-                      if (_currentStatus != OrderStatus.delivered)
+                      if (_currentStatus != OrderStatus.delivered) ...[
                         _buildDriverContactCard(isDark),
+                        _buildRecipientShareButton(isDark),
+                      ],
 
                       const SizedBox(height: 16),
 
@@ -884,6 +904,30 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// ---------------------------------------------------------------------------
+  /// RECIPIENT PUBLIC TRACKING SHARE BUTTON
+  /// ---------------------------------------------------------------------------
+  Widget _buildRecipientShareButton(bool isDark) {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: _shareTrackingWithRecipient,
+        icon: const Icon(Icons.share_rounded, size: 18, color: Color(0xFF25D366)),
+        label: const Text(
+          'مشاركة رابط التتبع المباشر مع المستلم 💬',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF25D366)),
+        ),
+        style: OutlinedButton.styleFrom(
+          side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
+          backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.08),
+          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
       ),
     );
   }

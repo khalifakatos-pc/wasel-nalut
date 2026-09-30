@@ -684,6 +684,14 @@ app.get('/mission-control', (req, res) => {
   res.sendFile(path.join(publicDir, 'live_mission_control.html'));
 });
 
+// Public Recipient Tracking Web Page (Accessible to anyone with tracking link)
+app.get(['/track', '/track/:id'], (req, res) => {
+  const trackFile = fs.existsSync(path.join(publicDir, 'track.html'))
+    ? path.join(publicDir, 'track.html')
+    : path.join(__dirname, 'public/track.html');
+  res.sendFile(trackFile);
+});
+
 // Real-time End-to-End simulation trigger for Live Mission Control
 app.post('/api/v1/simulation/run-cycle', async (req, res) => {
   try {
@@ -2215,6 +2223,88 @@ app.get('/api/v1/orders/:id', (req, res) => {
         tracking: {
           remaining_distance_meters: remainingDistanceMeters,
           remaining_distance_km: remainingDistanceMeters ? (remainingDistanceMeters / 1000).toFixed(1) : null,
+          eta_minutes: etaMinutes
+        }
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * PUBLIC RECIPIENT TRACKING ENDPOINT
+ * Allows anyone with the tracking link / order ID to fetch live status,
+ * telemetry coordinates, ETA, and verification OTP without customer authentication.
+ */
+app.get('/api/v1/public/track/:id', (req, res) => {
+  try {
+    const rawId = req.params.id;
+    let order = db.orders.find(o => o.id === rawId || o.order_number === rawId);
+    
+    // Graceful fallback to most recent or active order if exact match not found (for simulation / demo links)
+    if (!order) {
+      order = db.orders.find(o => ['out_for_delivery', 'picked_up', 'preparing', 'placed'].includes(o.status)) || db.orders[0];
+    }
+
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'Order not found' });
+    }
+
+    const store = db.stores.find(s => s.id === order.store_id) || db.stores[0];
+    const driver = (order.driver_id ? db.drivers.find(d => d.id === order.driver_id) : null) || db.drivers[0];
+
+    let remainingDistanceMeters = 1200;
+    let etaMinutes = 8;
+
+    if (driver && order.delivery_latitude && order.delivery_longitude) {
+      remainingDistanceMeters = Math.round(
+        calculateHaversineDistance(driver.latitude || 31.8682, driver.longitude || 10.9822, order.delivery_latitude, order.delivery_longitude)
+      );
+      etaMinutes = estimateEtaMinutes(remainingDistanceMeters, driver.speed_kmh || 25);
+    }
+
+    const deliveryAddressText = typeof order.delivery_address === 'string'
+      ? order.delivery_address
+      : (order.delivery_address?.address_line1 || order.delivery_address?.name || 'نالوت - وسط المدينة');
+
+    const deliveryOtp = order.delivery_otp || order.metadata?.delivery_otp || '4821';
+
+    res.json({
+      success: true,
+      data: {
+        order_id: order.id,
+        order_number: order.order_number || rawId,
+        status: order.status || 'out_for_delivery',
+        delivery_otp: deliveryOtp,
+        created_at: order.created_at,
+        delivery_address_text: deliveryAddressText,
+        delivery_latitude: order.delivery_latitude || 31.8695,
+        delivery_longitude: order.delivery_longitude || 10.9835,
+        recipient: {
+          name: order.recipient_name || order.metadata?.recipient_name || 'المستلم',
+          phone: order.recipient_phone || order.metadata?.recipient_phone || null
+        },
+        store: store ? {
+          name: store.name,
+          type: store.type,
+          district: store.district || 'نالوت',
+          latitude: store.latitude || 31.8687,
+          longitude: store.longitude || 10.9818
+        } : null,
+        driver: driver ? {
+          full_name: driver.full_name || 'كابتن واصل',
+          vehicle_type: driver.vehicle_type || 'سيارة توصيل',
+          phone: driver.phone || '0915544332',
+          rating: driver.rating || 4.9,
+          latitude: driver.latitude || 31.8682,
+          longitude: driver.longitude || 10.9822,
+          speed_kmh: driver.speed_kmh || 25,
+          heading: driver.heading || 0
+        } : null,
+        tracking: {
+          remaining_distance_meters: remainingDistanceMeters,
+          remaining_distance_km: (remainingDistanceMeters / 1000).toFixed(1),
           eta_minutes: etaMinutes
         }
       }
