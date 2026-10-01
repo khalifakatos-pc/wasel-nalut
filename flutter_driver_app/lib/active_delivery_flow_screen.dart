@@ -73,6 +73,21 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
           _activeOrder.orderStatus = newStatus;
         });
         DriverSupabaseService.saveActiveOrderLocally(_activeOrder);
+
+        // Auto-advance if merchant already handed over the order to out_for_delivery
+        if ((newStatus == 'out_for_delivery' || newStatus == 'picked_up') &&
+            _activeOrder.currentStep == DeliveryStep.orderPickupChecklist) {
+          _advanceToStep(DeliveryStep.navigatingToCustomer);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('🍳✅ تم تأكيد استلام الوجبة! انطلق الآن للزبون 🛵'),
+                backgroundColor: DriverColors.onlineGreen,
+                duration: Duration(seconds: 3),
+              ),
+            );
+          }
+        }
       }
     }
   }
@@ -400,6 +415,10 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   }
 
   Widget _buildPickupChecklistCard() {
+    final isPrepared = _orderBackendStatus == 'ready_for_pickup' ||
+        _orderBackendStatus == 'out_for_delivery' ||
+        _orderBackendStatus == 'picked_up';
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -411,7 +430,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Restaurant Kitchen Readiness Live Status Banner
-          if (_orderBackendStatus != 'ready_for_pickup') ...[
+          if (!isPrepared) ...[
             Container(
               margin: const EdgeInsets.only(bottom: 14),
               padding: const EdgeInsets.all(12),
@@ -467,25 +486,29 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
                 border: Border.all(color: DriverColors.onlineGreen, width: 1.5),
               ),
               child: Row(
-                children: const [
-                  Icon(Icons.check_circle_rounded, color: DriverColors.onlineGreen, size: 26),
-                  SizedBox(width: 12),
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: DriverColors.onlineGreen, size: 26),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'تم تجهيز الوجبة بالكامل من المطعم! 🍳✅',
-                          style: TextStyle(
+                          _orderBackendStatus == 'out_for_delivery' || _orderBackendStatus == 'picked_up'
+                              ? 'تم تسليم الوجبة للكابتن وجاهزة للانطلاق! 🛵✅'
+                              : 'تم تجهيز الوجبة بالكامل من المطعم! 🍳✅',
+                          style: const TextStyle(
                             color: DriverColors.onlineGreen,
                             fontWeight: FontWeight.bold,
                             fontSize: 13,
                           ),
                         ),
-                        SizedBox(height: 3),
+                        const SizedBox(height: 3),
                         Text(
-                          'أكّد المطعم جهوزية الطلب للاستلام. يمكنك مطابقة الأصناف وبدء التوصيل.',
-                          style: TextStyle(
+                          _orderBackendStatus == 'out_for_delivery' || _orderBackendStatus == 'picked_up'
+                              ? 'أكّد المطعم تسليم الوجبة. يمكنك الانطلاق للزبون فوراً.'
+                              : 'أكّد المطعم جهوزية الطلب للاستلام. يمكنك استلام الوجبة وبدء التوصيل.',
+                          style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 11,
                           ),
@@ -842,7 +865,9 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         break;
 
       case DeliveryStep.orderPickupChecklist:
-        final isKitchenReady = _orderBackendStatus == 'ready_for_pickup';
+        final isKitchenReady = _orderBackendStatus == 'ready_for_pickup' ||
+            _orderBackendStatus == 'out_for_delivery' ||
+            _orderBackendStatus == 'picked_up';
         if (!isKitchenReady) {
           label = 'بانتظار تأكيد التجهيز من المطعم ⏳';
           buttonColor = Colors.grey[800]!;
@@ -873,7 +898,9 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
               _activeOrder.orderId,
               '1234',
             );
-            if (res['success'] != true) {
+            if (res['success'] != true &&
+                _orderBackendStatus != 'out_for_delivery' &&
+                _orderBackendStatus != 'picked_up') {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

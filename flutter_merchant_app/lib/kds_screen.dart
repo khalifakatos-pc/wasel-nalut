@@ -777,6 +777,49 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                       ),
                     ],
                   ),
+                ] else if (isCompleted) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: MerchantColors.readyGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: MerchantColors.readyGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delivery_dining_rounded, color: MerchantColors.readyGreen, size: 22),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                order.courierName != null
+                                    ? 'تم تسليم الوجبة لـ ${order.courierName} وهو في الطريق للزبون 🛵'
+                                    : 'تم تسليم الوجبة بنجاح وهو قيد التوصيل 🛵',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (order.courierPhone != null) ...[
+                                const SizedBox(height: 2),
+                                Text(
+                                  'هاتف الكابتن: ${order.courierPhone}',
+                                  style: const TextStyle(color: Colors.white60, fontSize: 11),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        IconButton.filledTonal(
+                          icon: const Icon(Icons.print_rounded, color: Colors.white, size: 18),
+                          onPressed: () => ThermalReceiptDialog.show(context, order),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ],
             ),

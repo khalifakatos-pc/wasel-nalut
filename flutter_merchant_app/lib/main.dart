@@ -353,6 +353,10 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
         break;
       case KdsTicketStatus.completed:
         statusStr = 'out_for_delivery';
+        MerchantSupabaseService.confirmHandover(
+          updatedOrder.id,
+          updatedOrder.handoverCode ?? (updatedOrder.orderNumber.replaceAll(RegExp(r'[^0-9]'), '').padLeft(4, '0')),
+        );
         break;
       case KdsTicketStatus.cancelled:
         statusStr = 'cancelled';

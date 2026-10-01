@@ -2593,6 +2593,27 @@ app.post('/api/v1/orders/:id/handover', (req, res) => {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
+    // If order has already been handed over, return idempotent success
+    if (order.status === 'out_for_delivery' || order.status === 'picked_up') {
+      if (driver_id && !order.driver_id) {
+        order.driver_id = driver_id;
+        order.updated_at = new Date().toISOString();
+        saveOrderToPg(order);
+      }
+      return res.json({
+        success: true,
+        already_handed_over: true,
+        message: 'تم تسليم الوجبة مسبقاً وهي قيد التوصيل للزبون',
+        order: {
+          id: order.id,
+          order_number: order.order_number,
+          status: order.status,
+          driver_id: order.driver_id,
+          handover_at: order.handover_at
+        }
+      });
+    }
+
     // Require restaurant to have marked order as ready_for_pickup
     if (order.status !== 'ready_for_pickup') {
       return res.status(400).json({
