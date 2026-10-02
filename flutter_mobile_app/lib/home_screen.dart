@@ -1002,7 +1002,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   /// ---------------------------------------------------------------------------
-  /// ACTIVE ORDER MINI BANNER (Live tracker link)
+  /// ACTIVE ORDER MINI BANNER (Live tracker link & Delivery OTP)
   /// ---------------------------------------------------------------------------
   Widget _buildActiveOrderMiniBanner(bool isDark) {
     if (!_hasActiveOrder || _activeOrder == null) {
@@ -1011,12 +1011,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final orderNum = _activeOrder!['order_number'] ?? 'WAS-9831';
     final statusStr = _activeOrder!['status'] ?? 'placed';
+    final dynamic rawOtp = _activeOrder!['otp_code'] ?? _activeOrder!['delivery_pin'] ?? _activeOrder!['handover_code'] ?? _activeOrder!['pickup_code'];
+    final String? otpCode = rawOtp?.toString();
+
     String statusTitle = 'تم تأكيد الطلب';
-    if (statusStr == 'preparing') statusTitle = 'المطبخ يجهز طلبك';
-    if (statusStr == 'out_for_delivery') statusTitle = 'الكابتن في الطريق إليك';
+    if (statusStr == 'preparing') statusTitle = 'المطبخ يجهز طلبك 🍳';
+    if (statusStr == 'out_for_delivery') statusTitle = 'الكابتن في الطريق إليك 🛵';
+    if (statusStr == 'ready') statusTitle = 'الطلب جاهز للاستلام 📦';
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 6.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
       child: WaselBouncyPressable(
         pressedScale: AppMotion.pressScaleCard,
         onTap: () {
@@ -1031,72 +1035,131 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
         child: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
+              colors: [Color(0xFF0A3324), Color(0xFF041710)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             borderRadius: AppRadius.radiusLg,
-            border: Border.all(color: AppColors.waselPrimary.withValues(alpha: 0.4)),
+            border: Border.all(color: AppColors.waselPrimary.withValues(alpha: 0.45), width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: AppColors.waselPrimary.withValues(alpha: 0.2),
-                blurRadius: 12,
-                offset: const Offset(0, 2),
+                color: AppColors.waselPrimary.withValues(alpha: 0.18),
+                blurRadius: 16,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Row(
+          child: Column(
             children: [
-              WaselPulseGlow(
-                glowColor: AppColors.waselPrimary,
-                shape: BoxShape.rectangle,
-                borderRadius: AppRadius.radiusMd,
-                child: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.waselPrimary.withValues(alpha: 0.2),
+              Row(
+                children: [
+                  WaselPulseGlow(
+                    glowColor: AppColors.waselPrimary,
+                    shape: BoxShape.rectangle,
                     borderRadius: AppRadius.radiusMd,
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      decoration: BoxDecoration(
+                        color: AppColors.waselPrimary.withValues(alpha: 0.18),
+                        borderRadius: AppRadius.radiusMd,
+                        border: Border.all(color: AppColors.waselPrimary.withValues(alpha: 0.3)),
+                      ),
+                      child: const Icon(Icons.two_wheeler_rounded, color: AppColors.waselPrimary, size: 24),
+                    ),
                   ),
-                  child: const Icon(Icons.delivery_dining_rounded, color: AppColors.waselPrimary),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'طلب نشط #$orderNum',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
+                        Row(
+                          children: [
+                            Text(
+                              'طلب نشط #$orderNum',
+                              style: const TextStyle(
+                                color: AppColors.darkTextPrimary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AppColors.success.withValues(alpha: 0.18),
+                                borderRadius: AppRadius.radiusSm,
+                                border: Border.all(color: AppColors.success.withValues(alpha: 0.4)),
+                              ),
+                              child: Text(
+                                statusTitle,
+                                style: const TextStyle(
+                                  color: AppColors.success,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 6),
-                        Text(
-                          '• $statusTitle',
-                          style: const TextStyle(
-                            color: AppColors.success,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'تتبع مباشر على رادار نالوت لحظة بلحظة',
+                          style: TextStyle(color: AppColors.darkTextSecondary, fontSize: 11),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'انقر هنا لمتابعة موقع الكابتن المباشر على خريطة نالوت',
-                      style: TextStyle(color: Colors.white54, fontSize: 11),
-                    ),
-                  ],
-                ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.waselPrimary, size: 14),
+                ],
               ),
-              const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white54, size: 14),
+              if (otpCode != null && otpCode.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    borderRadius: AppRadius.radiusMd,
+                    border: Border.all(color: AppColors.waselPrimary.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Row(
+                        children: [
+                          Icon(Icons.vpn_key_rounded, size: 14, color: AppColors.waselPrimary),
+                          SizedBox(width: 6),
+                          Text(
+                            'كود استلام الطلب الآمن (أعطه للكابتن):',
+                            style: TextStyle(fontSize: 11, color: AppColors.darkTextSecondary, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.waselPrimary.withValues(alpha: 0.25),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(color: AppColors.waselPrimary),
+                        ),
+                        child: Text(
+                          '#$otpCode',
+                          style: const TextStyle(
+                            color: AppColors.waselPrimary,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.5,
+                            fontSize: 13,
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -1474,7 +1537,15 @@ class _HomeScreenState extends State<HomeScreen> {
                   : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
               width: !isOpen ? 1.5 : 1.0,
             ),
-            boxShadow: AppShadows.subtle,
+            boxShadow: [
+              BoxShadow(
+                color: isDark
+                    ? Colors.black.withValues(alpha: 0.3)
+                    : Colors.black.withValues(alpha: 0.04),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -1482,26 +1553,38 @@ class _HomeScreenState extends State<HomeScreen> {
               Stack(
                 children: [
                   Container(
-                    width: 70,
-                    height: 70,
+                    width: 74,
+                    height: 74,
                     decoration: BoxDecoration(
                       gradient: !isOpen
                           ? LinearGradient(colors: [Colors.grey.shade600, Colors.grey.shade800])
-                          : (isGrocery ? AppColors.jetGradient : AppColors.waselGradient),
+                          : (isGrocery
+                              ? AppColors.jetGradient
+                              : const LinearGradient(
+                                  colors: [Color(0xFF0A3324), Color(0xFF041710)],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                )),
                       borderRadius: AppRadius.radiusMd,
+                      border: Border.all(
+                        color: isOpen
+                            ? (isDark ? AppColors.darkBorder : AppColors.waselPrimary.withValues(alpha: 0.3))
+                            : Colors.transparent,
+                        width: 1,
+                      ),
                     ),
                     child: Center(
                       child: Icon(
                         isGrocery ? Icons.shopping_basket_rounded : Icons.restaurant_rounded,
-                        color: Colors.white,
-                        size: 32,
+                        color: AppColors.waselPrimary,
+                        size: 34,
                       ),
                     ),
                   ),
                   if (!isOpen)
                     Container(
-                      width: 70,
-                      height: 70,
+                      width: 74,
+                      height: 74,
                       decoration: BoxDecoration(
                         color: Colors.black54,
                         borderRadius: AppRadius.radiusMd,
@@ -1530,8 +1613,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             name,
                             style: TextStyle(
                               fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                              color: !isOpen ? (isDark ? Colors.white60 : Colors.black54) : null,
+                              fontWeight: FontWeight.w800,
+                              color: !isOpen
+                                  ? (isDark ? Colors.white60 : Colors.black54)
+                                  : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1560,18 +1645,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           )
                         else
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color: AppColors.gold.withValues(alpha: 0.15),
+                              color: AppColors.waselPrimary.withValues(alpha: 0.15),
                               borderRadius: AppRadius.radiusSm,
+                              border: Border.all(color: AppColors.waselPrimary.withValues(alpha: 0.3)),
                             ),
                             child: Row(
                               children: [
-                                const Icon(Icons.star_rounded, size: 14, color: AppColors.gold),
-                                const SizedBox(width: 2),
+                                const Icon(Icons.star_rounded, size: 14, color: AppColors.waselPrimary),
+                                const SizedBox(width: 3),
                                 Text(
                                   rating,
-                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.waselPrimary),
                                 ),
                               ],
                             ),
@@ -1588,7 +1674,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     if (!isOpen)
                       const Row(
                         children: [
@@ -1603,18 +1689,40 @@ class _HomeScreenState extends State<HomeScreen> {
                     else
                       Row(
                         children: [
-                          const Icon(Icons.access_time_rounded, size: 13, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            timeStr,
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.access_time_rounded, size: 12, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  timeStr,
+                                  style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
                           ),
-                          const SizedBox(width: 12),
-                          const Icon(Icons.delivery_dining_rounded, size: 13, color: Colors.grey),
-                          const SizedBox(width: 4),
-                          Text(
-                            feeStr,
-                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(Icons.delivery_dining_rounded, size: 13, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+                                const SizedBox(width: 4),
+                                Text(
+                                  feeStr,
+                                  style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700, fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),

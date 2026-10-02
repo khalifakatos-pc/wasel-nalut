@@ -269,8 +269,13 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
     final currentIdx = _getStepIndex(_activeOrder.currentStep);
 
     return Container(
-      color: DriverColors.darkSurface,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: const BoxDecoration(
+        color: DriverColors.darkSurface,
+        border: Border(
+          bottom: BorderSide(color: DriverColors.darkBorder, width: 1),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: List.generate(steps.length, (index) {
@@ -279,38 +284,57 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
 
           return Row(
             children: [
-              Container(
-                width: 28,
-                height: 28,
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: isCompleted
                       ? DriverColors.onlineGreen
                       : (isCurrent ? DriverColors.primary : DriverColors.darkCardElevated),
                   shape: BoxShape.circle,
+                  border: isCurrent
+                      ? Border.all(color: DriverColors.primaryLight, width: 2)
+                      : null,
+                  boxShadow: isCurrent
+                      ? [
+                          BoxShadow(
+                            color: DriverColors.primary.withValues(alpha: 0.35),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ]
+                      : null,
                 ),
                 child: Center(
                   child: isCompleted
-                      ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+                      ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
                       : Text(
                           '${index + 1}',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Colors.white),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                            color: isCurrent ? Colors.black : Colors.white70,
+                          ),
                         ),
                 ),
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Text(
                 steps[index]['label'] as String,
                 style: TextStyle(
                   fontSize: 12,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                  color: isCurrent ? Colors.white : DriverColors.darkTextMuted,
+                  fontWeight: isCurrent ? FontWeight.w800 : FontWeight.w500,
+                  color: isCurrent
+                      ? DriverColors.primary
+                      : (isCompleted ? DriverColors.onlineGreen : DriverColors.darkTextMuted),
                 ),
               ),
               if (index < steps.length - 1)
                 Container(
-                  width: 18,
+                  width: 16,
                   height: 2,
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
                   color: isCompleted ? DriverColors.onlineGreen : DriverColors.darkBorder,
                 ),
             ],

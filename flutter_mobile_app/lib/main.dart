@@ -174,45 +174,69 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
         index: _currentIndex,
         children: screens,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() {
-          _currentIndex = index;
-          _loadedTabs.add(index);
-        }),
-        elevation: 8,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon:
-                Icon(Icons.home_rounded, color: AppColors.waselPrimary),
-            label: 'الرئيسية',
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: widget.isDark ? AppColors.darkSurface : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: widget.isDark ? AppColors.darkBorderSubtle : AppColors.lightBorder,
+              width: 1,
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.shopping_bag_outlined),
-            selectedIcon: Icon(Icons.shopping_bag_rounded,
-                color: AppColors.waselPrimary),
-            label: 'السلة',
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: widget.isDark ? 0.35 : 0.05),
+              blurRadius: 16,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: NavigationBar(
+            backgroundColor: Colors.transparent,
+            indicatorColor: AppColors.waselPrimary.withValues(alpha: widget.isDark ? 0.22 : 0.15),
+            selectedIndex: _currentIndex,
+            onDestinationSelected: (index) => setState(() {
+              _currentIndex = index;
+              _loadedTabs.add(index);
+            }),
+            elevation: 0,
+            height: 64,
+            destinations: const [
+              NavigationDestination(
+                icon: Icon(Icons.home_outlined),
+                selectedIcon:
+                    Icon(Icons.home_rounded, color: AppColors.waselPrimary),
+                label: 'الرئيسية',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.shopping_bag_outlined),
+                selectedIcon: Icon(Icons.shopping_bag_rounded,
+                    color: AppColors.waselPrimary),
+                label: 'السلة',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined),
+                selectedIcon: Icon(Icons.receipt_long_rounded,
+                    color: AppColors.waselPrimary),
+                label: 'طلباتي',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.account_balance_wallet_outlined),
+                selectedIcon: Icon(Icons.account_balance_wallet_rounded,
+                    color: AppColors.waselPrimary),
+                label: 'المحفظة',
+              ),
+              NavigationDestination(
+                icon: Icon(Icons.person_outline_rounded),
+                selectedIcon:
+                    Icon(Icons.person_rounded, color: AppColors.waselPrimary),
+                label: 'حسابي',
+              ),
+            ],
           ),
-          NavigationDestination(
-            icon: Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long_rounded,
-                color: AppColors.waselPrimary),
-            label: 'طلباتي',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet_rounded,
-                color: AppColors.warning),
-            label: 'المحفظة',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline_rounded),
-            selectedIcon:
-                Icon(Icons.person_rounded, color: AppColors.waselPurple),
-            label: 'حسابي',
-          ),
-        ],
+        ),
       ),
     );
   }
