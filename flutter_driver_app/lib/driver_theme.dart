@@ -8,13 +8,13 @@ import 'package:flutter/material.dart';
 /// ============================================================================
 
 class DriverColors {
-  // Brand Accents (Google Stitch Imperial Gold & Nocturnal Emerald)
-  static const Color primary = Color(0xFFD4AF37);        // Imperial Gold
-  static const Color primaryDark = Color(0xFFB89325);    // Deep Gold
-  static const Color primaryLight = Color(0xFFF5D061);   // Gold Radiance
+  // Brand Accents (Modern Radiant Delivery Amber & Slate)
+  static const Color primary = Color(0xFFF59E0B);        // Radiant Delivery Amber
+  static const Color primaryDark = Color(0xFFD97706);    // Deep Warm Amber
+  static const Color primaryLight = Color(0xFFFBBF24);   // Amber Glow
   static const Color secondary = Color(0xFF10B981);      // Emerald Green
   static const Color accentCyan = Color(0xFF38BDF8);     // Tech Radar Cyan
-  static const Color accentTeal = Color(0xFF10B981);     // Nalut Mountain Emerald
+  static const Color accentTeal = Color(0xFF0D9488);     // Mountain Teal
   static const Color accentPurple = Color(0xFF7C3AED);   // Marketplace Violet
 
   // Operational Logistics Status Colors
@@ -24,7 +24,7 @@ class DriverColors {
   static const Color busyOrange = Color(0xFFF59E0B);     // On Active Delivery / Navigating
   static const Color urgentRed = Color(0xFFEF4444);      // High Urgency / Radar Expiry
   static const Color offlineRed = Color(0xFFEF4444);     // Alert / Logout / Offline Red
-  static const Color surgeAmber = Color(0xFFD4AF37);     // Surge Multiplier Gold
+  static const Color surgeAmber = Color(0xFFF59E0B);     // Surge Multiplier Amber
 
   // Financial & COD Tokens
   static const Color codWarning = Color(0xFFEA580C);     // Cash on Delivery Liability
@@ -33,33 +33,33 @@ class DriverColors {
   static const Color tadawulTeal = Color(0xFF0D9488);    // Tadawul Libyan Banking Teal
 
   // Day Theme Neutrals
-  static const Color lightBg = Color(0xFFF1F5F9);
+  static const Color lightBg = Color(0xFFF8FAFC);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
   static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightTextPrimary = Color(0xFF041710);
+  static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF475569);
   static const Color lightTextMuted = Color(0xFF94A3B8);
 
-  // Night Theme Neutrals (Nocturnal Emerald & Gold)
-  static const Color darkBg = Color(0xFF041710);
-  static const Color darkSurface = Color(0xFF062319);
-  static const Color darkCard = Color(0xFF0A3324);
-  static const Color darkCardElevated = Color(0xFF124532);
-  static const Color darkBorder = Color(0x33D4AF37);
-  static const Color darkTextPrimary = Color(0xFFF8F5EE);
-  static const Color darkTextSecondary = Color(0xFFD0C5AF);
-  static const Color darkTextMuted = Color(0xFF99907C);
+  // Modern Dark Mode Neutrals (Clean Slate Charcoal)
+  static const Color darkBg = Color(0xFF0F172A);
+  static const Color darkSurface = Color(0xFF1E293B);
+  static const Color darkCard = Color(0xFF1E293B);
+  static const Color darkCardElevated = Color(0xFF334155);
+  static const Color darkBorder = Color(0xFF334155);
+  static const Color darkTextPrimary = Color(0xFFF8FAFC);
+  static const Color darkTextSecondary = Color(0xFF94A3B8);
+  static const Color darkTextMuted = Color(0xFF64748B);
 
   // High-Energy Gradients
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFFF5D061), Color(0xFFD4AF37), Color(0xFFB89325)],
+    colors: [Color(0xFFFBBF24), Color(0xFFF59E0B), Color(0xFFD97706)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient acceptButtonGradient = LinearGradient(
-    colors: [Color(0xFFF5D061), Color(0xFFD4AF37)],
+    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -71,7 +71,7 @@ class DriverColors {
   );
 
   static const LinearGradient walletHeaderGradient = LinearGradient(
-    colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF134E4A)],
+    colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF334155)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

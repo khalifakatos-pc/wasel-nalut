@@ -13,27 +13,27 @@ import 'package:flutter/material.dart';
 /// 1. COLOR TOKENS
 /// ---------------------------------------------------------------------------
 class AppColors {
-  // Brand: Wasel Primary & Accents (Google Stitch High Mountain Luxury)
-  static const Color waselPrimary = Color(0xFFD4AF37);       // Imperial Gold
-  static const Color waselSecondary = Color(0xFFF5D061);     // Gold Radiance
-  static const Color waselAccent = Color(0xFFB89325);        // Burnished Gold
-  static const Color waselTeal = Color(0xFF10B981);          // Mountain Emerald
-  static const Color waselPurple = Color(0xFF7C3AED);        // Royal Purple
-  static const Color waselNavy = Color(0xFF041710);          // Nocturnal Emerald Canvas
-  static const Color waselLight = Color(0xFFF8F5EE);         // Champagne Ivory
-  static const Color waselSurface = Color(0xFF062319);       // Nocturnal Emerald Surface
-  static const Color waselMarketPrimary = Color(0xFFD4AF37); // Imperial Gold Accent
+  // Brand: Wasel Modern Clean Primary & Accents (Jahez / Hungerstation / Talabat Style)
+  static const Color waselPrimary = Color(0xFFF59E0B);       // Radiant Warm Amber / Saffron
+  static const Color waselSecondary = Color(0xFFD97706);     // Deep Amber
+  static const Color waselAccent = Color(0xFFB45309);        // Burnt Amber
+  static const Color waselTeal = Color(0xFF10B981);          // Fresh Delivery Mint
+  static const Color waselPurple = Color(0xFF8B5CF6);        // Modern Violet
+  static const Color waselNavy = Color(0xFF0F172A);          // Midnight Slate
+  static const Color waselLight = Color(0xFFFEF3C7);         // Warm Amber Tint
+  static const Color waselSurface = Color(0xFFFFFFFF);       // Clean White
+  static const Color waselMarketPrimary = Color(0xFFF59E0B);
 
   // Wasel Market & Express Brand Tokens
-  static const Color waselMarketSecondary = Color(0xFFF5D061);
-  static const Color waselMarketAccent = Color(0xFFB89325);
-  static const Color waselMarketLight = Color(0xFFF8F5EE);
-  static const Color waselMarketSurface = Color(0xFF0A3324);
+  static const Color waselMarketSecondary = Color(0xFFD97706);
+  static const Color waselMarketAccent = Color(0xFFB45309);
+  static const Color waselMarketLight = Color(0xFFFEF3C7);
+  static const Color waselMarketSurface = Color(0xFFFFFFFF);
 
   // Quick Commerce (Wasel Fast 15m)
   static const Color jetPrimary = Color(0xFF10B981);         // Express Emerald
   static const Color jetSecondary = Color(0xFF059669);       // Deep Forest
-  static const Color jetAccent = Color(0xFFD4AF37);          // Gold Trim
+  static const Color jetAccent = Color(0xFFF59E0B);          // Amber Trim
   static const Color jetLight = Color(0xFFECFDF5);           // Crisp Mint Tint
 
   // Status & Feedback Colors
@@ -46,13 +46,13 @@ class AppColors {
   static const Color info = Color(0xFF3B82F6);
   static const Color infoLight = Color(0xFFDBEAFE);
 
-  // Neutral Light Theme Palette
+  // Neutral Light Theme Palette (Clean, Fresh, Modern)
   static const Color lightBackground = Color(0xFFF8FAFC);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightCard = Color(0xFFFFFFFF);
-  static const Color lightBorder = Color(0xFFE2E8F0);
-  static const Color lightBorderSubtle = Color(0xFFF1F5F9);
-  static const Color lightTextPrimary = Color(0xFF041710);
+  static const Color lightBorder = Color(0xFFF1F5F9);
+  static const Color lightBorderSubtle = Color(0xFFE2E8F0);
+  static const Color lightTextPrimary = Color(0xFF0F172A);
   static const Color lightTextSecondary = Color(0xFF475569);
   static const Color lightTextMuted = Color(0xFF94A3B8);
 
@@ -61,30 +61,30 @@ class AppColors {
   static const Color surface = lightSurface;
   static const Color cardBackground = lightCard;
 
-  // Nocturnal Emerald & Gold Luxury Theme Palette
-  static const Color darkBackground = Color(0xFF041710);      // Deep Nocturnal Emerald
-  static const Color darkSurface = Color(0xFF062319);         // Elevated Emerald Surface
-  static const Color darkCard = Color(0xFF0A3324);            // Glassmorphic Card Base
-  static const Color darkBorder = Color(0x44D4AF37);          // Translucent Gold Border
-  static const Color darkBorderSubtle = Color(0x22D4AF37);    // Subtle Gold Border
-  static const Color darkTextPrimary = Color(0xFFF8F5EE);     // Champagne Ivory
-  static const Color darkTextSecondary = Color(0xFFD0C5AF);   // Muted Champagne
-  static const Color darkTextMuted = Color(0xFF99907C);       // Desert Olive Muted
+  // Dark Theme Palette (Sleek Modern Charcoal, NOT military green)
+  static const Color darkBackground = Color(0xFF0F172A);      // Midnight Charcoal
+  static const Color darkSurface = Color(0xFF1E293B);         // Slate Surface
+  static const Color darkCard = Color(0xFF1E293B);            // Slate Card
+  static const Color darkBorder = Color(0xFF334155);          // Slate Border
+  static const Color darkBorderSubtle = Color(0xFF1E293B);
+  static const Color darkTextPrimary = Color(0xFFF8FAFC);
+  static const Color darkTextSecondary = Color(0xFFCBD5E1);
+  static const Color darkTextMuted = Color(0xFF64748B);
 
   // Luxury & Promo Accents
-  static const Color gold = Color(0xFFD4AF37);
-  static const Color goldLight = Color(0xFFF5D061);
-  static const Color starRating = Color(0xFFF5D061);
+  static const Color gold = Color(0xFFF59E0B);
+  static const Color goldLight = Color(0xFFFBBF24);
+  static const Color starRating = Color(0xFFF59E0B);
 
   // Gradients
   static const LinearGradient waselGradient = LinearGradient(
-    colors: [Color(0xFFF5D061), Color(0xFFD4AF37), Color(0xFFB89325)],
+    colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   static const LinearGradient waselMarketGradient = LinearGradient(
-    colors: [Color(0xFFD4AF37), Color(0xFF0A3324)],
+    colors: [Color(0xFFF59E0B), Color(0xFF8B5CF6)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -96,7 +96,7 @@ class AppColors {
   );
 
   static const LinearGradient darkCardGradient = LinearGradient(
-    colors: [Color(0xFF0A3324), Color(0xFF062319)],
+    colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
