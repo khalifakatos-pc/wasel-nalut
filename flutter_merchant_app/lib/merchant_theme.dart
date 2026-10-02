@@ -47,6 +47,23 @@ class MerchantColors {
   static const Color darkTextSecondary = Color(0xFF94A3B8);
   static const Color darkTextMuted = Color(0xFF64748B);
 
+  // Stitch Modern Status Pill & Badge Tokens (Light Canvas)
+  static const Color statusNewBg = Color(0xFFFEF3C7);       // Soft Amber Glow
+  static const Color statusNewText = Color(0xFFB45309);     // Deep Amber Text
+  static const Color statusNewBorder = Color(0xFFFCD34D);   // Amber Border
+
+  static const Color statusPrepBg = Color(0xFFE0F2FE);      // Soft Sky Tint
+  static const Color statusPrepText = Color(0xFF0369A1);    // Deep Azure Text
+  static const Color statusPrepBorder = Color(0xFF7DD3FC);  // Azure Border
+
+  static const Color statusReadyBg = Color(0xFFD1FAE5);     // Soft Emerald Tint
+  static const Color statusReadyText = Color(0xFF047857);   // Deep Emerald Text
+  static const Color statusReadyBorder = Color(0xFF6EE7B7); // Emerald Border
+
+  static const Color statusCompletedBg = Color(0xFFF1F5F9); // Crisp Slate Neutral
+  static const Color statusCompletedText = Color(0xFF475569);
+  static const Color statusCompletedBorder = Color(0xFFE2E8F0);
+
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFFFBBF24), Color(0xFFF59E0B), Color(0xFFD97706)],
@@ -59,6 +76,38 @@ class MerchantColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
+
+  static const LinearGradient stitchLightGradient = LinearGradient(
+    colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
+}
+
+class MerchantShadows {
+  static const List<BoxShadow> card = [
+    BoxShadow(
+      color: Color(0x0A0F172A),
+      blurRadius: 16,
+      offset: Offset(0, 4),
+    ),
+  ];
+
+  static const List<BoxShadow> activeCard = [
+    BoxShadow(
+      color: Color(0x18F59E0B),
+      blurRadius: 20,
+      offset: Offset(0, 6),
+    ),
+  ];
+
+  static const List<BoxShadow> subtle = [
+    BoxShadow(
+      color: Color(0x050F172A),
+      blurRadius: 8,
+      offset: Offset(0, 2),
+    ),
+  ];
 }
 
 class MerchantSpacing {

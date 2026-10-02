@@ -42,6 +42,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   bool _isQrScanned = false;
   bool _isOtpVerified = false;
   bool _isCashCollected = false;
+  bool _isBillAuditApproved = false;
 
   @override
   void initState() {
@@ -201,6 +202,287 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
             content: Text('✅ تم تحصيل ${collected.toStringAsFixed(2)} د.ل كاش بنجاح!'),
             backgroundColor: DriverColors.onlineGreen,
           ),
+        );
+      },
+    );
+  }
+
+  void _showBillAuditSheet(BuildContext context) {
+    bool tempApproved = _isBillAuditApproved;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: DriverColors.darkSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final subtotal = _activeOrder.items.fold<double>(
+              0.0,
+              (sum, item) => sum + (item.unitPriceLyd * item.quantity),
+            );
+            final deliveryFee = (_activeOrder.codAmountLyd > subtotal)
+                ? (_activeOrder.codAmountLyd - subtotal)
+                : 5.0;
+            final grandTotal = _activeOrder.codAmountLyd > 0
+                ? _activeOrder.codAmountLyd
+                : (subtotal + deliveryFee);
+
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Handle Bar
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 5,
+                        margin: const EdgeInsets.only(bottom: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white24,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: DriverColors.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(Icons.receipt_long_rounded, color: DriverColors.primary, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'تجريد الفاتورة ومطابقة الأصناف 📋',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                Text(
+                                  '${_activeOrder.storeName} • طلب ${_activeOrder.orderNumber}',
+                                  style: const TextStyle(fontSize: 12, color: DriverColors.darkTextMuted),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+
+                    const Divider(height: 24),
+
+                    // Instructions & Auto check shortcut
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'افحص كل صنف قبل الاستلام من المطبخ:',
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            setSheetState(() {
+                              for (var item in _activeOrder.items) {
+                                item.isVerified = true;
+                              }
+                            });
+                            setState(() {
+                              for (var item in _activeOrder.items) {
+                                item.isVerified = true;
+                              }
+                            });
+                          },
+                          icon: const Icon(Icons.done_all_rounded, size: 16, color: DriverColors.onlineGreen),
+                          label: const Text('تأشير الكل', style: TextStyle(fontSize: 12, color: DriverColors.onlineGreen, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+
+                    // Scrollable Items Checklist
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _activeOrder.items.length,
+                        separatorBuilder: (_, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final item = _activeOrder.items[index];
+                          return CheckboxListTile(
+                            contentPadding: EdgeInsets.zero,
+                            activeColor: DriverColors.onlineGreen,
+                            value: item.isVerified,
+                            onChanged: (val) {
+                              setSheetState(() => item.isVerified = val ?? false);
+                              setState(() => item.isVerified = val ?? false);
+                            },
+                            title: Text(
+                              '${item.quantity}x ${item.name}',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                                color: item.isVerified ? Colors.white : Colors.white70,
+                              ),
+                            ),
+                            subtitle: item.options.isNotEmpty
+                                ? Text(
+                                    item.options,
+                                    style: const TextStyle(fontSize: 11, color: DriverColors.primary),
+                                  )
+                                : null,
+                            secondary: Text(
+                              '${(item.unitPriceLyd * item.quantity).toStringAsFixed(2)} د.ل',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white70),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Bill Financial Summary Card
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: DriverColors.darkCardElevated,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: DriverColors.darkBorder),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('إجمالي الأصناف:', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                              Text('${subtotal.toStringAsFixed(2)} د.ل', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('رسوم التوصيل:', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                              Text('${deliveryFee.toStringAsFixed(2)} د.ل', style: const TextStyle(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                          const Divider(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('الإجمالي المطلوب تحصيله (COD):', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.amber)),
+                              Text(
+                                '${grandTotal.toStringAsFixed(2)} د.ل',
+                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: Colors.amber),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Approval Checkbox
+                    Container(
+                      decoration: BoxDecoration(
+                        color: tempApproved
+                            ? DriverColors.onlineGreen.withValues(alpha: 0.12)
+                            : Colors.white.withValues(alpha: 0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: tempApproved
+                              ? DriverColors.onlineGreen
+                              : DriverColors.darkBorder,
+                        ),
+                      ),
+                      child: CheckboxListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                        activeColor: DriverColors.onlineGreen,
+                        value: tempApproved,
+                        onChanged: (val) {
+                          setSheetState(() => tempApproved = val ?? false);
+                        },
+                        title: const Text(
+                          'أوافق وأقر بأنني فحصت الفاتورة واستلمت كامل أصناف الطلب بحالة سليمة من المطبخ ✅',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Action Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton.icon(
+                        onPressed: tempApproved
+                            ? () {
+                                setState(() {
+                                  _isBillAuditApproved = true;
+                                  _isQrScanned = true;
+                                  for (var it in _activeOrder.items) {
+                                    it.isVerified = true;
+                                  }
+                                });
+                                Navigator.pop(ctx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('✅ تمت مطابقة الفاتورة وجرد الأصناف بنجاح! اضغط الآن على زر تأكيد الاستلام والانطلاق.'),
+                                    backgroundColor: DriverColors.onlineGreen,
+                                    duration: Duration(seconds: 3),
+                                  ),
+                                );
+                              }
+                            : null,
+                        icon: const Icon(Icons.check_circle_outline_rounded, size: 20),
+                        label: const Text(
+                          'اعتماد الفاتورة والموافقة على الاستلام',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: DriverColors.onlineGreen,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: Colors.grey[800],
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
         );
       },
     );
@@ -544,6 +826,69 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
               ),
             ),
           ],
+          // Bill Audit & Items Agreement Status Box
+          Container(
+            margin: const EdgeInsets.only(bottom: 14),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: _isBillAuditApproved
+                  ? DriverColors.onlineGreen.withValues(alpha: 0.15)
+                  : Colors.amber.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _isBillAuditApproved
+                    ? DriverColors.onlineGreen.withValues(alpha: 0.5)
+                    : Colors.amber.withValues(alpha: 0.5),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  _isBillAuditApproved
+                      ? Icons.verified_user_rounded
+                      : Icons.fact_check_rounded,
+                  color: _isBillAuditApproved ? DriverColors.onlineGreen : Colors.amber,
+                  size: 24,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _isBillAuditApproved
+                            ? 'تم تجريد الفاتورة ومطابقة الأصناف بنجاح ✅'
+                            : 'يلزم جرد الفاتورة ومطابقة الأصناف قبل الاستلام 📋',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: _isBillAuditApproved ? DriverColors.onlineGreen : Colors.amber,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _isBillAuditApproved
+                            ? 'وافقت على استلام الأصناف بحالة سليمة. يمكنك الآن تأكيد الاستلام بالأسفل.'
+                            : 'يجب على الكابتن مطابقة الفاتورة مع المطبخ والموافقة عليها قبل نقل العهدة.',
+                        style: const TextStyle(fontSize: 11, color: Colors.white70),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!_isBillAuditApproved && isPrepared)
+                  ElevatedButton(
+                    onPressed: () => _showBillAuditSheet(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.amber,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: const Text('جرد الآن 📋', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11)),
+                  ),
+              ],
+            ),
+          ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -908,9 +1253,15 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
             );
             _fetchOrderStatus();
           };
-        } else {
-          label = 'تأكيد الاستلام وبدء التوصيل للزبون 🛵';
+        } else if (!_isBillAuditApproved) {
+          label = 'استلام الطلب وتجريد الفاتورة 📋';
           buttonColor = DriverColors.primary;
+          onTap = () {
+            _showBillAuditSheet(context);
+          };
+        } else {
+          label = 'تأكيد الاستلام ونقل العهدة للانطلاق 🛵';
+          buttonColor = DriverColors.onlineGreen;
           onTap = () async {
             setState(() {
               _isQrScanned = true;

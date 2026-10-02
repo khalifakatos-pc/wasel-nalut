@@ -5,7 +5,10 @@ import 'merchant_models.dart';
 import 'services/merchant_supabase_service.dart';
 
 /// ============================================================================
-/// WASEL MERCHANT & KITCHEN LOGIN SCREEN (عزل المتاجر وتسجيل الدخول المخصص)
+/// WASEL MERCHANT & KITCHEN LOGIN SCREEN (Google Stitch Modern Light Redesign)
+/// ============================================================================
+/// Supports both 1-click instant store identification for kitchen tablets
+/// and manual phone/PIN authentication for managers.
 /// ============================================================================
 
 class MerchantLoginScreen extends StatefulWidget {
@@ -34,6 +37,48 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
     super.dispose();
   }
 
+  Future<void> _handleFastStoreSelect(PartnerStore store) async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final user = MerchantUser(
+        id: 'usr_${store.id}',
+        phone: store.phone.isNotEmpty ? store.phone : '0919570011',
+        name: store.name,
+        storeId: store.id,
+        role: 'مسؤول المطبخ والمتجر',
+      );
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('wasel_merchant_logged_in', true);
+      await prefs.setString('wasel_active_store_id', store.id);
+      await prefs.setString('wasel_active_store_name', store.name);
+      await prefs.setString('wasel_active_store_type', store.type);
+      await prefs.setString('wasel_active_store_district', store.district);
+      await prefs.setString('wasel_active_store_mode', store.mode == PartnerAppMode.retail ? 'retail' : 'kitchen');
+      await prefs.setString('wasel_merchant_user_phone', user.phone);
+      await prefs.setString('wasel_merchant_user_name', user.name);
+      await prefs.setString('wasel_merchant_user_role', user.role);
+
+      MerchantSupabaseService.currentStoreId = store.id;
+      MerchantSupabaseService.currentUser = user;
+
+      if (mounted) {
+        widget.onLoginSuccess(user, store);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _errorMessage = 'تعذر تسجيل الدخول للمتجر: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
 
   Future<void> _handleLogin() async {
     final phone = _phoneController.text.trim();
@@ -78,7 +123,6 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
           );
         }
 
-        // Save session locally for persistent isolation
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('wasel_merchant_logged_in', true);
         await prefs.setString('wasel_active_store_id', store.id);
@@ -89,6 +133,9 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
         await prefs.setString('wasel_merchant_user_phone', user.phone);
         await prefs.setString('wasel_merchant_user_name', user.name);
         await prefs.setString('wasel_merchant_user_role', user.role);
+
+        MerchantSupabaseService.currentStoreId = store.id;
+        MerchantSupabaseService.currentUser = user;
 
         if (mounted) {
           widget.onLoginSuccess(user, store);
@@ -112,88 +159,213 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: MerchantColors.darkBg,
+      backgroundColor: MerchantColors.lightBg,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
+              constraints: const BoxConstraints(maxWidth: 500),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // App Brand Logo & Title
+                  // App Brand Logo & Title (Google Stitch Clean)
                   Center(
                     child: Container(
-                      width: 84,
-                      height: 84,
+                      width: 80,
+                      height: 80,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            MerchantColors.primary,
-                            MerchantColors.primary.withValues(alpha: 0.7),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
+                        gradient: MerchantColors.primaryGradient,
+                        borderRadius: BorderRadius.circular(22),
                         boxShadow: [
                           BoxShadow(
                             color: MerchantColors.primary.withValues(alpha: 0.35),
-                            blurRadius: 20,
+                            blurRadius: 18,
                             offset: const Offset(0, 8),
                           ),
                         ],
                       ),
                       child: const Icon(
                         Icons.storefront_rounded,
-                        size: 44,
+                        size: 42,
                         color: Colors.white,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 16),
                   const Center(
                     child: Text(
                       'شريك واصل | نالوت',
                       style: TextStyle(
-                        fontSize: 24,
+                        fontSize: 26,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
+                        color: MerchantColors.lightTextPrimary,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Center(
+                  const Center(
                     child: Text(
                       'منظومة إدارة الطلبات والمطبخ والجرد المستقل',
                       style: TextStyle(
                         fontSize: 13,
-                        color: Colors.white.withValues(alpha: 0.65),
+                        color: MerchantColors.lightTextSecondary,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
+
+                  // Error Banner
+                  if (_errorMessage != null) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: MerchantColors.rejectedRed.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: MerchantColors.rejectedRed.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.error_outline_rounded,
+                            color: MerchantColors.rejectedRed,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(
+                                color: MerchantColors.rejectedRed,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // 1-Click Fast Store Selector Cards (Google Stitch Modern Light)
+                  Container(
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      color: MerchantColors.lightCard,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: MerchantColors.lightBorder),
+                      boxShadow: MerchantShadows.card,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.bolt_rounded, color: MerchantColors.primary, size: 22),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'الدخول الفوري المباشر (تحديد المتجر):',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: MerchantColors.lightTextPrimary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...PartnerStore.nalutStores.map((store) {
+                          final isKitchen = store.mode == PartnerAppMode.kitchen;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: InkWell(
+                              onTap: _isLoading ? null : () => _handleFastStoreSelect(store),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: store.id == 'store_nalut_ranchello'
+                                        ? MerchantColors.primary.withValues(alpha: 0.5)
+                                        : MerchantColors.lightBorder,
+                                    width: store.id == 'store_nalut_ranchello' ? 1.5 : 1,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      store.icon,
+                                      color: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal,
+                                      size: 22,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            store.name,
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: FontWeight.bold,
+                                              color: MerchantColors.lightTextPrimary,
+                                            ),
+                                          ),
+                                          Text(
+                                            '${store.district} • ${isKitchen ? "مطبخ 🍳" : "سوبرماركت 🛒"}',
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              color: MerchantColors.lightTextSecondary,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                      decoration: BoxDecoration(
+                                        color: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Text(
+                                        'دخول',
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 16),
 
                   // Login Form Card
                   Container(
-                    padding: const EdgeInsets.all(22),
+                    padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: MerchantColors.darkCard,
+                      color: MerchantColors.lightCard,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: MerchantColors.darkBorder,
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.25),
-                          blurRadius: 15,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
+                      border: Border.all(color: MerchantColors.lightBorder),
+                      boxShadow: MerchantShadows.card,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,53 +375,18 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: MerchantColors.lightTextPrimary,
                           ),
                         ),
                         const SizedBox(height: 4),
-                        Text(
+                        const Text(
                           'أدخل بيانات الدخول المعتمدة لمتجرك في نالوت',
                           style: TextStyle(
-                            fontSize: 11,
-                            color: Colors.white.withValues(alpha: 0.5),
+                            fontSize: 12,
+                            color: MerchantColors.lightTextSecondary,
                           ),
                         ),
-                        const SizedBox(height: 20),
-
-                        // Error Banner
-                        if (_errorMessage != null) ...[
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: MerchantColors.rejectedRed.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: MerchantColors.rejectedRed.withValues(alpha: 0.4),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                const Icon(
-                                  Icons.error_outline_rounded,
-                                  color: MerchantColors.rejectedRed,
-                                  size: 18,
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _errorMessage!,
-                                    style: const TextStyle(
-                                      color: MerchantColors.rejectedRed,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 16),
-                        ],
+                        const SizedBox(height: 16),
 
                         // Quick Store Shortcuts
                         Wrap(
@@ -259,7 +396,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                             ActionChip(
                               avatar: const Text('🌯'),
                               label: const Text('مطعم رانشيلو 🌯', style: TextStyle(fontSize: 12)),
-                              backgroundColor: MerchantColors.darkSurface,
+                              backgroundColor: const Color(0xFFF1F5F9),
                               onPressed: () {
                                 setState(() {
                                   _phoneController.text = '0919570011';
@@ -270,7 +407,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                             ActionChip(
                               avatar: const Text('🛒'),
                               label: const Text('ريكسوس للتسوق 🛒', style: TextStyle(fontSize: 12)),
-                              backgroundColor: MerchantColors.darkSurface,
+                              backgroundColor: const Color(0xFFF1F5F9),
                               onPressed: () {
                                 setState(() {
                                   _phoneController.text = '0910000002';
@@ -285,16 +422,16 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                         // Phone Field
                         const Text(
                           'رقم هاتف المتجر / المسؤول',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                          style: TextStyle(fontSize: 12, color: MerchantColors.lightTextSecondary, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _phoneController,
                           keyboardType: TextInputType.phone,
-                          style: const TextStyle(color: Colors.white, fontSize: 14),
+                          style: const TextStyle(color: MerchantColors.lightTextPrimary, fontSize: 14),
                           decoration: InputDecoration(
                             hintText: '091XXXXXXX',
-                            hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                            hintStyle: const TextStyle(color: MerchantColors.lightTextMuted),
                             prefixIcon: const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 12),
                               child: Row(
@@ -304,35 +441,39 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                                   SizedBox(width: 6),
                                   Text(
                                     '+218',
-                                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.bold),
+                                    style: TextStyle(color: MerchantColors.lightTextSecondary, fontSize: 13, fontWeight: FontWeight.bold),
                                   ),
                                 ],
                               ),
                             ),
                             filled: true,
-                            fillColor: MerchantColors.darkSurface,
+                            fillColor: const Color(0xFFF8FAFC),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                              borderSide: const BorderSide(color: MerchantColors.lightBorder),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: MerchantColors.lightBorder),
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
 
                         // PIN Field
                         const Text(
                           'رمز الدخول السري (PIN)',
-                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                          style: TextStyle(fontSize: 12, color: MerchantColors.lightTextSecondary, fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 6),
                         TextField(
                           controller: _pinController,
                           keyboardType: TextInputType.number,
                           obscureText: _obscurePin,
                           maxLength: 6,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: MerchantColors.lightTextPrimary,
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             letterSpacing: 4,
@@ -340,38 +481,42 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                           decoration: InputDecoration(
                             counterText: '',
                             hintText: '••••',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.3),
+                            hintStyle: const TextStyle(
+                              color: MerchantColors.lightTextMuted,
                               letterSpacing: 4,
                             ),
                             prefixIcon: const Icon(
                               Icons.lock_outline_rounded,
-                              color: Colors.white54,
+                              color: MerchantColors.lightTextMuted,
                               size: 20,
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
                                 _obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                color: Colors.white54,
+                                color: MerchantColors.lightTextMuted,
                                 size: 20,
                               ),
                               onPressed: () => setState(() => _obscurePin = !_obscurePin),
                             ),
                             filled: true,
-                            fillColor: MerchantColors.darkSurface,
+                            fillColor: const Color(0xFFF8FAFC),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                              borderSide: const BorderSide(color: MerchantColors.lightBorder),
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: const BorderSide(color: MerchantColors.lightBorder),
                             ),
                             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                           ),
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 20),
 
                         // Submit Button
                         SizedBox(
                           width: double.infinity,
-                          height: 50,
+                          height: 48,
                           child: ElevatedButton(
                             onPressed: _isLoading ? null : _handleLogin,
                             style: ElevatedButton.styleFrom(
@@ -380,7 +525,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              elevation: 2,
+                              elevation: 0,
                             ),
                             child: _isLoading
                                 ? const SizedBox(
@@ -402,7 +547,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                                         ),
                                       ),
                                       SizedBox(width: 8),
-                                      Icon(Icons.arrow_back_rounded, size: 20),
+                                      Icon(Icons.arrow_forward_rounded, size: 18),
                                     ],
                                   ),
                           ),
@@ -410,7 +555,6 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                       ],
                     ),
                   ),
-
                 ],
               ),
             ),
