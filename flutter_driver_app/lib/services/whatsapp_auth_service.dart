@@ -7,7 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 /// WhatsApp OTP Authentication Service for Wasel Nalut Captains
 class WhatsAppAuthService {
-  static const String officialSupportPhone = '+218910000000';
+  static const String officialSupportPhone = '+218918207786'; // رقم إدارة واصل نالوت الرسمي للكباتن والدعم
   static const String _supabaseUrl = 'https://yfhvuatssuylrkbthosa.supabase.co/rest/v1';
   static const String _supabaseApiKey = 'sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD';
 

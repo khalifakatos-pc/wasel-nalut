@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 /// WhatsApp OTP Authentication Service for Wasel Nalut
 /// Operates 24/7 with Supabase Cloud backend and direct WhatsApp Deeplink.
 class WhatsAppAuthService {
-  static const String officialSupportPhone = '+218910000000'; // رقم واتساب خدمة عملاء واصل نالوت الرسمي
+  static const String officialSupportPhone = '+218918207786'; // رقم واتساب خدمة عملاء وإدارة واصل نالوت الرسمي
   static const String _supabaseUrl = 'https://yfhvuatssuylrkbthosa.supabase.co/rest/v1';
   static const String _supabaseApiKey = 'sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD';
 

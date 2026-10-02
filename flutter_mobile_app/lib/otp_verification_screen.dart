@@ -473,6 +473,28 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 40,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              WhatsAppAuthService.openWhatsAppVerificationChat(
+                                phone: widget.phoneNumber,
+                                otpCode: _activeWhatsAppOtp ?? '1234',
+                              );
+                            },
+                            icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 18),
+                            label: const Text(
+                              'مراسلة إدارة واصل عبر واتساب (0918207786) 💬',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF25D366)),
+                              shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
