@@ -3052,26 +3052,55 @@ app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
   if (speed_kmh !== undefined) driver.speed_kmh = parseFloat(speed_kmh);
   driver.last_heartbeat = Date.now();
 
+  let effectiveOrderId = order_id;
+  if (!effectiveOrderId && db.orders) {
+    const activeOrder = db.orders.find(o => 
+      o.driver_id === driver.id && 
+      ['driver_assigned', 'driver_arrived', 'out_for_delivery', 'picked_up'].includes(o.status)
+    );
+    if (activeOrder) effectiveOrderId = activeOrder.id;
+  }
+
+  let remainingDistance = null;
+  let etaMinutes = null;
+  if (effectiveOrderId) {
+    const order = db.orders.find(o => o.id === effectiveOrderId);
+    if (order && (order.delivery_latitude || order.delivery_lat)) {
+      const destLat = parseFloat(order.delivery_latitude || order.delivery_lat);
+      const destLng = parseFloat(order.delivery_longitude || order.delivery_lng);
+      remainingDistance = Math.round(calculateHaversineDistance(
+        driver.latitude, driver.longitude,
+        destLat, destLng
+      ));
+      etaMinutes = estimateEtaMinutes(remainingDistance, driver.speed_kmh || 35);
+    }
+  }
+
   const telemetryData = {
     driver_id: driver.id,
-    order_id: order_id || null,
+    order_id: effectiveOrderId || null,
     latitude: driver.latitude,
     longitude: driver.longitude,
     heading: driver.heading,
     speed_kmh: driver.speed_kmh,
+    remaining_distance_meters: remainingDistance,
+    eta_minutes: etaMinutes,
     recorded_at: new Date().toISOString()
   };
 
   if (req.io) {
-    SocketService.broadcastDriverLocation({
-      driver_id: driver.id,
-      order_id: order_id || null,
-      latitude: driver.latitude,
-      longitude: driver.longitude,
-      heading: driver.heading,
-      speed_kmh: driver.speed_kmh,
-      recorded_at: new Date().toISOString()
-    });
+    SocketService.broadcastDriverLocation(telemetryData);
+    if (effectiveOrderId) {
+      req.io.to(`order:${effectiveOrderId}`).emit('order:driver_location', telemetryData);
+      if (remainingDistance !== null && remainingDistance <= PROXIMITY_THRESHOLD_METERS) {
+        req.io.to(`order:${effectiveOrderId}`).emit('driver:proximity_alert', {
+          order_id: effectiveOrderId,
+          driver_id: driver.id,
+          distance_meters: remainingDistance,
+          message: 'الكابتن اقترب من موقعك (أقل من 200 متر) 🛵'
+        });
+      }
+    }
   }
   saveSeedData();
   saveDriverToPg(driver);
@@ -3099,9 +3128,18 @@ app.post('/api/v1/drivers/:id/heartbeat', (req, res) => {
       driver.heading = parseFloat(heading);
       driver.speed_kmh = parseFloat(speed_kmh);
 
+      let effectiveOrderId = order_id;
+      if (!effectiveOrderId && db.orders) {
+        const activeOrder = db.orders.find(o => 
+          o.driver_id === driver.id && 
+          ['driver_assigned', 'driver_arrived', 'out_for_delivery', 'picked_up'].includes(o.status)
+        );
+        if (activeOrder) effectiveOrderId = activeOrder.id;
+      }
+
       const telemetryData = {
         driver_id: driver.id,
-        order_id: order_id || null,
+        order_id: effectiveOrderId || null,
         latitude: driver.latitude,
         longitude: driver.longitude,
         heading: driver.heading,
@@ -3112,8 +3150,8 @@ app.post('/api/v1/drivers/:id/heartbeat', (req, res) => {
       if (req.io) {
         req.io.to(`driver:${driver.id}`).emit('driver:location_changed', telemetryData);
         req.io.to('admin:fleet').emit('admin:driver_moved', telemetryData);
-        if (order_id) {
-          req.io.to(`order:${order_id}`).emit('order:driver_location', telemetryData);
+        if (effectiveOrderId) {
+          req.io.to(`order:${effectiveOrderId}`).emit('order:driver_location', telemetryData);
         }
       }
     }

@@ -7,6 +7,7 @@ import 'simulated_driver_map.dart';
 import 'otp_input_field.dart';
 import 'cod_collection_sheet.dart';
 import 'services/driver_supabase_service.dart';
+import 'services/driver_gps_service.dart';
 import 'widgets/driver_motion_widgets.dart';
 
 /// ============================================================================
@@ -51,6 +52,8 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
     if (_activeOrder.paymentType != PaymentType.cashOnDelivery) {
       _isCashCollected = true;
     }
+    // Start live GPS telemetry for this active delivery order
+    DriverGpsService.instance.startTracking(orderId: _activeOrder.orderId);
     _fetchOrderStatus();
     _statusPollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       if (mounted) _fetchOrderStatus();
@@ -60,6 +63,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   @override
   void dispose() {
     _statusPollTimer?.cancel();
+    DriverGpsService.instance.setActiveOrderId(null);
     super.dispose();
   }
 

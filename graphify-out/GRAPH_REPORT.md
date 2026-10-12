@@ -1,17 +1,17 @@
 # Graph Report - wasel-app  (2026-10-12)
 
 ## Corpus Check
-- 422 files · ~1,235,805 words
+- 421 files · ~1,235,300 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 261 file(s) not represented in the graph (top: (none) 38, .xcconfig 32, .xml 28)
+- Unclassified: 258 file(s) not represented in the graph (top: (none) 38, .xcconfig 32, .xml 28)
 
 ## Summary
-- 13530 nodes · 38576 edges · 547 communities (476 shown, 71 thin omitted)
+- 13522 nodes · 38563 edges · 557 communities (484 shown, 73 thin omitted)
 - Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 5038 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `efa1a23e`
+- Built from commit: `fecbd3d6`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -24,30 +24,30 @@
 - b
 - StatefulWidget
 - m
-- package:flutter/material.dart
+- List
 - lib/order_tracking_screen.dart
 - lib/design_system.dart
 - ui_ux/design_system.dart
 - i
 - bouncy_pressable.dart
 - l
-- b
-- gV
+- c
+- v
 - ui_ux/product_detail_sheet.dart
 - test_harness.dart
 - gB
 - i
 - lib/driver_models.dart
-- receipt_audit_sheet.dart
+- shimmer_skeleton.dart
 - driver_app/driver_models.dart
 - ba
 - gbz
 - lib/active_delivery_flow_screen.dart
-- bW
+- eG
 - lib/driver_theme.dart
 - merchant_theme.dart
 - a
-- pulse_glow.dart
+- driver_app/simulated_driver_map.dart
 - v
 - State
 - merchant_models.dart
@@ -56,16 +56,16 @@
 - aXZ
 - a
 - aXZ
-- OI
+- oL
 - lib/home_screen.dart
 - smart_settings_tab.dart
 - package:flutter_test/flutter_test.dart
 - backend/public/app/canvaskit/canvaskit.js
 - public/app/canvaskit/canvaskit.js
-- dc
+- gbX
 - lib/order_radar_dialog.dart
-- b7
-- dart:async
+- b3
+- driver_notification_service.dart
 - backend/public/app/canvaskit/chromium/canvaskit.js
 - public/app/canvaskit/chromium/canvaskit.js
 - referral_model.dart
@@ -78,10 +78,10 @@
 - ui_ux/home_screen.dart
 - api_service.dart
 - public/app/canvaskit/webparagraph/canvaskit.js
-- product_modifiers_sheet.dart
-- aQc
+- admin_fleet_map.dart
+- swipe_slider.dart
 - server.js
-- gad
+- F
 - backend/public/app/canvaskit/webparagraph/canvaskit.js
 - b3
 - P
@@ -92,19 +92,19 @@
 - flutter_mobile_app/lib/main.dart
 - public/app/canvaskit/skwasm.js
 - backend/public/app/canvaskit/skwasm_heavy.js
-- Fy
+- ik
 - gcZ
 - $1
 - backend/public/app/canvaskit/skwasm.js
 - public/app/canvaskit/wimp.js
 - a1y
-- ga6
+- gq
 - d4
 - P
 - backend/public/app/canvaskit/wimp.js
 - FlutterWindow
 - .$1
-- Br
+- ghI
 - rH
 - e2
 - $1
@@ -119,12 +119,12 @@
 - admin_theme.dart
 - socket_service.dart
 - F
-- dW
-- aN
+- gdF
+- M_
 - storeController.js
-- F1
-- df
-- c3
+- bl
+- dh
+- kn
 - flutter_mobile_app/lib/services/whatsapp_auth_service.dart
 - Cj
 - backend/package.json
@@ -133,63 +133,63 @@
 - merchant_supabase_service.dart
 - _
 - gbm
-- hw
+- abx
 - W
 - admin_socket_service.dart
 - dj
 - aW
-- u6
+- lg
 - gK
-- ghI
+- tq
 - config/index.js
-- ZK
+- gc8
 - .$0
 - flutter_merchant_app/lib/main.dart
-- ak6
+- driver_radar_sheet.dart
 - .$0
 - ao
 - afN
 - firebase_auth_service.dart
 - _
-- uK
-- admin_fleet_map.dart
+- OM
+- package:flutter/material.dart
 - e3
 - ZO
 - referral_service.dart
-- cp
-- gbw
+- bz
+- ew
 - ao
 - test_server.js
 - .$2
 - ka
-- EH
+- j4
 - gbe
-- otp_verification_screen.dart
-- It
-- Oe
+- Ab
+- mh
+- gck
 - backend/test_e2e_order_lifecycle.js
 - XCTest
 - flutter_merchant_app/linux/runner/my_application.cc
 - flutter_mobile_app/linux/runner/my_application.cc
 - ha
-- gc1
+- e5
 - No
 - $0
 - bQ
 - flutter_driver_app/linux/runner/my_application.cc
 - $0
 - bH
-- gdX
+- abg
 - gbe
 - aR9
-- kD
+- fj
 - dc
-- driver_app/order_radar_dialog.dart
+- driver_app/cod_collection_sheet.dart
 - express
 - reviews.routes.js
-- __init__.py
-- F
-- Order
+- simulation_test.py
+- aI
+- Fy
 - gf0
 - gbm
 - ca
@@ -200,35 +200,35 @@
 - _
 - gad
 - W
-- gfk
+- gB
 - gR
 - bS
 - gc1
 - YI
 - WalletService
 - flutter_driver_app/windows/flutter/generated_plugin_registrant.cc
-- k9
-- e5
+- Br
+- Cp
 - gfd
 - Ab
-- cT
-- jm
+- Yb
+- b
 - aPV
 - YJ
 - SocketService
 - Version: 2.0 (Production Release & Architectural Standard)
 - tracking_socket_server.js
 - flutter_linux
-- simulation_test.py
-- en
+- go9
+- aZ_
 - ef
 - gcU
 - backend/public/app/flutter.js
 - backend/public/app/flutter_bootstrap.js
-- aZ_
-- sbn
+- G
+- ot
 - d9
-- v
+- ou
 - gc9
 - 3. Implementation Phases
 - FlutterMacOS
@@ -236,84 +236,84 @@
 - public/app/flutter.js
 - public/app/flutter_bootstrap.js
 - yx
-- gcO
-- acI
+- tl
+- aZ_
 - cD
 - dq
-- fY
-- E_
+- gd6
+- gdX
 - ga6
 - nN
 - Cocoa
-- shimmer_skeleton.dart
+- receipt_audit_sheet.dart
 - fM
-- bl
-- vj
+- abQ
+- hg
 - wasel-admin-mcp/package.json
 - common.ps1
 - 🎯 1. Problem Statement & Root-Cause Diagnosis
-- gd6
+- kC
 - gm7
-- GR
+- O3
 - dS
-- ee
+- yZ
 - AppDelegate
-- PricingEngine
+- It
 - dR
 - gaj
-- aZ_
-- yP
+- nR
+- jn
 - acc
-- xe
-- gob
-- ie
+- jy
+- gf1
+- gbA
 - 🚀 Wasel Nalut Super-App Unified Backend Platform (واصل نالوت)
-- m2
-- ii
+- wn
+- ky
 - Tasks: [FEATURE NAME]
 - ga_q
-- vA
+- cT
 - gdD
 - cl
 - zn
-- uL
-- gdK
+- aY
+- gfO
 - aN
-- aR7
+- gdC
 - agu
 - gcZ
 - gcU
-- atJ
+- ys
 - FlutterWindow
-- kD
-- gck
+- mp
+- eP
 - gdL
 - hE
 - gc9
-- dR
+- rU
 - Presto x Mataa Super-App — UI/UX Design System & Architecture Specification
 - ha
-- aIT
-- gc5
+- fZ
+- XM
 - TB
 - .$2
 - gjb
 - dm
-- TB
+- aY2
 - FlutterAppDelegate
-- BatchingOptimizer
+- gd6
 - ga_N
-- b1_
+- wA
 - bl
-- aZF
+- k9
 - uT
-- aG
+- iW
 - uS
 - aI
 - gp
-- .$3
-- ev
-- BZ
+- VE
+- abO
+- tA
 - gaP
 - $3
 - bS
@@ -323,71 +323,72 @@
 - flutter_driver_app/web/manifest.json
 - flutter_merchant_app/web/manifest.json
 - flutter_mobile_app/web/manifest.json
-- aH
-- hk
-- gq
+- is
+- Ya
+- aF2
 - public/app/manifest.json
 - bB
 - Feature Specification: Captain Cash Settlement & Merchant Order Notifications
-- gyh
-- gda
+- vz
+- adh
 - backend/public/manifest.json
-- math
+- qZ
 - bQ
 - a1z
 - 🗣️ 3. أمثلة على أوامر نصية مباشرة لهيرميز (Prompts for Hermes)
-- gu9
+- a3T
 - gjA
-- gbX
-- eQ
+- ws
+- vG
 - public/manifest.json
 - Ba
 - Super App Logistics & Geospatial Dispatch Engine
 - gdt
 - m0
-- aXR
+- yy
 - cart_checkout_screen.dart
-- rz
-- agr
-- OM
+- afO
+- u5
+- gfm
 - aRP
 - gi9
 - gd_
 - o4
-- M_
+- hp
 - gjV
 - Requirements
-- iN
+- ii
 - gp9
 - gjC
 - تقرير التدقيق القانوني والتقني الشامل لسياسات متجر Google Play
-- hg
-- b3
+- fs
+- aTm
+- or
 - aQA
 - gck
-- VI
+- hg
 - vouchers.routes.js
-- Ya
+- aEI
 - lb
 - toString
-- iB
+- YD
 - hN
 - Jh
-- l0
+- NS
 - jy
 - AppDelegate
 - AppDelegate
 - gq
 - EP
-- gez
+- gcO
 - xP
-- mp
+- aEc
 - a3Z
-- dh
+- dk
 - ga_M
 - d9
-- gcW
-- We
+- T0
+- aG
 - $2
 - AppDelegate
 - AppDelegate
@@ -395,9 +396,9 @@
 - 📋 Step-by-Step Reconstruction Roadmap for the Agent
 - a40
 - Document: 05_MERCHANT_AND_ADMIN_SYSTEMS.md
-- PV
+- aH
 - afQ
-- oL
+- c
 - m2
 - dt
 - Pg
@@ -405,7 +406,7 @@
 - copyProperties
 - create-new-feature.ps1
 - Feature Specification: [FEATURE NAME]
-- l4
+- aQA
 - ahy
 - Document: 04_FLUTTER_DRIVER_APP.md
 - Mz
@@ -418,103 +419,113 @@
 - installInstanceTearOff
 - gfm
 - afa
-- axv
+- dm
 - G
-- a07
-- nR
+- .$3
+- jB
 - Wasel Captain Driver App — Flutter Mobile Architecture & Design Specification
-- getTag
-- Fm
-- aE
-- a2g
+- A3
+- LU
+- aPR
+- a21
 - hE
-- fb
-- hB
-- a4G
+- aH
+- rP
+- a_7
 - 4. Test Tiers & Scenario Definitions
-- gS1
+- di
 - getTag
-- a1x
-- ZR
-- a_Y
+- aPV
+- abL
+- ku
 - WASEL Customer App - Test Readiness Report (TEST_READY.md)
 - savR
-- jI
+- yt
 - ir
-- aP
-- alV
+- hk
+- iP
 - 2. Mathematical Formulations
-- oO
-- oY
-- gj8
-- aSQ
+- a_F
+- r2
+- eo
+- gYf
 - convertToFastObject
-- gey
-- aWP
+- aQI
+- SB
 - aFb
 - wasel_admin_app/MainActivity.kt
 - wasel_captain_app/MainActivity.kt
 - wasel_merchant_app/MainActivity.kt
 - wasel_customer_app/MainActivity.kt
-- ahc
+- savt
 - Core Principles
-- aZI
+- fC
 - 🎯 1. Executive Summary & Problem Breakdown
 - Document: 02_BACKEND_API_AND_DATABASE.md
 - Document: 03_FLUTTER_CUSTOMER_APP.md
 - Document: 07_PRODUCTION_DEPLOYMENT_AND_DEVOPS.md
-- aYl
+- k
 - convertToFastObject
-- rE
+- $3
 - wD
 - fL
-- a4w
-- mG
-- il
+- a20
+- abe
+- gGP
 - bbv
-- a6m
-- afT
+- Dx
+- K1
 - l1
-- aUG
+- X8
 - PRODUCT.md
-- a4F
+- fU
 - aUE
 - a4H
-- aPS
+- aPT
 - Core Principles
-- eL
+- gmR
 - VZ
-- lc
+- qx
 - 👥 2. User Scenarios & Prioritized Stories
-- sr2
+- AX
 - aSO
 - Document: 01_PLATFORM_ARCHITECTURE_AND_SPECS.md
-- bbv
-- Lo
+- aKS
+- a0k
 - backend/public/sw.js
 - op
-- fF
-- e4
+- giI
+- ek
+- XN
 - eL
+- aY4
+- a_C
 - public/sw.js
+- aYi
 - Implementation Plan: [FEATURE]
 - 🏗️ 1. Technical Architecture & Architecture Decisions
 - 🏗️ 1. Technical Architecture & Decisions
 - Feature Specification: Firebase Phone SMS Authentication & Hybrid Fallback
+- ui
 - YC
 - gjN
+- aPO
 - iQ
+- b6J
 - a_k
+- cZ
 - 🎨 2. Component Design & Touchpoints
-- Lp
+- aWA
+- ln
+- $1$allowPlatformDefault
+- au9
 - Design System: Wasel Nalut (الهوية العصرية الفاتحة)
 - 📋 Task List
 - 📋 Task List
 - 📋 Task List
-- wx
 - aDC
-- jW
-- VF
+- j5
+- gBv
 - installInstanceTearOff
 - [CHECKLIST TYPE] Checklist: [FEATURE NAME]
 - wasel_admin_app
@@ -554,23 +565,23 @@
 ## Import Cycles
 - None detected.
 
-## Communities (547 total, 71 thin omitted)
+## Communities (557 total, 73 thin omitted)
 
 ### Community 0 - "backend/public/app/main.dart.js"
 Cohesion: 0.00
-Nodes (112): a01(), a0u(), a1r(), a1U(), a2g(), a2h(), a4l(), a4S() (+104 more)
+Nodes (84): a1r(), a1U(), a1x(), a2g(), a31(), a3E(), a3S(), a4F() (+76 more)
 
 ### Community 1 - "public/app/main.dart.js"
 Cohesion: 0.00
-Nodes (139): a0C(), a1s(), a1w(), a2h(), a2v(), a3F(), a3J(), a3S() (+131 more)
+Nodes (112): a0l(), a1r(), a1s(), a1w(), a2h(), a3F(), a4n(), a4q() (+104 more)
 
 ### Community 2 - "J"
 Cohesion: 0.01
-Nodes (233): $11$borderRadius$color$containedInkWell$controller$customBorder$onRemoved$position$radius$rectCallback$referenceBox$textDirection(), $13$blRadiusX$blRadiusY$bottom$brRadiusX$brRadiusY$left$right$tlRadiusX$tlRadiusY$top$trRadiusX$trRadiusY$uniformRadii(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$scale$signalKind$timeStamp$viewId(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$signalKind$tilt$timeStamp$viewId(), $15$buttons$change$device$kind$onRespond$physicalX$physicalY$pressure$pressureMax$scrollDeltaX$scrollDeltaY$signalKind$timeStamp$viewId(), $1$0(), $1$2(), $1$2$arguments() (+225 more)
+Nodes (215): $11$borderRadius$color$containedInkWell$controller$customBorder$onRemoved$position$radius$rectCallback$referenceBox$textDirection(), $13$blRadiusX$blRadiusY$bottom$brRadiusX$brRadiusY$left$right$tlRadiusX$tlRadiusY$top$trRadiusX$trRadiusY$uniformRadii(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$scale$signalKind$timeStamp$viewId(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$signalKind$tilt$timeStamp$viewId(), $15$buttons$change$device$kind$onRespond$physicalX$physicalY$pressure$pressureMax$scrollDeltaX$scrollDeltaY$signalKind$timeStamp$viewId(), $1$0(), $1$2(), $1$2$arguments() (+207 more)
 
 ### Community 3 - "J"
 Cohesion: 0.01
-Nodes (275): $11$borderRadius$color$containedInkWell$controller$customBorder$onRemoved$position$radius$rectCallback$referenceBox$textDirection(), $13$blRadiusX$blRadiusY$bottom$brRadiusX$brRadiusY$left$right$tlRadiusX$tlRadiusY$top$trRadiusX$trRadiusY$uniformRadii(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$scale$signalKind$timeStamp$viewId(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$signalKind$tilt$timeStamp$viewId(), $15$buttons$change$device$kind$onRespond$physicalX$physicalY$pressure$pressureMax$scrollDeltaX$scrollDeltaY$signalKind$timeStamp$viewId(), $1$0(), $1$2(), $1$2$arguments() (+267 more)
+Nodes (224): $11$borderRadius$color$containedInkWell$controller$customBorder$onRemoved$position$radius$rectCallback$referenceBox$textDirection(), $13$blRadiusX$blRadiusY$bottom$brRadiusX$brRadiusY$left$right$tlRadiusX$tlRadiusY$top$trRadiusX$trRadiusY$uniformRadii(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$scale$signalKind$timeStamp$viewId(), $13$buttons$change$device$kind$physicalX$physicalY$pressure$pressureMax$signalKind$tilt$timeStamp$viewId(), $15$buttons$change$device$kind$onRespond$physicalX$physicalY$pressure$pressureMax$scrollDeltaX$scrollDeltaY$signalKind$timeStamp$viewId(), $1$0(), $1$2(), $1$2$arguments() (+216 more)
 
 ### Community 4 - "accounting_tab.dart"
 Cohesion: 0.05
@@ -578,19 +589,19 @@ Nodes (42): AccountingTab, _AccountingTabState, _activeStatement, build, _buildA
 
 ### Community 5 - "b"
 Cohesion: 0.03
-Nodes (157): a0F(), a1V(), A3(), a5V(), a6d(), a_9(), abj(), ac0() (+149 more)
+Nodes (66): a1V(), abM(), ac8(), ae3(), aep(), aeX(), aKg(), aMV() (+58 more)
 
 ### Community 6 - "StatefulWidget"
 Cohesion: 0.02
-Nodes (116): _autoAcceptOrders, build, _buildActiveDeliveryBanner, _buildMetricItem, _buildOnlineToggleCard, _buildRadarSimulationTrigger, _buildZoneHeatSection, createState (+108 more)
+Nodes (132): _autoAcceptOrders, build, _buildActiveDeliveryBanner, _buildMetricItem, _buildOnlineToggleCard, _buildRadarSimulationTrigger, _buildZoneHeatSection, createState (+124 more)
 
 ### Community 7 - "m"
-Cohesion: 0.05
-Nodes (133): a0(), a10(), a4h(), a6k(), a6T(), a72(), abN(), abw() (+125 more)
+Cohesion: 0.04
+Nodes (116): a0(), a1A(), a4h(), a6k(), a6S(), a6T(), a_e(), aA() (+108 more)
 
-### Community 8 - "package:flutter/material.dart"
+### Community 8 - "List"
 Cohesion: 0.02
-Nodes (126): build, catalog, CatalogScreen, _CatalogScreenState, _categories, createState, _editProductPrice, _searchQuery (+118 more)
+Nodes (125): build, catalog, CatalogScreen, _CatalogScreenState, _categories, createState, _editProductPrice, _searchQuery (+117 more)
 
 ### Community 9 - "lib/order_tracking_screen.dart"
 Cohesion: 0.01
@@ -602,11 +613,11 @@ Nodes (127): AppColors, AppMotion, AppRadius, AppShadows, AppSpacing, AppTheme, 
 
 ### Community 11 - "ui_ux/design_system.dart"
 Cohesion: 0.02
-Nodes (115): actionText, AppColors, AppRadius, AppShadows, AppSpacing, AppTheme, AppTypography, backgroundColor (+107 more)
+Nodes (126): WaselMerchantApp, OdFilterPill, StatusPill, WaselButton, WaselCard, WaselBouncyButton, CountdownRing, actionText (+118 more)
 
 ### Community 12 - "i"
 Cohesion: 0.02
-Nodes (115): a4Z(), aDk(), adX(), ae3(), aFd(), ah3(), ah6(), ah7() (+107 more)
+Nodes (108): a4Z(), AC(), aDk(), aFd(), ah3(), ah6(), ah7(), ah8() (+100 more)
 
 ### Community 13 - "bouncy_pressable.dart"
 Cohesion: 0.07
@@ -614,15 +625,15 @@ Nodes (28): backgroundColor, behavior, border, borderRadius, build, child, _cont
 
 ### Community 14 - "l"
 Cohesion: 0.04
-Nodes (113): a0(), a0l(), A3(), a_5(), aA6(), abN(), AC(), aD0() (+105 more)
+Nodes (103): $2$isClosing(), a0(), a_5(), abh(), acD(), aD0(), aDD(), aDE() (+95 more)
 
-### Community 15 - "b"
-Cohesion: 0.04
-Nodes (137): a0G(), a2T(), a5X(), a6k(), aAA(), ac0(), ach(), acv() (+129 more)
+### Community 15 - "c"
+Cohesion: 0.03
+Nodes (104): a0G(), a4b(), a6k(), a_f(), abY(), ach(), aDU(), afc() (+96 more)
 
-### Community 16 - "gV"
-Cohesion: 0.05
-Nodes (59): a2p(), a2S(), a3c(), a4Q(), A6(), a6G(), aAw(), abu() (+51 more)
+### Community 16 - "v"
+Cohesion: 0.06
+Nodes (71): A1(), a1N(), a2S(), a4Q(), a4t(), a5M(), A6(), a6A() (+63 more)
 
 ### Community 17 - "ui_ux/product_detail_sheet.dart"
 Cohesion: 0.03
@@ -633,20 +644,20 @@ Cohesion: 0.02
 Nodes (84): abort, add, addAuthentication, addCredentials, addError, addProxyCredentials, addStream, authenticate (+76 more)
 
 ### Community 19 - "gB"
-Cohesion: 0.05
-Nodes (53): b4v(), b89(), bgm(), gB(), gbw(), gCl(), gCS(), gCV() (+45 more)
+Cohesion: 0.03
+Nodes (77): ah2(), ahc(), b6t(), b7p(), b89(), bgm(), gabL(), gabM() (+69 more)
 
 ### Community 20 - "i"
 Cohesion: 0.02
-Nodes (97): a6q(), adg(), agZ(), ah1(), ah4(), ah5(), al9(), aPO() (+89 more)
+Nodes (100): a6q(), adg(), agZ(), ah1(), ah4(), ah5(), ah6(), ahg() (+92 more)
 
 ### Community 21 - "lib/driver_models.dart"
 Cohesion: 0.02
 Nodes (92): acceptanceRate, ActiveDeliveryOrder, amountLyd, basePayoutLyd, bonusLyd, cashInHandCodLyd, city, codAmountLyd (+84 more)
 
-### Community 22 - "receipt_audit_sheet.dart"
-Cohesion: 0.08
-Nodes (23): build, _checkedIndices, createState, customerNote, didUpdateWidget, id, _isAllChecked, items (+15 more)
+### Community 22 - "shimmer_skeleton.dart"
+Cohesion: 0.03
+Nodes (67): build, curve, decimalPlaces, duration, initialValue, OdometerCounter, prefix, style (+59 more)
 
 ### Community 23 - "driver_app/driver_models.dart"
 Cohesion: 0.02
@@ -654,19 +665,19 @@ Nodes (85): acceptanceRate, ActiveDeliveryOrder, amountLyd, basePayoutLyd, bonus
 
 ### Community 24 - "ba"
 Cohesion: 0.02
-Nodes (155): a3V(), aAO(), ad5(), agj(), amh(), AX(), aY(), aYg() (+147 more)
+Nodes (161): a32(), a3V(), aAO(), ad5(), agj(), alW(), AX(), aY() (+153 more)
 
 ### Community 25 - "gbz"
-Cohesion: 0.12
-Nodes (21): a0d(), a2Q(), aDY(), afP(), agd(), am5(), amS(), gamU() (+13 more)
+Cohesion: 0.19
+Nodes (13): a2Q(), a45(), amS(), gbz(), ig(), j7(), Ph(), S8() (+5 more)
 
 ### Community 26 - "lib/active_delivery_flow_screen.dart"
 Cohesion: 0.02
 Nodes (78): ActiveDeliveryFlowScreen, _activeOrder, _advanceToStep, build, _buildCurrentStepContent, _buildStep1NavigatingToStore, _buildStep2PickupChecklist, _buildStep3NavigatingToCustomer (+70 more)
 
-### Community 27 - "bW"
-Cohesion: 0.67
-Nodes (3): ame(), bW(), U7()
+### Community 27 - "eG"
+Cohesion: 0.10
+Nodes (21): ajW(), Al(), ame(), aWA(), aWB(), aWD(), aWe(), aWf() (+13 more)
 
 ### Community 28 - "lib/driver_theme.dart"
 Cohesion: 0.02
@@ -678,27 +689,27 @@ Nodes (77): accentAmber, accentTeal, activeCard, AppMotion, card, completedGrey,
 
 ### Community 30 - "a"
 Cohesion: 0.03
-Nodes (80): a(), A2(), a35(), a3W(), a42(), a4W(), a51(), a_H() (+72 more)
+Nodes (74): a(), A2(), a3W(), a42(), a4W(), a6I(), a_0(), a_H() (+66 more)
 
-### Community 31 - "pulse_glow.dart"
-Cohesion: 0.02
-Nodes (97): build, _controllers, correctOtp, createState, dispose, _focusNodes, initState, _isInvalid (+89 more)
+### Community 31 - "driver_app/simulated_driver_map.dart"
+Cohesion: 0.03
+Nodes (71): build, _controllers, correctOtp, createState, dispose, _focusNodes, initState, _isInvalid (+63 more)
 
 ### Community 32 - "v"
 Cohesion: 0.05
-Nodes (98): a0e(), A1(), a2a(), a2U(), a4l(), a4S(), a5O(), A6() (+90 more)
+Nodes (96): a00(), a0e(), A1(), a1O(), a2a(), a2U(), a4l(), a4S() (+88 more)
 
 ### Community 33 - "State"
-Cohesion: 0.03
-Nodes (58): _ActiveDeliveryFlowScreenState, _DriverHomeScreenState, _DriverWalletScreenState, _DriverMainNavigationHarnessState, _WaselCaptainAppState, _OrderRadarDialogState, _OtpInputFieldState, _SimulatedDriverMapState (+50 more)
+Cohesion: 0.07
+Nodes (26): _ActiveDeliveryFlowScreenState, _CodCollectionSheetState, _DriverHomeScreenState, _DriverWalletScreenState, _DriverMainNavigationHarnessState, _WaselCaptainAppState, _OrderRadarDialogState, _OtpInputFieldState (+18 more)
 
 ### Community 34 - "merchant_models.dart"
 Cohesion: 0.03
 Nodes (71): allItemsCollected, CatalogProduct, category, collectedItemsCount, copyWith, courierName, courierPhone, courierVehicle (+63 more)
 
 ### Community 35 - "ba"
-Cohesion: 0.02
-Nodes (168): a34(), a6g(), aAR(), ad7(), aeG(), agl(), ai3(), alY() (+160 more)
+Cohesion: 0.03
+Nodes (74): ba(), sa04(), sa5R(), sa63(), sa6L(), sa6Q(), sa6S(), sa71() (+66 more)
 
 ### Community 36 - "driver_app/driver_theme.dart"
 Cohesion: 0.03
@@ -710,27 +721,27 @@ Nodes (70): a_O(), ajs(), aTq(), aVF(), aXZ(), e7(), gN9(), gPv() (+62 more)
 
 ### Community 38 - "a"
 Cohesion: 0.03
-Nodes (80): $2$priority$scheduler(), a(), a0q(), a0r(), A2(), a3U(), a4B(), a4U() (+72 more)
+Nodes (75): a(), a0q(), a33(), a40(), a4B(), a5j(), a5x(), a6j() (+67 more)
 
 ### Community 39 - "aXZ"
 Cohesion: 0.05
-Nodes (68): a3U(), a_P(), aTs(), aVH(), aXZ(), bfn(), E7(), gNa() (+60 more)
+Nodes (70): a3U(), a_P(), aTs(), aVH(), aXZ(), bfn(), E7(), gbI() (+62 more)
 
-### Community 40 - "OI"
-Cohesion: 0.21
-Nodes (22): a4y(), a_u(), a_v(), a_w(), fe(), gaxw(), gDZ(), glF() (+14 more)
+### Community 40 - "oL"
+Cohesion: 0.15
+Nodes (25): $2$alignmentPolicy(), a4y(), a5i(), a_u(), a_v(), a_w(), fe(), gDZ() (+17 more)
 
 ### Community 41 - "lib/home_screen.dart"
 Cohesion: 0.02
-Nodes (89): _buildDailyEarningsCard, build, build, _placeOrder, build, _buildCaptainRow, _captainName, _captainPhone (+81 more)
+Nodes (111): _buildDailyEarningsCard, build, build, _placeOrder, _activeOrder, _activeTab, _bannerController, build (+103 more)
 
 ### Community 42 - "smart_settings_tab.dart"
 Cohesion: 0.06
 Nodes (31): build, _buildDeliveryZonesCard, _buildInputField, _buildPurgeTestDataCard, _buildSectionCard, _captainBonusEnabled, _captainBonusLydCtrl, _captainTargetCtrl (+23 more)
 
 ### Community 43 - "package:flutter_test/flutter_test.dart"
-Cohesion: 0.03
-Nodes (20): main, main, main, main, main, main, main, main (+12 more)
+Cohesion: 0.04
+Nodes (19): main, main, main, main, main, main, main, main (+11 more)
 
 ### Community 44 - "backend/public/app/canvaskit/canvaskit.js"
 Cohesion: 0.05
@@ -740,21 +751,21 @@ Nodes (32): a(), b(), c(), d(), e(), f(), g(), gc() (+24 more)
 Cohesion: 0.05
 Nodes (30): a(), b(), c(), d(), e(), f(), g(), gc() (+22 more)
 
-### Community 46 - "dc"
-Cohesion: 0.27
-Nodes (11): alo(), dc(), Ig(), pR(), S3(), sa69(), sa70(), saBi() (+3 more)
+### Community 46 - "gbX"
+Cohesion: 0.14
+Nodes (20): aex(), aF(), akn(), akT(), alo(), dc(), gbX(), Ig() (+12 more)
 
 ### Community 47 - "lib/order_radar_dialog.dart"
-Cohesion: 0.03
-Nodes (45): AdminMainScreen, _AdminMainScreenState, build, _buildTab, _checkPendingPayouts, createState, _currentIndex, dispose (+37 more)
+Cohesion: 0.02
+Nodes (75): build, _buildActionButtons, _buildCircularTimer, _buildOrderOverview, _buildPayoutHeroCard, _buildRouteItinerary, createState, dispose (+67 more)
 
-### Community 48 - "b7"
-Cohesion: 0.11
-Nodes (38): a20(), acm(), aej(), aQ1(), aRw(), aWm(), aXk(), aYf() (+30 more)
+### Community 48 - "b3"
+Cohesion: 0.07
+Nodes (63): a20(), aA6(), ae3(), ae5(), aej(), af4(), alK(), apJ() (+55 more)
 
-### Community 49 - "dart:async"
-Cohesion: 0.05
-Nodes (36): _driverAlertChannel, DriverNotificationService, _fcm, _firebaseMessagingBackgroundHandler, getDeviceToken, initialize, initializeApp, _instance (+28 more)
+### Community 49 - "driver_notification_service.dart"
+Cohesion: 0.06
+Nodes (26): _driverAlertChannel, DriverNotificationService, _fcm, _firebaseMessagingBackgroundHandler, getDeviceToken, initialize, initializeApp, _instance (+18 more)
 
 ### Community 50 - "backend/public/app/canvaskit/chromium/canvaskit.js"
 Cohesion: 0.07
@@ -774,7 +785,7 @@ Nodes (51): addDriver, addProduct, addStarterProductsForStore, addStore, AdminSu
 
 ### Community 54 - ".$1"
 Cohesion: 0.06
-Nodes (38): $1$1(), a3n(), a4N(), a50(), aBK(), ac2(), afU(), agK() (+30 more)
+Nodes (34): $1$1(), a3n(), a4N(), aBb(), aBK(), aft(), afU(), agf() (+26 more)
 
 ### Community 55 - "flutter_mobile_app/windows/runner/win32_window.cpp"
 Cohesion: 0.07
@@ -794,7 +805,7 @@ Nodes (16): EnableFullDpiSupportIfAvailable(), Point, x, y, Scale(), Size, heigh
 
 ### Community 59 - "ui_ux/home_screen.dart"
 Cohesion: 0.04
-Nodes (46): build, createState, _currentPage, dispose, _enterMainApp, _goToLogin, gradientColors, icon (+38 more)
+Nodes (44): build, _buildStarRow, _commentCtrl, createState, driverId, _driverRating, FairRatingDialog, _FairRatingDialogState (+36 more)
 
 ### Community 60 - "api_service.dart"
 Cohesion: 0.04
@@ -804,33 +815,33 @@ Nodes (51): activeAddress, activeOrderId, addLoyaltyPoints, ApiResult, ApiServic
 Cohesion: 0.07
 Nodes (26): R(), kd(), a(), b(), c(), cb(), e(), f() (+18 more)
 
-### Community 62 - "product_modifiers_sheet.dart"
-Cohesion: 0.12
-Nodes (17): _addNewGroup, _addNewOptionToGroup, _applyPreset, build, category, createState, _groups, initState (+9 more)
+### Community 62 - "admin_fleet_map.dart"
+Cohesion: 0.04
+Nodes (41): build, _buildActionBtn, _buildCodCashCard, _buildLiveStoresSection, _buildMetricCard, _buildPrimaryRevenueCard, createState, DashboardTab (+33 more)
 
-### Community 63 - "aQc"
-Cohesion: 0.29
-Nodes (8): aDR(), aeY(), aQc(), gKX(), gvl(), O7(), SD(), We()
+### Community 63 - "swipe_slider.dart"
+Cohesion: 0.05
+Nodes (34): build, _controller, createState, dispose, _FlyParticle, _FlyParticleState, FlyToCartOverlay, icon (+26 more)
 
 ### Community 64 - "server.js"
 Cohesion: 0.05
 Nodes (30): https, WaselFcmDispatcher, compression, cors, dispatchService, envPath, _executeSaveSeedData(), express (+22 more)
 
-### Community 65 - "gad"
-Cohesion: 0.07
-Nodes (38): aBb(), ajN(), alY(), aPT(), aRH(), aRs(), aSz(), aUY() (+30 more)
+### Community 65 - "F"
+Cohesion: 0.08
+Nodes (44): abh(), aDA(), adX(), aeS(), alY(), aOB(), apL(), aPT() (+36 more)
 
 ### Community 66 - "backend/public/app/canvaskit/webparagraph/canvaskit.js"
 Cohesion: 0.07
 Nodes (23): a(), b(), c(), cb(), e(), f(), fb(), k() (+15 more)
 
 ### Community 67 - "b3"
-Cohesion: 0.06
-Nodes (47): a2b(), a4o(), a4V(), a5c(), Ab(), acj(), afY(), aiU() (+39 more)
+Cohesion: 0.09
+Nodes (28): a3X(), a4V(), ali(), aty(), aZ6(), b3(), ga_0(), gamY() (+20 more)
 
 ### Community 68 - "P"
-Cohesion: 0.04
-Nodes (49): a46(), a48(), a57(), a6c(), a6h(), aDp(), aeS(), agl() (+41 more)
+Cohesion: 0.06
+Nodes (35): a46(), a6c(), a6h(), aDp(), afR(), afS(), ahl(), ahQ() (+27 more)
 
 ### Community 69 - "_"
 Cohesion: 0.04
@@ -850,7 +861,7 @@ Nodes (16): wWinMain(), CreateAndAttachConsole(), GetCommandLineArguments(), Utf
 
 ### Community 73 - "flutter_mobile_app/lib/main.dart"
 Cohesion: 0.03
-Nodes (63): build, _buildStarRow, _commentCtrl, createState, driverId, _driverRating, FairRatingDialog, _FairRatingDialogState (+55 more)
+Nodes (48): build, createState, _currentIndex, dispose, _initServicesAsync, initState, isDark, _loadedTabs (+40 more)
 
 ### Community 74 - "public/app/canvaskit/skwasm.js"
 Cohesion: 0.05
@@ -860,17 +871,17 @@ Nodes (13): d(), Ga(), Ja(), Ka(), La(), n(), q(), Qc() (+5 more)
 Cohesion: 0.06
 Nodes (12): h(), d(), Ga(), Ja(), Ka(), La(), n(), q() (+4 more)
 
-### Community 76 - "Fy"
-Cohesion: 0.11
-Nodes (26): a0H(), a4o(), aEb(), af0(), ag9(), ahX(), aTo(), aXP() (+18 more)
+### Community 76 - "ik"
+Cohesion: 0.16
+Nodes (18): a0H(), a44(), aEb(), af0(), ahX(), aky(), aZs(), beG() (+10 more)
 
 ### Community 77 - "gcZ"
-Cohesion: 0.24
-Nodes (13): a0P(), a9I(), aFg(), ahv(), ajq(), aQz(), aZu(), Da() (+5 more)
+Cohesion: 0.43
+Nodes (7): aFg(), ahv(), ajq(), aQz(), aZu(), gcZ(), XT()
 
 ### Community 78 - "$1"
-Cohesion: 0.05
-Nodes (47): $1(), a0t(), a2o(), a3b(), a55(), a5k(), a5U(), a5V() (+39 more)
+Cohesion: 0.06
+Nodes (34): $1(), a2o(), a55(), a5U(), a5V(), a5W(), a6n(), a6U() (+26 more)
 
 ### Community 79 - "backend/public/app/canvaskit/skwasm.js"
 Cohesion: 0.06
@@ -881,20 +892,20 @@ Cohesion: 0.06
 Nodes (15): c(), Ha(), Ka(), La(), ma(), Mc(), Na(), p() (+7 more)
 
 ### Community 81 - "a1y"
-Cohesion: 0.17
-Nodes (17): a0n(), a12(), a1J(), a1P(), a1w(), a1y(), a26(), a27() (+9 more)
+Cohesion: 0.20
+Nodes (15): a0n(), a1J(), a1P(), a1w(), a1y(), ahy(), ai4(), akK() (+7 more)
 
-### Community 82 - "ga6"
-Cohesion: 0.05
-Nodes (44): a5M(), a6A(), a6B(), a_B(), aAu(), ad0(), agC(), ago() (+36 more)
+### Community 82 - "gq"
+Cohesion: 0.09
+Nodes (29): a5n(), a6G(), a_c(), aA3(), ad0(), aka(), al3(), al7() (+21 more)
 
 ### Community 83 - "d4"
-Cohesion: 0.14
-Nodes (35): aej(), apH(), aRw(), aSA(), aXH(), b2(), b4y(), b5w() (+27 more)
+Cohesion: 0.08
+Nodes (50): a4S(), aej(), apH(), aQ0(), aQ1(), aRr(), aRw(), atZ() (+42 more)
 
 ### Community 84 - "P"
 Cohesion: 0.07
-Nodes (31): ad1(), aDq(), afA(), ahS(), ai7(), aiC(), aiy(), aj8() (+23 more)
+Nodes (30): acv(), ad1(), aDq(), afA(), ahS(), ai7(), aiC(), aiy() (+22 more)
 
 ### Community 85 - "backend/public/app/canvaskit/wimp.js"
 Cohesion: 0.06
@@ -906,55 +917,55 @@ Nodes (9): FlutterWindow, flutter_controller_, FlutterWindow::FlutterWindow(), p
 
 ### Community 87 - ".$1"
 Cohesion: 0.05
-Nodes (47): $1$1(), a3p(), a4P(), a50(), a66(), abc(), abL(), ac4() (+39 more)
+Nodes (45): $1$1(), a3p(), a4P(), a50(), abc(), abL(), ac4(), afw() (+37 more)
 
-### Community 88 - "Br"
-Cohesion: 0.10
-Nodes (22): a3Z(), abu(), ad4(), agO(), AR(), aS5(), ax4(), Br() (+14 more)
+### Community 88 - "ghI"
+Cohesion: 0.17
+Nodes (12): a_o(), aQN(), aS5(), B4(), CA(), gBc(), gBJ(), gCS() (+4 more)
 
 ### Community 89 - "rH"
-Cohesion: 0.07
-Nodes (49): a0E(), a5p(), a5w(), a6y(), adK(), afl(), agM(), apN() (+41 more)
+Cohesion: 0.11
+Nodes (33): a0E(), a1S(), a5p(), a5w(), adK(), afl(), au_(), aVT() (+25 more)
 
 ### Community 90 - "e2"
-Cohesion: 0.12
-Nodes (18): a0w(), a_a(), aEI(), agc(), alg(), ali(), aNY(), aoI() (+10 more)
+Cohesion: 0.15
+Nodes (14): a0A(), a0w(), agc(), alg(), ali(), aQr(), aW2(), b0H() (+6 more)
 
 ### Community 91 - "$1"
-Cohesion: 0.06
-Nodes (32): $1(), a1C(), a2n(), a53(), a5S(), a5T(), a5U(), aF3() (+24 more)
+Cohesion: 0.05
+Nodes (37): $1(), a0s(), a2n(), a3Y(), a53(), a5k(), a5S(), a5T() (+29 more)
 
 ### Community 92 - "cl"
-Cohesion: 0.12
-Nodes (16): a4y(), a5D(), au1(), aY3(), b5J(), bdR(), cl(), ET() (+8 more)
+Cohesion: 0.20
+Nodes (10): aY3(), b5H(), b5J(), cl(), F6(), ga2N(), gkz(), NV() (+2 more)
 
 ### Community 93 - "cart_service.dart"
 Cohesion: 0.05
 Nodes (32): addItem, cartCountNotifier, CartItem, CartService, clear, copyWith, count, decrementItem (+24 more)
 
 ### Community 94 - "ui_ux/order_tracking_screen.dart"
-Cohesion: 0.02
-Nodes (76): activeStep, _animController, build, _buildMapCircleBtn, _buildNavigationInstructionBanner, createState, destinationAddress, dispose (+68 more)
+Cohesion: 0.03
+Nodes (69): _DriverMapPainter, _VoucherQrPainter, activeColor, build, centerChild, color, fromDuration, paint (+61 more)
 
 ### Community 95 - "$2"
-Cohesion: 0.08
-Nodes (31): $2(), a31(), a3E(), a3R(), a4C(), aCk(), ad6(), aeR() (+23 more)
+Cohesion: 0.12
+Nodes (18): $2(), a1C(), a3R(), a4C(), aCk(), ad6(), aiY(), anV() (+10 more)
 
 ### Community 96 - "bd_"
-Cohesion: 0.15
-Nodes (34): a_S(), aeF(), aep(), ama(), aqq(), aUx(), bc_(), bd_() (+26 more)
+Cohesion: 0.10
+Nodes (45): a_S(), aeF(), aeH(), AM(), ama(), aUx(), bc_(), bcD() (+37 more)
 
 ### Community 97 - "driver_supabase_service.dart"
 Cohesion: 0.06
 Nodes (34): activeDriverId, activeDriverName, activeDriverPhone, activeDriverPlate, activeDriverVehicle, _activeOrderPrefKey, apiKey, authenticateCaptain (+26 more)
 
 ### Community 98 - "gU"
-Cohesion: 0.15
-Nodes (20): a4K(), a6I(), acW(), akr(), amf(), an5(), aPX(), aPY() (+12 more)
+Cohesion: 0.13
+Nodes (22): a4K(), acW(), akr(), amf(), an5(), aPX(), aPY(), AR() (+14 more)
 
 ### Community 99 - "gU"
-Cohesion: 0.05
-Nodes (60): $2$isClosing(), a0L(), aAH(), abh(), acC(), acD(), ace(), ach() (+52 more)
+Cohesion: 0.13
+Nodes (29): $2$isClosing(), a4I(), acB(), acD(), acF(), ach(), aCI(), aco() (+21 more)
 
 ### Community 100 - "admin_theme.dart"
 Cohesion: 0.06
@@ -966,31 +977,31 @@ Nodes (24): _channel, connect, defaultWsUrl, disconnect, dispose, _driverLocatio
 
 ### Community 102 - "F"
 Cohesion: 0.08
-Nodes (44): a00(), a1c(), a1D(), a1e(), a3O(), a47(), a49(), a6f() (+36 more)
+Nodes (33): a0s(), a0t(), a3O(), a47(), a51(), a6q(), aOH(), apN() (+25 more)
 
-### Community 103 - "dW"
-Cohesion: 0.13
-Nodes (26): a0j(), a_2(), aCk(), aiW(), alH(), b7B(), dW(), F4() (+18 more)
+### Community 103 - "gdF"
+Cohesion: 0.06
+Nodes (46): $2$alignmentPolicy(), a0j(), a15(), a_2(), aAH(), abR(), ac6(), aCk() (+38 more)
 
-### Community 104 - "aN"
-Cohesion: 0.23
-Nodes (12): A7(), aiQ(), aN(), gdU(), gmJ(), go2(), gqz(), sdU() (+4 more)
+### Community 104 - "M_"
+Cohesion: 0.14
+Nodes (20): A7(), ahW(), aiQ(), aN(), aS3(), gdU(), gmJ(), go2() (+12 more)
 
 ### Community 105 - "storeController.js"
 Cohesion: 0.07
 Nodes (18): DispatchService, orderController, OrderService, { calculateDynamicDeliveryFee }, { config }, getStores(), { calculateHaversineDistance }, DispatchService (+10 more)
 
-### Community 106 - "F1"
-Cohesion: 0.29
-Nodes (7): a6z(), F1(), ga2P(), gaxE(), GW(), sf4(), sFF()
+### Community 106 - "bl"
+Cohesion: 0.24
+Nodes (10): acm(), aCv(), bee(), bfb(), bl(), F1(), gaxE(), GW() (+2 more)
 
-### Community 107 - "df"
-Cohesion: 0.21
-Nodes (13): a_9(), al5(), al9(), aQ2(), aUw(), Cf(), cX(), df() (+5 more)
+### Community 107 - "dh"
+Cohesion: 0.12
+Nodes (17): a08(), a3R(), al5(), al9(), an0(), aNZ(), aOM(), aOr() (+9 more)
 
-### Community 108 - "c3"
-Cohesion: 0.14
-Nodes (15): a0r(), a5m(), a6V(), apJ(), au0(), aVZ(), b0i(), b4y() (+7 more)
+### Community 108 - "kn"
+Cohesion: 0.11
+Nodes (25): a02(), a0y(), a3P(), a56(), ad9(), aok(), aoL(), aoP() (+17 more)
 
 ### Community 109 - "flutter_mobile_app/lib/services/whatsapp_auth_service.dart"
 Cohesion: 0.07
@@ -1005,12 +1016,12 @@ Cohesion: 0.06
 Nodes (31): dependencies, compression, cors, express, jsonwebtoken, pg, socket.io, uuid (+23 more)
 
 ### Community 112 - "bH"
-Cohesion: 0.09
-Nodes (24): $2$from$to(), a3G(), a5o(), a5z(), A9(), aeX(), aEY(), au7() (+16 more)
+Cohesion: 0.11
+Nodes (19): $2$from$to(), a3G(), a5o(), a5z(), ahi(), au7(), bH(), ga0l() (+11 more)
 
 ### Community 113 - "aW"
-Cohesion: 0.08
-Nodes (35): a0h(), a3O(), a41(), aE9(), aEb(), afI(), afR(), afS() (+27 more)
+Cohesion: 0.12
+Nodes (27): a3c(), a41(), aC7(), afI(), ajB(), am0(), amg(), ana() (+19 more)
 
 ### Community 114 - "merchant_supabase_service.dart"
 Cohesion: 0.06
@@ -1021,72 +1032,72 @@ Cohesion: 0.06
 Nodes (28): _, cardDark, cardLight, full, glowAmber, glowEmerald, huge, lg (+20 more)
 
 ### Community 116 - "gbm"
-Cohesion: 0.19
-Nodes (14): agA(), aj5(), ak8(), akH(), amT(), aMV(), ank(), anM() (+6 more)
+Cohesion: 0.06
+Nodes (51): a1f(), a4r(), a4T(), a5A(), a5c(), a6p(), abw(), adL() (+43 more)
 
-### Community 117 - "hw"
-Cohesion: 0.12
-Nodes (24): a3L(), a4b(), abx(), ac3(), afP(), aPR(), aR7(), aRb() (+16 more)
+### Community 117 - "abx"
+Cohesion: 0.17
+Nodes (15): a3b(), a3J(), a3S(), a5H(), abx(), ac3(), aW4(), gHm() (+7 more)
 
 ### Community 118 - "W"
-Cohesion: 0.10
-Nodes (21): $4(), a2X(), a59(), a_7(), a_B(), ae0(), ae9(), aoJ() (+13 more)
+Cohesion: 0.16
+Nodes (15): $4(), a03(), a58(), aD9(), ae9(), aoJ(), aPc(), b0V() (+7 more)
 
 ### Community 119 - "admin_socket_service.dart"
 Cohesion: 0.05
 Nodes (36): AdminSocketService, connect, _connectionController, disconnect, _dispatchDriverMoved, _dispatchOrderStatus, dispose, _driverMovedController (+28 more)
 
 ### Community 120 - "dj"
-Cohesion: 0.14
-Nodes (15): acj(), aeO(), am5(), aW4(), bcq(), dj(), gx3(), gyn() (+7 more)
+Cohesion: 0.40
+Nodes (6): aAK(), acj(), bcq(), dj(), i4(), px()
 
 ### Community 121 - "aW"
-Cohesion: 0.18
-Nodes (12): a3Q(), A8(), aC8(), ajD(), aQ4(), aW(), aZN(), ga76() (+4 more)
+Cohesion: 0.12
+Nodes (20): a3Q(), a5k(), A8(), aC8(), ajD(), aQ4(), aUv(), aW() (+12 more)
 
-### Community 122 - "u6"
-Cohesion: 0.33
-Nodes (6): a2j(), a2k(), a2l(), a2m(), Tz(), u6()
+### Community 122 - "lg"
+Cohesion: 0.22
+Nodes (9): a0q(), a2l(), a2m(), aTe(), lg(), LT(), u6(), Wp() (+1 more)
 
 ### Community 123 - "gK"
-Cohesion: 0.06
-Nodes (35): a0k(), a13(), a2u(), a_F(), a_j(), aA7(), ag3(), agf() (+27 more)
+Cohesion: 0.14
+Nodes (16): aO2(), aQj(), axv(), b73(), bcF(), be0(), bgu(), bhp() (+8 more)
 
-### Community 124 - "ghI"
-Cohesion: 0.18
-Nodes (13): a2Y(), a_n(), aQ_(), aQl(), aYb(), gavg(), gBI(), ghI() (+5 more)
+### Community 124 - "tq"
+Cohesion: 0.67
+Nodes (3): gavg(), gIN(), tq()
 
 ### Community 125 - "config/index.js"
 Cohesion: 0.04
 Nodes (32): config, envPath, fs, path, { Pool }, { config }, hfService, { config } (+24 more)
 
-### Community 126 - "ZK"
-Cohesion: 0.14
-Nodes (15): aoq(), aoT(), b6t(), b7p(), gasP(), gcP(), gcW(), gpq() (+7 more)
+### Community 126 - "gc8"
+Cohesion: 0.11
+Nodes (23): a09(), acj(), aiU(), alF(), anT(), aR2(), aR3(), ar4() (+15 more)
 
 ### Community 127 - ".$0"
 Cohesion: 0.05
-Nodes (38): a0j(), a1K(), a2o(), a5d(), a5q(), aAG(), aAr(), abi() (+30 more)
+Nodes (42): a0j(), a2o(), a2Y(), a5d(), a5q(), aAG(), aAr(), abi() (+34 more)
 
 ### Community 128 - "flutter_merchant_app/lib/main.dart"
 Cohesion: 0.04
 Nodes (42): _activeStore, _activeUser, build, _catalog, _checkStoredSession, createState, _currentIndex, _currentStore (+34 more)
 
-### Community 129 - "ak6"
-Cohesion: 0.25
-Nodes (8): adL(), afR(), ak6(), gA7(), gT6(), jA(), Mm(), Rg()
+### Community 129 - "driver_radar_sheet.dart"
+Cohesion: 0.10
+Nodes (21): build, _buildCaptainRow, _captainName, _captainPhone, _captainVehicle, _checkCustomerActiveOrder, createState, dispose (+13 more)
 
 ### Community 130 - ".$0"
 Cohesion: 0.06
-Nodes (35): a0k(), a1L(), a5f(), a5s(), aAu(), abi(), ag7(), ah9() (+27 more)
+Nodes (35): a0k(), a1L(), a5f(), abi(), ag7(), ah9(), ahi(), ajg() (+27 more)
 
 ### Community 131 - "ao"
-Cohesion: 0.11
-Nodes (19): a4C(), ahk(), ao(), aUO(), b7L(), b7o(), bdc(), bde() (+11 more)
+Cohesion: 0.09
+Nodes (23): a4C(), ahk(), ao(), aUO(), b7L(), b7o(), bdc(), bde() (+15 more)
 
 ### Community 132 - "afN"
 Cohesion: 0.22
-Nodes (13): a58(), a5a(), aFm(), afN(), an5(), aSM(), aZH(), Fc() (+5 more)
+Nodes (13): a58(), a5a(), aFm(), afN(), an5(), aSM(), Fc(), ga0P() (+5 more)
 
 ### Community 133 - "firebase_auth_service.dart"
 Cohesion: 0.08
@@ -1096,69 +1107,69 @@ Nodes (20): _auth, DriverFirebaseAuthService, isValidLibyanPhone, _kCachedVerifi
 Cohesion: 0.08
 Nodes (23): _, curveOf, durationOf, easeInOutCubic, easeOutCubic, extended, fast, isAnimationDisabled (+15 more)
 
-### Community 135 - "uK"
-Cohesion: 0.26
-Nodes (21): a4A(), a_v(), a_w(), fe(), gE_(), glH(), j0(), jj() (+13 more)
+### Community 135 - "OM"
+Cohesion: 0.25
+Nodes (23): a4A(), a_v(), a_x(), fe(), gE_(), glH(), j0(), jj() (+15 more)
 
-### Community 136 - "admin_fleet_map.dart"
+### Community 136 - "package:flutter/material.dart"
 Cohesion: 0.02
-Nodes (110): build, main, WaselAdminApp, build, _buildActionBtn, _buildCodCashCard, _buildLiveStoresSection, _buildMetricCard (+102 more)
+Nodes (88): build, main, WaselAdminApp, build, _buildFilterChip, _buildOrderCard, createState, initState (+80 more)
 
 ### Community 137 - "e3"
-Cohesion: 0.13
-Nodes (27): a1q(), a6o(), aA3(), acq(), akc(), aPZ(), aQv(), aZ6() (+19 more)
+Cohesion: 0.20
+Nodes (20): a0r(), a1q(), a6o(), acq(), akc(), aPZ(), aQv(), e3() (+12 more)
 
 ### Community 138 - "ZO"
-Cohesion: 0.25
-Nodes (8): ga1i(), ga1k(), ga1l(), ga1m(), ghY(), gNe(), gOT(), ZO()
+Cohesion: 0.11
+Nodes (20): amg(), atw(), aVk(), aVO(), b1f(), bh2(), bh4(), BX() (+12 more)
 
 ### Community 139 - "referral_service.dart"
 Cohesion: 0.12
 Nodes (12): addVoucher, _countVerified, evaluateAndAddReferral, _existingUserPhones, getActiveVouchers, getCampaignRules, getInvitedFriends, getReferralCode (+4 more)
 
-### Community 140 - "cp"
-Cohesion: 0.16
-Nodes (14): ael(), ah0(), aVR(), b5s(), cp(), gbd(), gf7(), gjo() (+6 more)
+### Community 140 - "bz"
+Cohesion: 0.09
+Nodes (22): bz(), sa3P(), sa3x(), sa6a(), saBt(), saEX(), savr(), savZ() (+14 more)
 
-### Community 141 - "gbw"
-Cohesion: 0.12
-Nodes (24): $3$color$endFraction$startFraction(), a0B(), a0x(), a0y(), a3t(), a_t(), aD8(), ahj() (+16 more)
+### Community 141 - "ew"
+Cohesion: 0.17
+Nodes (17): $3$color$endFraction$startFraction(), a69(), aD8(), aOo(), aSt(), cV(), ew(), fD() (+9 more)
 
 ### Community 142 - "ao"
-Cohesion: 0.09
-Nodes (22): a4A(), ao(), aUO(), b7L(), b7o(), b8_(), bdc(), bde() (+14 more)
+Cohesion: 0.06
+Nodes (34): a4A(), aAF(), ae5(), aEa(), agn(), ao(), aRs(), aUO() (+26 more)
 
 ### Community 143 - "test_server.js"
 Cohesion: 0.05
 Nodes (43): app, calculateDynamicDeliveryFee(), db, io, { Server }, { app, server, db, calculateDynamicDeliveryFee }, http, { io: ioClient } (+35 more)
 
 ### Community 144 - ".$2"
-Cohesion: 0.08
-Nodes (25): $2$priority$scheduler(), a11(), a1y(), A4(), a4D(), aD5(), aEH(), aek() (+17 more)
+Cohesion: 0.09
+Nodes (22): a1y(), a5i(), aVu(), aYq(), aYx(), b04(), b9U(), b_J() (+14 more)
 
 ### Community 145 - "ka"
 Cohesion: 0.22
-Nodes (11): a_6(), b0J(), b4q(), b4t(), b4u(), bbt(), gayb(), ka() (+3 more)
+Nodes (11): a_6(), b0J(), b4t(), b4u(), bbt(), gayb(), Hr(), ka() (+3 more)
 
-### Community 146 - "EH"
-Cohesion: 0.18
-Nodes (12): a1V(), a_l(), aDS(), aXg(), b00(), cr(), EH(), F7() (+4 more)
+### Community 146 - "j4"
+Cohesion: 0.12
+Nodes (17): a0i(), a29(), a4I(), a4o(), a5N(), a_l(), alc(), cr() (+9 more)
 
 ### Community 147 - "gbe"
-Cohesion: 0.09
-Nodes (27): a0w(), adh(), aiv(), aj2(), ajc(), akV(), akX(), amC() (+19 more)
+Cohesion: 0.14
+Nodes (18): A2(), aD7(), aj2(), ajc(), akV(), akX(), au4(), b7E() (+10 more)
 
-### Community 148 - "otp_verification_screen.dart"
-Cohesion: 0.05
-Nodes (40): build, _carriers, createState, dispose, _errorMessage, _fullPhoneNumber, isDark, _isLoading (+32 more)
+### Community 148 - "Ab"
+Cohesion: 0.13
+Nodes (19): a2b(), a4o(), Ab(), aRY(), b_P(), bG(), CM(), EJ() (+11 more)
 
-### Community 149 - "It"
+### Community 149 - "mh"
+Cohesion: 0.23
+Nodes (15): a3H(), a3Q(), a59(), abV(), ac1(), bf_(), gHl(), gon() (+7 more)
+
+### Community 150 - "gck"
 Cohesion: 0.15
-Nodes (24): a3H(), a3Q(), a59(), abV(), ac1(), amJ(), aQ2(), aUw() (+16 more)
-
-### Community 150 - "Oe"
-Cohesion: 0.50
-Nodes (4): gGx(), Oe(), vu(), WU()
+Nodes (15): a6w(), a71(), aAw(), ga1s(), ga2v(), gasV(), gck(), gGx() (+7 more)
 
 ### Community 151 - "backend/test_e2e_order_lifecycle.js"
 Cohesion: 0.21
@@ -1177,60 +1188,60 @@ Cohesion: 0.11
 Nodes (13): main(), first_frame_cb(), my_application_activate(), my_application_class_init(), my_application_dispose(), my_application_init(), my_application_local_command_line(), my_application_new() (+5 more)
 
 ### Community 156 - "ha"
-Cohesion: 0.20
-Nodes (12): ga2Z(), ga3A(), ga3K(), ga4u(), gNh(), gqM(), gyl(), gzY() (+4 more)
+Cohesion: 0.13
+Nodes (18): a2X(), a59(), ae0(), eo(), ga2Z(), ga3A(), ga3K(), ga4u() (+10 more)
 
-### Community 157 - "gc1"
-Cohesion: 0.26
-Nodes (16): aA9(), abM(), aQv(), aUP(), aVN(), bac(), bB(), bcH() (+8 more)
+### Community 157 - "e5"
+Cohesion: 0.16
+Nodes (18): aRM(), aUP(), aZ3(), bcH(), bcI(), bcJ(), cB(), e5() (+10 more)
 
 ### Community 158 - "No"
-Cohesion: 0.07
-Nodes (28): a4q(), a56(), aff(), afS(), as7(), bhL(), gGD(), gH2() (+20 more)
+Cohesion: 0.09
+Nodes (23): a56(), aff(), afS(), aRU(), as7(), gGD(), gH2(), gHN() (+15 more)
 
 ### Community 159 - "$0"
-Cohesion: 0.11
-Nodes (20): $0(), $2$params(), a00(), a2W(), a5y(), aD4(), aeD(), ah9() (+12 more)
+Cohesion: 0.10
+Nodes (22): $0(), $2$params(), a00(), a2W(), a5y(), aD4(), aeD(), ah9() (+14 more)
 
 ### Community 160 - "bQ"
-Cohesion: 0.14
-Nodes (30): a4t(), af0(), AJ(), b4v(), b6x(), bQ(), ef(), fA() (+22 more)
+Cohesion: 0.24
+Nodes (21): b4v(), bQ(), galM(), gaoE(), gbF(), gbT(), gcc(), gcG() (+13 more)
 
 ### Community 161 - "flutter_driver_app/linux/runner/my_application.cc"
 Cohesion: 0.11
 Nodes (13): main(), first_frame_cb(), my_application_activate(), my_application_class_init(), my_application_dispose(), my_application_init(), my_application_local_command_line(), my_application_new() (+5 more)
 
 ### Community 162 - "$0"
-Cohesion: 0.07
-Nodes (32): $0(), $2$params(), a01(), a1B(), a1G(), a2Y(), a3X(), abt() (+24 more)
+Cohesion: 0.12
+Nodes (17): $0(), $2$params(), a01(), a2Y(), aDA(), aeF(), E6(), EA() (+9 more)
 
 ### Community 163 - "bH"
-Cohesion: 0.10
-Nodes (22): $2$from$to(), a2f(), a3I(), a5B(), a5q(), bH(), ga0m(), ga2b() (+14 more)
+Cohesion: 0.08
+Nodes (28): $2$from$to(), $3$crossAxisPosition$mainAxisPosition(), a2f(), a3I(), a5B(), a5q(), bH(), ga0m() (+20 more)
 
-### Community 164 - "gdX"
-Cohesion: 0.25
-Nodes (8): abg(), akV(), aSA(), atj(), gdX(), gNp(), iO(), M7()
+### Community 164 - "abg"
+Cohesion: 0.67
+Nodes (3): abg(), gNp(), M7()
 
 ### Community 165 - "gbe"
-Cohesion: 0.13
-Nodes (17): a1A(), aC5(), ad8(), adj(), akZ(), amE(), aZ1(), b8F() (+9 more)
+Cohesion: 0.09
+Nodes (27): a1A(), a3h(), aC5(), ahB(), aj4(), ajc(), akZ(), amE() (+19 more)
 
 ### Community 166 - "aR9"
-Cohesion: 0.11
-Nodes (21): a5H(), a5t(), a6B(), ahf(), aky(), alv(), aR9(), ay8() (+13 more)
+Cohesion: 0.12
+Nodes (18): a5t(), aA0(), aEv(), ahf(), aR9(), ay8(), bh6(), ce() (+10 more)
 
-### Community 167 - "kD"
-Cohesion: 0.22
-Nodes (9): a44(), a4r(), a4T(), a6p(), abw(), kD(), Nu(), scX() (+1 more)
+### Community 167 - "fj"
+Cohesion: 0.13
+Nodes (18): a1c(), a1e(), a49(), a6f(), agx(), ahu(), ajF(), aR0() (+10 more)
 
 ### Community 168 - "dc"
-Cohesion: 0.25
-Nodes (11): alm(), dc(), Ih(), pQ(), S2(), sa67(), sa6Z(), saBh() (+3 more)
+Cohesion: 0.17
+Nodes (15): alm(), aZ1(), b7I(), dc(), dL(), pQ(), rz(), S2() (+7 more)
 
-### Community 169 - "driver_app/order_radar_dialog.dart"
-Cohesion: 0.03
-Nodes (66): build, _changeToReturn, CodCollectionSheet, _CodCollectionSheetState, createState, _customController, dispose, initState (+58 more)
+### Community 169 - "driver_app/cod_collection_sheet.dart"
+Cohesion: 0.06
+Nodes (29): build, _changeToReturn, CodCollectionSheet, createState, _customController, dispose, initState, _isConfirmedByDriver (+21 more)
 
 ### Community 170 - "express"
 Cohesion: 0.08
@@ -1240,33 +1251,33 @@ Nodes (16): aiController, express, router, express, orderController, router, exp
 Cohesion: 0.11
 Nodes (10): { authMiddleware }, express, ReviewService, router, LedgerService, SYSTEM_WALLETS, { v4: uuidv4 }, ReviewService (+2 more)
 
-### Community 172 - "__init__.py"
-Cohesion: 0.18
-Nodes (4): Location, kuhn_munkres(), haversine_distance(), road_distance_estimate()
+### Community 172 - "simulation_test.py"
+Cohesion: 0.05
+Nodes (18): BatchedRoute, BatchingConstraints, BatchingOptimizer, Location, Order, RouteStop, AssignmentResult, DispatchEngine (+10 more)
 
-### Community 173 - "F"
-Cohesion: 0.06
-Nodes (49): a0s(), a2i(), a2j(), a2k(), a2l(), a3X(), a40(), aI() (+41 more)
+### Community 173 - "aI"
+Cohesion: 0.12
+Nodes (19): a13(), A4(), aI(), aQH(), aQN(), aRI(), atV(), aVZ() (+11 more)
 
-### Community 174 - "Order"
-Cohesion: 0.18
-Nodes (5): BatchedRoute, Order, AssignmentResult, DispatchEngine, Driver
+### Community 174 - "Fy"
+Cohesion: 0.14
+Nodes (17): a0v(), a74(), ad3(), ahh(), am1(), aTk(), aTl(), aTq() (+9 more)
 
 ### Community 175 - "gf0"
-Cohesion: 0.22
-Nodes (13): am3(), aVm(), aXk(), b0Q(), b59(), bfU(), bhr(), bhs() (+5 more)
+Cohesion: 0.17
+Nodes (16): abj(), am3(), aXk(), b59(), baq(), bar(), bat(), bfU() (+8 more)
 
 ### Community 176 - "gbm"
-Cohesion: 0.09
-Nodes (31): a1e(), a3f(), a3M(), a4R(), a6n(), adJ(), aFj(), agY() (+23 more)
+Cohesion: 0.14
+Nodes (21): a1e(), a3f(), a3M(), adJ(), agY(), air(), aIS(), ak2() (+13 more)
 
 ### Community 177 - "ca"
 Cohesion: 0.14
-Nodes (18): a5r(), a6i(), aeT(), ahw(), ajZ(), aZy(), b57(), b6D() (+10 more)
+Nodes (18): a5r(), a6i(), aeT(), aR7(), b57(), b6D(), b6F(), bcb() (+10 more)
 
 ### Community 178 - "gbj"
-Cohesion: 0.18
-Nodes (22): a1d(), aB0(), aBD(), aeO(), ahB(), at6(), bY(), dV() (+14 more)
+Cohesion: 0.22
+Nodes (19): a1d(), aB0(), aBD(), aeO(), ahB(), at6(), dV(), F7() (+11 more)
 
 ### Community 179 - "Flutter"
 Cohesion: 0.18
@@ -1281,36 +1292,36 @@ Cohesion: 0.11
 Nodes (19): amount, _balance, build, _buildFeatureTile, _buildFilterTab, _buildGatewayChip, category, createState (+11 more)
 
 ### Community 182 - "_"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (15): _, _pageTransitionsTheme, WaselTheme, _, cairo, fontFamilyArabic, fontFamilyNumeric, numberHero (+7 more)
 
 ### Community 184 - "gad"
 Cohesion: 0.08
-Nodes (39): aDC(), aeu(), aod(), aSU(), aX7(), b07(), b6n(), bcv() (+31 more)
+Nodes (40): a14(), aDC(), aeu(), aie(), aod(), aX7(), b07(), b6n() (+32 more)
 
 ### Community 185 - "W"
 Cohesion: 0.13
-Nodes (20): $4(), a1H(), a1M(), a45(), ae4(), ae7(), aXN(), b0V() (+12 more)
+Nodes (16): $4(), a2V(), a_A(), ae7(), aXN(), b0V(), cy(), geU() (+8 more)
 
-### Community 186 - "gfk"
-Cohesion: 0.20
-Nodes (10): gfk(), gFU(), gIH(), gmM(), gRi(), gru(), gVc(), gxz() (+2 more)
+### Community 186 - "gB"
+Cohesion: 0.03
+Nodes (80): ahd(), b6t(), b7p(), b89(), bbb(), bgm(), bh2(), bh4() (+72 more)
 
 ### Community 187 - "gR"
-Cohesion: 0.20
-Nodes (11): $3$crossAxisPosition$mainAxisPosition(), ga2V(), gR(), gr9(), MR(), nC(), q0(), sLy() (+3 more)
+Cohesion: 0.25
+Nodes (9): a3L(), aUx(), gR(), MR(), nC(), sLy(), TX(), zf() (+1 more)
 
 ### Community 188 - "bS"
-Cohesion: 0.17
-Nodes (12): a54(), afe(), am8(), aQF(), aUJ(), aWo(), aZG(), b_1() (+4 more)
+Cohesion: 0.14
+Nodes (15): a0i(), a54(), afe(), am8(), aUJ(), aZG(), b6x(), b_1() (+7 more)
 
 ### Community 189 - "gc1"
-Cohesion: 0.29
-Nodes (17): a1N(), aA6(), aUN(), bcH(), bcI(), bcJ(), bii(), bK() (+9 more)
+Cohesion: 0.30
+Nodes (16): aA6(), aA7(), ac3(), aUN(), bcH(), bcI(), bcJ(), bK() (+8 more)
 
 ### Community 190 - "YI"
-Cohesion: 0.10
-Nodes (21): all(), au2(), gagT(), gasF(), gasI(), gasW(), gqk(), sa23() (+13 more)
+Cohesion: 0.06
+Nodes (33): a0c(), a30(), a_m(), AC(), aF4(), ag4(), ah8(), au2() (+25 more)
 
 ### Community 191 - "WalletService"
 Cohesion: 0.23
@@ -1320,37 +1331,37 @@ Nodes (6): LedgerError, { Pool }, SYSTEM_WALLETS, { v4: uuidv4 }, WalletService,
 Cohesion: 0.12
 Nodes (4): RegisterPlugins(), RegisterPlugins(), RegisterPlugins(), RegisterPlugins()
 
-### Community 193 - "k9"
-Cohesion: 0.20
-Nodes (12): aii(), am2(), aXE(), bm(), bW(), gSi(), gSj(), gSk() (+4 more)
+### Community 193 - "Br"
+Cohesion: 0.13
+Nodes (16): a3Z(), a_G(), aii(), am2(), aXE(), bm(), Br(), ga_1() (+8 more)
 
-### Community 194 - "e5"
-Cohesion: 0.33
-Nodes (7): aRM(), b_C(), beS(), cc(), e5(), gpk(), V7()
+### Community 194 - "Cp"
+Cohesion: 0.18
+Nodes (15): aVR(), aWm(), aXM(), b5u(), Cp(), gbd(), gf6(), gjp() (+7 more)
 
 ### Community 195 - "gfd"
-Cohesion: 0.22
-Nodes (10): acg(), acN(), acp(), afv(), agj(), aoc(), aRX(), gfd() (+2 more)
+Cohesion: 0.25
+Nodes (9): acg(), acN(), acp(), agj(), aoc(), aRX(), gfd(), gXY() (+1 more)
 
 ### Community 196 - "Ab"
-Cohesion: 0.08
-Nodes (29): Ab(), an1(), aNZ(), aRY(), au6(), aZc(), b_P(), bc_() (+21 more)
+Cohesion: 0.11
+Nodes (21): a2j(), a2k(), a5e(), Ab(), an1(), aNY(), aRY(), atV() (+13 more)
 
-### Community 197 - "cT"
-Cohesion: 0.12
-Nodes (16): a09(), aeD(), agn(), aRo(), aX1(), aXM(), bgk(), cT() (+8 more)
+### Community 197 - "Yb"
+Cohesion: 0.22
+Nodes (10): a09(), aDw(), aeD(), agn(), aXM(), glE(), grp(), gy0() (+2 more)
 
-### Community 198 - "jm"
-Cohesion: 0.17
-Nodes (16): agq(), agr(), aXY(), b9v(), b9w(), gadI(), gjp(), jm() (+8 more)
+### Community 198 - "b"
+Cohesion: 0.03
+Nodes (85): a0n(), a1V(), a4g(), a6m(), a_r(), a_s(), acm(), aCr() (+77 more)
 
 ### Community 199 - "aPV"
-Cohesion: 0.47
-Nodes (6): aPV(), aVQ(), ga_(), ga0(), gaF(), gH()
+Cohesion: 0.38
+Nodes (7): acX(), aPV(), aVQ(), ga_(), ga0(), gaF(), gH()
 
 ### Community 200 - "YJ"
-Cohesion: 0.11
-Nodes (19): au4(), gagV(), gasH(), gasY(), gql(), sa24(), sa38(), sa4L() (+11 more)
+Cohesion: 0.06
+Nodes (34): abf(), ah0(), au4(), aVR(), b5s(), cp(), gagV(), gasH() (+26 more)
 
 ### Community 201 - "SocketService"
 Cohesion: 0.07
@@ -1368,21 +1379,21 @@ Nodes (15): calculateHaversineDistance(), checkOrderProximityAndBroadcast(), dri
 Cohesion: 0.12
 Nodes (4): fl_register_plugins(), fl_register_plugins(), fl_register_plugins(), fl_register_plugins()
 
-### Community 205 - "simulation_test.py"
-Cohesion: 0.14
-Nodes (5): BatchingConstraints, DispatchWeights, PricingConfig, create_simulation_environment(), run_simulation()
+### Community 205 - "go9"
+Cohesion: 0.22
+Nodes (15): a6g(), go9(), gt0(), L5(), saD1(), sbI(), scO(), scY() (+7 more)
 
-### Community 206 - "en"
-Cohesion: 0.15
-Nodes (19): a0y(), a3v(), a6h(), a_f(), a_u(), aD9(), aRq(), aUv() (+11 more)
+### Community 206 - "aZ_"
+Cohesion: 0.07
+Nodes (44): $3$color$endFraction$startFraction(), a0C(), a0y(), a0z(), a3v(), a3y(), a9S(), a_u() (+36 more)
 
 ### Community 207 - "ef"
-Cohesion: 0.24
-Nodes (11): a52(), af5(), AK(), b97(), ef(), fA(), gmR(), jD() (+3 more)
+Cohesion: 0.15
+Nodes (18): a16(), a2T(), a4v(), a52(), af5(), agt(), AK(), bco() (+10 more)
 
 ### Community 208 - "gcU"
-Cohesion: 0.40
-Nodes (6): b_u(), bbo(), gcU(), gH3(), K0(), T9()
+Cohesion: 0.12
+Nodes (20): a_E(), aeO(), afh(), ai3(), alw(), am3(), am5(), b_u() (+12 more)
 
 ### Community 209 - "backend/public/app/flutter.js"
 Cohesion: 0.24
@@ -1392,25 +1403,25 @@ Nodes (13): _createScriptTag(), E(), F(), _getNewServiceWorker(), L(), load(), l
 Cohesion: 0.24
 Nodes (13): _createScriptTag(), E(), F(), _getNewServiceWorker(), L(), load(), loadEntrypoint(), _loadJSEntrypoint() (+5 more)
 
-### Community 211 - "aZ_"
-Cohesion: 0.10
-Nodes (26): a0A(), a0z(), A5(), alB(), aZ_(), b5f(), b5k(), b5s() (+18 more)
-
-### Community 212 - "sbn"
+### Community 211 - "G"
 Cohesion: 0.14
-Nodes (14): a4m(), a_k(), aXY(), b9v(), b9w(), ba0(), bhc(), F6() (+6 more)
+Nodes (18): a0A(), A5(), aEY(), b5f(), b5k(), b5s(), b60(), bal() (+10 more)
+
+### Community 212 - "ot"
+Cohesion: 0.33
+Nodes (6): aXY(), b9v(), b9w(), jD(), ot(), sbn()
 
 ### Community 213 - "d9"
-Cohesion: 0.16
-Nodes (19): a1I(), a1N(), a2p(), aAJ(), ae1(), ae7(), ae8(), aih() (+11 more)
+Cohesion: 0.15
+Nodes (22): a1I(), a2p(), aAJ(), acI(), ae1(), ae7(), ae8(), aih() (+14 more)
 
-### Community 214 - "v"
-Cohesion: 0.05
-Nodes (47): a19(), a1b(), a1S(), a47(), a4I(), a4j(), a5k(), a6j() (+39 more)
+### Community 214 - "ou"
+Cohesion: 0.09
+Nodes (29): a4j(), aeU(), agM(), al8(), ga1V(), ga4i(), gc5(), gCR() (+21 more)
 
 ### Community 215 - "gc9"
-Cohesion: 0.16
-Nodes (24): a21(), aF8(), agq(), ajl(), ajM(), b8m(), b8N(), b_q() (+16 more)
+Cohesion: 0.19
+Nodes (21): aF8(), agq(), ajl(), b8m(), b8N(), gbY(), gc9(), gCS() (+13 more)
 
 ### Community 216 - "3. Implementation Phases"
 Cohesion: 0.06
@@ -1433,36 +1444,36 @@ Cohesion: 0.24
 Nodes (13): _createScriptTag(), E(), F(), _getNewServiceWorker(), L(), load(), loadEntrypoint(), _loadJSEntrypoint() (+5 more)
 
 ### Community 221 - "yx"
-Cohesion: 0.15
-Nodes (17): a1z(), aRK(), aYZ(), aZ0(), cB(), cc(), e5(), gMF() (+9 more)
+Cohesion: 0.17
+Nodes (15): a4l(), amC(), aRK(), aZE(), cc(), DO(), e5(), guH() (+7 more)
 
-### Community 222 - "gcO"
-Cohesion: 0.15
-Nodes (13): a5g(), aAz(), ag3(), aXX(), bft(), bfv(), gBp(), gcO() (+5 more)
+### Community 222 - "tl"
+Cohesion: 0.29
+Nodes (8): a5g(), ac0(), aXX(), ghV(), goU(), GZ(), lI(), tl()
 
-### Community 223 - "acI"
+### Community 223 - "aZ_"
 Cohesion: 0.15
-Nodes (17): a03(), a58(), acI(), aPc(), aPU(), B4(), galC(), gaua() (+9 more)
+Nodes (14): a0z(), alB(), aZ_(), ga1X(), ga4a(), gID(), goK(), gvZ() (+6 more)
 
 ### Community 224 - "cD"
-Cohesion: 0.24
-Nodes (11): af1(), alN(), amB(), aTg(), baq(), bar(), bat(), cD() (+3 more)
+Cohesion: 0.15
+Nodes (15): amB(), b4B(), baq(), bar(), bas(), bat(), cD(), dq() (+7 more)
 
 ### Community 225 - "dq"
-Cohesion: 0.19
-Nodes (19): a4X(), a_e(), aEv(), aik(), akl(), akR(), aVG(), dq() (+11 more)
+Cohesion: 0.13
+Nodes (24): a4X(), aEv(), aik(), aki(), akl(), akR(), aoT(), aTc() (+16 more)
 
-### Community 226 - "fY"
-Cohesion: 0.22
-Nodes (15): a0G(), aEa(), aeZ(), ahV(), aZP(), fY(), gDR(), gVs() (+7 more)
+### Community 226 - "gd6"
+Cohesion: 0.13
+Nodes (28): a0G(), a4m(), a5F(), aeZ(), af7(), ahV(), akw(), aR9() (+20 more)
 
-### Community 227 - "E_"
-Cohesion: 0.14
-Nodes (18): a0O(), a6l(), abf(), ad2(), akn(), akT(), aSy(), ath() (+10 more)
+### Community 227 - "gdX"
+Cohesion: 0.16
+Nodes (16): abf(), ad2(), ag1(), akn(), akT(), aSy(), ath(), cr() (+8 more)
 
 ### Community 228 - "ga6"
-Cohesion: 0.09
-Nodes (25): a6e(), aje(), ajN(), akc(), aQI(), aR6(), aSl(), atz() (+17 more)
+Cohesion: 0.12
+Nodes (16): a46(), a5l(), a6z(), akc(), anX(), aR6(), aSl(), atz() (+8 more)
 
 ### Community 229 - "nN"
 Cohesion: 0.12
@@ -1472,21 +1483,21 @@ Nodes (16): gGC(), gHM(), gHn(), gHo(), gHp(), gHq(), gHR(), gHS() (+8 more)
 Cohesion: 0.10
 Nodes (9): Cocoa, RegisterGeneratedPlugins(), MainFlutterWindow, RegisterGeneratedPlugins(), MainFlutterWindow, RegisterGeneratedPlugins(), MainFlutterWindow, RegisterGeneratedPlugins() (+1 more)
 
-### Community 231 - "shimmer_skeleton.dart"
+### Community 231 - "receipt_audit_sheet.dart"
 Cohesion: 0.02
-Nodes (138): _availableEarningsLyd, build, _buildFinancialHeroCard, _buildTransactionTile, _cashInHandCodLyd, createState, DriverWalletScreen, _formatTime (+130 more)
+Nodes (110): build, createState, dispose, DriverLoginScreen, _DriverLoginScreenState, _errorMessage, _fillQuickCredentials, _handleLogin (+102 more)
 
 ### Community 232 - "fM"
-Cohesion: 0.33
-Nodes (6): a43(), ahn(), b57(), ER(), fM(), RK()
+Cohesion: 0.29
+Nodes (7): a43(), ahn(), b57(), ER(), fM(), lS(), RK()
 
-### Community 233 - "bl"
-Cohesion: 0.25
-Nodes (8): a5B(), adN(), aPU(), bee(), bfb(), bl(), hx(), NS()
+### Community 233 - "abQ"
+Cohesion: 0.14
+Nodes (14): a_Q(), abQ(), acE(), acy(), acz(), b75(), gRi(), gRr() (+6 more)
 
-### Community 234 - "vj"
-Cohesion: 0.67
-Nodes (3): eS(), q4(), vj()
+### Community 234 - "hg"
+Cohesion: 0.16
+Nodes (14): agi(), ajs(), ajW(), am8(), aQ3(), aS1(), gx7(), hg() (+6 more)
 
 ### Community 235 - "wasel-admin-mcp/package.json"
 Cohesion: 0.12
@@ -1500,69 +1511,73 @@ Nodes (13): Find-SpecifyRoot(), Format-SpecKitCommand(), Get-CurrentBranch(), Ge
 Cohesion: 0.06
 Nodes (28): 1. Summary, 2. Technical Context, 3. Implementation Steps, Implementation Plan: KDS Kitchen & Captain Delivery Handover Synchronization, Phase 1: Backend Safety & Idempotency (`backend/server.js`), Phase 2: Captain App Resilience (`flutter_driver_app`), Phase 3: Merchant KDS App Stability (`flutter_merchant_app`), Phase 4: Verification & Integration (+20 more)
 
-### Community 238 - "gd6"
-Cohesion: 0.20
-Nodes (10): a1A(), a_Z(), af7(), aih(), az4(), ci(), gau3(), gd6() (+2 more)
+### Community 238 - "kC"
+Cohesion: 0.18
+Nodes (11): a42(), a4R(), a6n(), aFj(), afY(), aih(), ci(), gau3() (+3 more)
 
 ### Community 239 - "gm7"
-Cohesion: 0.18
-Nodes (12): aF(), fh(), ga3F(), gb2(), gb5(), gm7(), grr(), gwl() (+4 more)
+Cohesion: 0.20
+Nodes (11): aF(), fh(), ga3F(), gb2(), gb5(), gm7(), grr(), gwl() (+3 more)
 
-### Community 240 - "GR"
-Cohesion: 0.12
-Nodes (18): a_A(), ahc(), alu(), asP(), aW3(), bfq(), ga2D(), gadP() (+10 more)
+### Community 240 - "O3"
+Cohesion: 0.18
+Nodes (11): a6z(), ahc(), alu(), asP(), ga2P(), gadP(), galU(), N2() (+3 more)
 
 ### Community 241 - "dS"
 Cohesion: 0.14
-Nodes (16): aAI(), ak4(), au_(), aVE(), aVu(), b_k(), b_m(), C0() (+8 more)
+Nodes (15): aAI(), ak4(), am5(), aVE(), aVu(), b_k(), b_m(), bbo() (+7 more)
 
-### Community 242 - "ee"
-Cohesion: 0.08
-Nodes (32): a3D(), a_6(), aRb(), aSr(), av8(), aZt(), b4q(), b4r() (+24 more)
+### Community 242 - "yZ"
+Cohesion: 0.12
+Nodes (17): a57(), aB2(), aE(), aSr(), aw7(), aZt(), b9i(), gaBU() (+9 more)
+
+### Community 244 - "It"
+Cohesion: 0.24
+Nodes (13): a0B(), a0x(), amJ(), aQ2(), aUw(), geg(), gk8(), gpq() (+5 more)
 
 ### Community 245 - "dR"
-Cohesion: 0.18
-Nodes (13): a0d(), a32(), a_n(), ac1(), aF(), ag6(), aha(), dR() (+5 more)
+Cohesion: 0.14
+Nodes (18): a0d(), a32(), a_n(), ac1(), ael(), af1(), ag6(), aha() (+10 more)
 
 ### Community 246 - "gaj"
-Cohesion: 0.09
-Nodes (28): a0v(), a3e(), a6r(), a74(), ad3(), agf(), ahh(), ajJ() (+20 more)
+Cohesion: 0.11
+Nodes (19): a3e(), a4y(), a5D(), a6r(), agf(), au1(), bdR(), bih() (+11 more)
 
-### Community 247 - "aZ_"
+### Community 247 - "nR"
 Cohesion: 0.17
-Nodes (12): $3$color$endFraction$startFraction(), a0A(), a3R(), a9S(), alD(), aZ_(), C5(), ga1Y() (+4 more)
+Nodes (12): a2d(), a2e(), adj(), agh(), b8F(), G6(), gk7(), Hl() (+4 more)
 
-### Community 248 - "yP"
-Cohesion: 0.40
-Nodes (5): ac4(), aS(), Ff(), pD(), yP()
+### Community 248 - "jn"
+Cohesion: 0.20
+Nodes (12): aE8(), ago(), agp(), aOF(), jn(), jt(), O9(), PV() (+4 more)
 
 ### Community 249 - "acc"
-Cohesion: 0.21
-Nodes (14): a31(), acc(), agw(), aQ6(), aSF(), aUs(), ga1g(), ga_y() (+6 more)
+Cohesion: 0.19
+Nodes (16): a31(), acc(), af7(), af8(), afP(), agw(), aSF(), aUs() (+8 more)
 
-### Community 250 - "xe"
-Cohesion: 0.18
-Nodes (12): ahB(), b6H(), b_f(), bcz(), gaEd(), geC(), gjq(), hz() (+4 more)
-
-### Community 251 - "gob"
-Cohesion: 0.32
-Nodes (8): aXN(), b0Q(), bfU(), bhr(), bhs(), bht(), gob(), u1()
-
-### Community 252 - "ie"
+### Community 250 - "jy"
 Cohesion: 0.22
-Nodes (11): a2S(), amU(), ghe(), ie(), pI(), r3(), S9(), v9() (+3 more)
+Nodes (10): b6H(), bcz(), bf_(), gjq(), gp6(), hz(), jy(), mg() (+2 more)
+
+### Community 251 - "gf1"
+Cohesion: 0.36
+Nodes (9): aXN(), b59(), bfU(), bhr(), bhs(), bht(), gf1(), gob() (+1 more)
+
+### Community 252 - "gbA"
+Cohesion: 0.15
+Nodes (20): a1M(), a1N(), a2S(), aE(), am7(), amU(), aMZ(), apL() (+12 more)
 
 ### Community 253 - "🚀 Wasel Nalut Super-App Unified Backend Platform (واصل نالوت)"
 Cohesion: 0.07
 Nodes (26): ☁️ 24/7 Cloud Deployment Guide (Render / Railway / Docker), Applying the Migration, 🏛 Architecture Overview, 🐘 Database Schema & PostGIS Setup (`schema.sql`), Deadlock Prevention Strategy, 📁 Directory Structure, `docker-compose.yml`, 💰 Double-Entry Ledger & Escrow Service (`wallet_service.js`) (+18 more)
 
-### Community 254 - "m2"
-Cohesion: 0.28
-Nodes (9): a32(), gaoZ(), I6(), K4(), M1(), m2(), scW(), sDe() (+1 more)
+### Community 254 - "wn"
+Cohesion: 0.67
+Nodes (3): a6B(), gaoZ(), wn()
 
-### Community 255 - "ii"
-Cohesion: 0.22
-Nodes (11): aA0(), aEv(), ahl(), bh6(), ce(), cS(), I2(), ii() (+3 more)
+### Community 255 - "ky"
+Cohesion: 0.21
+Nodes (12): ag9(), aQg(), Jn(), jz(), ky(), lq(), ms(), P7() (+4 more)
 
 ### Community 256 - "Tasks: [FEATURE NAME]"
 Cohesion: 0.07
@@ -1572,177 +1587,181 @@ Nodes (26): Dependencies & Execution Order, Format: `[ID] [P?] [Story] Descripti
 Cohesion: 0.50
 Nodes (5): ga_q(), gavV(), gS0(), gS2(), Zh()
 
-### Community 258 - "vA"
-Cohesion: 0.29
-Nodes (10): $2$alignmentPolicy(), a15(), aAH(), aie(), anl(), gay0(), gnf(), grf() (+2 more)
+### Community 258 - "cT"
+Cohesion: 0.18
+Nodes (11): $2$priority$scheduler(), a11(), A4(), aD5(), aQ6(), aX1(), aZ6(), bgk() (+3 more)
 
 ### Community 259 - "gdD"
-Cohesion: 0.06
-Nodes (39): a6D(), a_o(), a_Q(), abQ(), acE(), acu(), acy(), acz() (+31 more)
+Cohesion: 0.13
+Nodes (20): a6D(), abu(), acu(), aO9(), aOW(), aRo(), bem(), bhc() (+12 more)
 
 ### Community 260 - "cl"
-Cohesion: 0.13
-Nodes (15): a0m(), a2c(), a2d(), a4Z(), aSb(), aY3(), b5J(), cl() (+7 more)
+Cohesion: 0.25
+Nodes (8): a2c(), a2d(), aY3(), b5J(), cl(), F5(), ga2L(), gky()
 
 ### Community 261 - "zn"
 Cohesion: 0.15
-Nodes (13): a5e(), acU(), apB(), ga1h(), ga1i(), ga1j(), ga1k(), ga1l() (+5 more)
+Nodes (13): acU(), C4(), ga1h(), ga1i(), ga1j(), ga1k(), ga1l(), ghV() (+5 more)
 
-### Community 262 - "uL"
-Cohesion: 0.20
-Nodes (10): a_r(), a_s(), afX(), apg(), bba(), Fz(), gauX(), gte() (+2 more)
+### Community 262 - "aY"
+Cohesion: 0.08
+Nodes (24): agl(), aY(), bhL(), sa68(), sa7_(), saBh(), saBU(), saBx() (+16 more)
 
-### Community 263 - "gdK"
-Cohesion: 0.12
-Nodes (18): a3S(), a_G(), aFk(), aSN(), aTa(), aTs(), aYd(), b_D() (+10 more)
+### Community 263 - "gfO"
+Cohesion: 0.07
+Nodes (32): a6u(), a_G(), abs(), aeQ(), aFk(), ai1(), alq(), am1() (+24 more)
 
 ### Community 264 - "aN"
 Cohesion: 0.23
-Nodes (12): a4e(), A7(), aiO(), aN(), gdU(), go1(), sa1Q(), sdU() (+4 more)
+Nodes (12): A7(), aiO(), aN(), gdU(), go1(), sa1Q(), sdU(), seY() (+4 more)
 
-### Community 265 - "aR7"
-Cohesion: 0.10
-Nodes (27): a6e(), abs(), ahd(), aO9(), aR7(), aSx(), aVI(), aYV() (+19 more)
+### Community 265 - "gdC"
+Cohesion: 0.09
+Nodes (25): a6e(), a_n(), a_P(), acW(), aO9(), aOU(), aQl(), aRM() (+17 more)
 
 ### Community 266 - "agu"
-Cohesion: 0.24
-Nodes (12): abe(), aca(), af5(), af6(), agu(), aSF(), aUQ(), ga1f() (+4 more)
+Cohesion: 0.22
+Nodes (13): a5e(), aca(), af5(), af6(), agu(), apB(), aSF(), aUQ() (+5 more)
 
 ### Community 267 - "gcZ"
 Cohesion: 0.14
-Nodes (17): aE8(), ag1(), ajo(), anQ(), aQx(), baq(), bar(), bat() (+9 more)
+Nodes (18): a0O(), a6l(), aht(), ajo(), anQ(), aQx(), aY4(), Dz() (+10 more)
 
 ### Community 268 - "gcU"
-Cohesion: 0.25
-Nodes (9): a4D(), a_D(), ani(), b_u(), bib(), gcU(), gML(), gyp() (+1 more)
+Cohesion: 0.18
+Nodes (12): a3D(), a4p(), a_D(), ani(), b_u(), G2(), gcU(), I6() (+4 more)
 
-### Community 269 - "atJ"
-Cohesion: 0.17
-Nodes (13): a64(), ad1(), aeU(), alO(), AM(), atJ(), aTk(), fo() (+5 more)
+### Community 269 - "ys"
+Cohesion: 0.09
+Nodes (23): a01(), a0u(), a3J(), a72(), ad1(), ahf(), alO(), ati() (+15 more)
 
 ### Community 270 - "FlutterWindow"
 Cohesion: 0.15
 Nodes (3): FlutterWindow, flutter_controller_, project_
 
-### Community 271 - "kD"
-Cohesion: 0.22
-Nodes (9): a6f(), a_8(), ahl(), amp(), EZ(), fL(), hv(), kD() (+1 more)
+### Community 271 - "mp"
+Cohesion: 0.09
+Nodes (22): a6f(), a_8(), alg(), amp(), aS0(), aVx(), b7x(), dY() (+14 more)
 
-### Community 272 - "gck"
-Cohesion: 0.08
-Nodes (29): a02(), a44(), a56(), a71(), acF(), agh(), anp(), anX() (+21 more)
+### Community 272 - "eP"
+Cohesion: 0.10
+Nodes (26): a0m(), a2p(), a44(), anp(), anX(), aSb(), aW3(), b1_() (+18 more)
 
 ### Community 273 - "gdL"
-Cohesion: 0.12
-Nodes (18): a33(), a3G(), a_E(), aFl(), aSN(), aTa(), aWG(), aYd() (+10 more)
+Cohesion: 0.14
+Nodes (16): aDV(), aFl(), aSN(), aTa(), aWG(), aYd(), b0Q(), b_D() (+8 more)
 
 ### Community 274 - "hE"
-Cohesion: 0.36
-Nodes (9): ahU(), gir(), gqy(), gut(), gxe(), hE(), q2(), Rm() (+1 more)
+Cohesion: 0.17
+Nodes (16): a1L(), a6x(), ahU(), am6(), ga0b(), gir(), gqy(), gut() (+8 more)
 
 ### Community 275 - "gc9"
-Cohesion: 0.22
-Nodes (18): aF9(), ags(), b8m(), gc9(), gCT(), gEy(), gkU(), gO_() (+10 more)
+Cohesion: 0.17
+Nodes (24): a22(), aF9(), ags(), b8m(), b8N(), b_q(), bf1(), gbY() (+16 more)
 
-### Community 276 - "dR"
-Cohesion: 0.18
-Nodes (12): a0c(), a30(), a_m(), AC(), aF4(), ag4(), ah8(), dR() (+4 more)
+### Community 276 - "rU"
+Cohesion: 0.24
+Nodes (11): a33(), a3G(), aBD(), aDS(), alU(), api(), aXg(), Cn() (+3 more)
 
 ### Community 277 - "Presto x Mataa Super-App — UI/UX Design System & Architecture Specification"
 Cohesion: 0.08
 Nodes (23): 1. Executive Summary & Design Vision, 2. File & Prototype Structure, 3.1 Brand Color Palette, 3.2 Neutral Palette (Light & Dark), 3.3 Typography Scale (Plus Jakarta Sans), 3.4 Spacing & Geometry (8-Point Grid), 3. Design System Tokens (`design_system.dart`), 4. Information Architecture & Navigation (+15 more)
 
 ### Community 278 - "ha"
-Cohesion: 0.17
-Nodes (12): ae5(), ga3I(), ga3y(), ga4s(), gpN(), gyk(), gzX(), ha() (+4 more)
+Cohesion: 0.15
+Nodes (13): ga3I(), ga3y(), ga4s(), galA(), gau8(), glg(), gpN(), gyk() (+5 more)
 
-### Community 279 - "aIT"
-Cohesion: 0.25
-Nodes (9): a1f(), a3h(), aIT(), aiU(), ak4(), aka(), F5(), gA2() (+1 more)
+### Community 279 - "fZ"
+Cohesion: 0.22
+Nodes (10): agX(), aho(), aim(), aj3(), AK(), amQ(), amR(), an3() (+2 more)
 
-### Community 280 - "gc5"
+### Community 280 - "XM"
 Cohesion: 0.17
-Nodes (13): acs(), ags(), agt(), aj1(), akD(), anF(), aPY(), gc5() (+5 more)
+Nodes (13): acs(), ags(), agt(), aj1(), akD(), anF(), ao0(), aPY() (+5 more)
 
 ### Community 281 - "TB"
-Cohesion: 0.18
-Nodes (12): aY2(), aZv(), b5I(), eC(), ES(), gqI(), gr8(), I3() (+4 more)
+Cohesion: 0.20
+Nodes (11): a4w(), aY2(), aZv(), b5I(), eC(), ES(), gqI(), gr8() (+3 more)
 
 ### Community 282 - ".$2"
-Cohesion: 0.07
-Nodes (35): a3P(), a3Y(), ad9(), aDS(), aDU(), aKS(), alW(), aoP() (+27 more)
+Cohesion: 0.10
+Nodes (19): a_Z(), ahk(), aKS(), aVS(), aXU(), b04(), ban(), baO() (+11 more)
 
 ### Community 283 - "gjb"
-Cohesion: 0.18
-Nodes (12): ae2(), anc(), aRA(), gadJ(), gjb(), gM0(), goP(), sa6J() (+4 more)
+Cohesion: 0.14
+Nodes (15): aAR(), anc(), aRA(), gadI(), gadJ(), gjb(), sa1n(), sa6J() (+7 more)
 
 ### Community 284 - "dm"
-Cohesion: 0.11
-Nodes (22): a6u(), aeQ(), ag7(), alR(), aQE(), aUR(), b4C(), b4D() (+14 more)
+Cohesion: 0.16
+Nodes (17): ag7(), alR(), aQE(), aUR(), b4C(), b4D(), beJ(), bfF() (+9 more)
 
-### Community 285 - "TB"
+### Community 285 - "aY2"
 Cohesion: 0.25
-Nodes (9): aDB(), aeP(), aY2(), aZv(), gqJ(), H5(), hi(), NV() (+1 more)
+Nodes (8): a3X(), abj(), aDB(), aY2(), aYr(), O5(), q8(), zi()
+
+### Community 287 - "gd6"
+Cohesion: 0.20
+Nodes (10): a1B(), aS0(), aSb(), az4(), bgG(), ga0E(), gd6(), kE() (+2 more)
 
 ### Community 288 - "ga_N"
-Cohesion: 0.20
-Nodes (12): ar4(), aR5(), aUA(), aVI(), bb2(), ga65(), ga6x(), ga_N() (+4 more)
+Cohesion: 0.22
+Nodes (11): ar4(), aR5(), aUA(), aVI(), bb2(), ga65(), ga_N(), gawl() (+3 more)
 
-### Community 289 - "b1_"
-Cohesion: 0.18
-Nodes (12): a2c(), a6w(), aeS(), anr(), b1_(), eQ(), gpH(), guY() (+4 more)
+### Community 289 - "wA"
+Cohesion: 0.20
+Nodes (12): a2c(), ahl(), anr(), b1_(), eQ(), gpH(), hQ(), I2() (+4 more)
 
 ### Community 290 - "bl"
-Cohesion: 0.07
-Nodes (32): a0i(), a0x(), a29(), a48(), a4I(), a5N(), aAK(), acX() (+24 more)
+Cohesion: 0.12
+Nodes (18): a0o(), a0x(), acS(), aeT(), aiA(), aix(), ake(), aPW() (+10 more)
 
-### Community 291 - "aZF"
-Cohesion: 0.50
-Nodes (4): aAI(), ahi(), aZF(), iM()
+### Community 291 - "k9"
+Cohesion: 0.24
+Nodes (10): as2(), aYy(), b0o(), bW(), gj7(), gSi(), gSj(), gSk() (+2 more)
 
 ### Community 292 - "uT"
 Cohesion: 0.25
 Nodes (8): a4m(), aho(), ahr(), av4(), gAs(), gyk(), syM(), uT()
 
-### Community 293 - "aG"
+### Community 293 - "iW"
 Cohesion: 0.18
-Nodes (12): aCl(), aG(), aj_(), aQx(), ga3H(), gb2(), gb5(), gm9() (+4 more)
+Nodes (11): a1D(), a4E(), aCl(), aj_(), aQx(), aR7(), grs(), gtx() (+3 more)
 
 ### Community 294 - "uS"
 Cohesion: 0.29
 Nodes (7): a4k(), ahm(), ahp(), aV2(), gyj(), syL(), uS()
 
 ### Community 295 - "aI"
-Cohesion: 0.06
-Nodes (33): a0s(), a14(), a16(), a1O(), a41(), a60(), af2(), agt() (+25 more)
+Cohesion: 0.09
+Nodes (25): a0r(), a41(), a5m(), a60(), a6V(), aek(), aF3(), aI() (+17 more)
 
 ### Community 296 - "gp"
-Cohesion: 0.12
-Nodes (19): $3(), a20(), a2e(), a3w(), a9S(), aNW(), aOo(), b1g() (+11 more)
+Cohesion: 0.15
+Nodes (17): a1z(), a21(), a3w(), a9S(), aNW(), aZ0(), b1g(), b_f() (+9 more)
 
-### Community 297 - ".$3"
-Cohesion: 0.25
-Nodes (7): a5i(), b9U(), b_J(), bdp(), gzX(), n4(), Sr()
+### Community 297 - "VE"
+Cohesion: 0.28
+Nodes (9): a0L(), acC(), ace(), aoi(), ga5b(), gBu(), J2(), VE() (+1 more)
 
-### Community 298 - "ev"
-Cohesion: 0.11
-Nodes (21): a33(), aA(), abO(), acx(), alz(), aQc(), b75(), ev() (+13 more)
+### Community 298 - "abO"
+Cohesion: 0.18
+Nodes (11): abO(), acx(), b75(), gRh(), gRq(), gTo(), gUp(), gUq() (+3 more)
 
-### Community 299 - "BZ"
-Cohesion: 0.33
-Nodes (7): a6w(), BZ(), ga1s(), GY(), saBz(), tk(), ZA()
+### Community 299 - "tA"
+Cohesion: 0.31
+Nodes (9): apN(), C0(), C1(), gia(), GS(), jf(), sia(), tA() (+1 more)
 
 ### Community 300 - "gaP"
-Cohesion: 0.20
-Nodes (12): aha(), ahe(), gabJ(), gabK(), galM(), gaoE(), gaP(), gcG() (+4 more)
+Cohesion: 0.19
+Nodes (13): ah0(), aha(), ahe(), gabJ(), gabK(), gaP(), gfX(), gMF() (+5 more)
 
 ### Community 301 - "$3"
 Cohesion: 0.29
 Nodes (6): $3(), a5j(), beP(), Q(), sc1(), sKO()
 
 ### Community 302 - "bS"
-Cohesion: 0.14
-Nodes (14): a6A(), ama(), aPT(), aQH(), aZG(), b5H(), b6x(), b_1() (+6 more)
+Cohesion: 0.13
+Nodes (18): a35(), aAI(), ama(), aQc(), aQH(), aZF(), aZG(), b6x() (+10 more)
 
 ### Community 303 - "copyProperties"
 Cohesion: 0.33
@@ -1768,49 +1787,49 @@ Nodes (10): background_color, description, display, icons, name, orientation, pr
 Cohesion: 0.18
 Nodes (10): background_color, description, display, icons, name, orientation, prefer_related_applications, short_name (+2 more)
 
-### Community 309 - "aH"
-Cohesion: 0.13
-Nodes (18): a0i(), a42(), aAq(), aH(), alH(), aQ3(), gaqj(), gjq() (+10 more)
+### Community 309 - "is"
+Cohesion: 0.15
+Nodes (13): a_H(), aAq(), alH(), alT(), aRo(), aSS(), gaqj(), gwJ() (+5 more)
 
-### Community 310 - "hk"
-Cohesion: 0.25
-Nodes (9): aD(), aDv(), amL(), aVZ(), hk(), j0(), K2(), u4() (+1 more)
+### Community 310 - "Ya"
+Cohesion: 0.28
+Nodes (9): a0h(), a48(), aDv(), agl(), glC(), gro(), Mc(), u4() (+1 more)
 
-### Community 311 - "gq"
-Cohesion: 0.12
-Nodes (22): a_c(), a_X(), aDA(), aF2(), ahi(), aOG(), apg(), api() (+14 more)
+### Community 311 - "aF2"
+Cohesion: 0.40
+Nodes (5): a_X(), aF2(), aYn(), beF(), C9()
 
 ### Community 312 - "public/app/manifest.json"
 Cohesion: 0.18
 Nodes (10): background_color, description, display, icons, name, orientation, prefer_related_applications, short_name (+2 more)
 
 ### Community 313 - "bB"
-Cohesion: 0.17
-Nodes (15): a28(), aek(), aeW(), aG(), aQ6(), bB(), biv(), Dd() (+7 more)
+Cohesion: 0.05
+Nodes (50): a28(), a4D(), a4G(), a50(), a5L(), abQ(), abR(), ac0() (+42 more)
 
 ### Community 314 - "Feature Specification: Captain Cash Settlement & Merchant Order Notifications"
 Cohesion: 0.08
 Nodes (21): 1. Architectural Strategy, 2. Component Modifications, 3. Verification & Testing Protocol, A. Backend (`backend/server.js` & `backend/services/`), B. Merchant App (`flutter_merchant_app`), C. Admin App (`flutter_admin_app`), Implementation Plan: Captain Cash Settlement & Merchant Order Notifications, 1. Executive Summary & Context (+13 more)
 
-### Community 315 - "gyh"
-Cohesion: 0.50
-Nodes (4): a1r(), a6q(), gyh(), kH()
+### Community 315 - "vz"
+Cohesion: 0.36
+Nodes (8): a14(), aAE(), aie(), anj(), gaxY(), gne(), gre(), vz()
 
-### Community 316 - "gda"
-Cohesion: 0.33
-Nodes (7): a22(), apL(), aQT(), b_q(), bf1(), gda(), tj()
+### Community 316 - "adh"
+Cohesion: 0.25
+Nodes (7): aC9(), adh(), aDQ(), O6(), qr(), Sx(), Zt()
 
 ### Community 317 - "backend/public/manifest.json"
 Cohesion: 0.20
 Nodes (9): background_color, description, display, icons, name, orientation, short_name, start_url (+1 more)
 
-### Community 318 - "math"
-Cohesion: 0.29
-Nodes (4): generate_customer_chime(), generate_driver_alert(), generate_kitchen_bell(), write_wav()
+### Community 318 - "qZ"
+Cohesion: 0.25
+Nodes (8): aDT(), aDU(), aRX(), aZB(), hB(), NW(), Ob(), qZ()
 
 ### Community 319 - "bQ"
-Cohesion: 0.25
-Nodes (19): bQ(), galO(), gaoG(), gbT(), gcc(), gcG(), gcq(), gd2() (+11 more)
+Cohesion: 0.17
+Nodes (25): aQI(), b4v(), bQ(), galO(), gaoG(), gbT(), gbw(), gcA() (+17 more)
 
 ### Community 320 - "a1z"
 Cohesion: 0.31
@@ -1820,21 +1839,21 @@ Nodes (10): a1K(), a1Q(), a1x(), a1z(), ai6(), akM(), alp(), sCB() (+2 more)
 Cohesion: 0.10
 Nodes (18): 🛠️ 1. مواصفات الخادم وطريقة الربط (Configuration), 📋 2. دليل الأدوات المتاحة (MCP Tools Catalog), 🗣️ 3. أمثلة على أوامر نصية مباشرة لهيرميز (Prompts for Hermes), 🔐 4. ثوابت وبيانات الأمان الهامة, 🚀 5. كيف يتم حفظ البيانات وتوزيعها بين التطبيقات؟, أ) إضافة المتاجر والمطاعم:, ب) إضافة الوجبات والأصناف:, ج) تسجيل كباتن التوصيل: (+10 more)
 
-### Community 322 - "gu9"
-Cohesion: 0.43
-Nodes (7): a5A(), a5c(), aFo(), aWf(), gu9(), j3(), P4()
+### Community 322 - "a3T"
+Cohesion: 0.25
+Nodes (8): a3T(), ac7(), aem(), bcr(), ga2H(), Gm(), gxS(), JP()
 
 ### Community 323 - "gjA"
-Cohesion: 0.38
-Nodes (7): acS(), ake(), aQ0(), gjA(), gqo(), m6(), Oe()
+Cohesion: 0.40
+Nodes (6): a4D(), aEH(), aQ0(), gjA(), gqo(), Oe()
 
-### Community 324 - "gbX"
-Cohesion: 0.22
-Nodes (11): a0q(), aex(), aim(), akn(), akT(), gbX(), lg(), LT() (+3 more)
+### Community 324 - "ws"
+Cohesion: 0.29
+Nodes (8): a6w(), aeS(), b4C(), guY(), Gw(), Ks(), sK(), ws()
 
-### Community 325 - "eQ"
-Cohesion: 0.25
-Nodes (8): aff(), aUD(), b_Z(), eQ(), ga0C(), gay3(), gLX(), rr()
+### Community 325 - "vG"
+Cohesion: 0.20
+Nodes (10): a_9(), aff(), b_Z(), eQ(), ga0C(), gay3(), gLX(), gPT() (+2 more)
 
 ### Community 326 - "public/manifest.json"
 Cohesion: 0.20
@@ -1849,36 +1868,36 @@ Cohesion: 0.11
 Nodes (18): 1. Demand & Supply Density:, 1. Smart Driver Dispatch & Hungarian Assignment, 2. Smoothed Imbalance Ratio:, 2. Spatial Dynamic Surge Pricing (Continuous Sigmoid Curve), 3. Continuous Sigmoid Surge Multiplier:, 3. Order Batching Optimizer (PDPTW Heuristic), 4. Itemized Delivery Fee Calculation:, Algorithm 1: Continuous Dynamic Surge Pricing (+10 more)
 
 ### Community 329 - "gdt"
-Cohesion: 0.25
-Nodes (9): a1L(), a49(), aCN(), ae6(), anO(), anS(), gdt(), gqL() (+1 more)
+Cohesion: 0.24
+Nodes (10): a1H(), a1M(), a49(), ae4(), ae6(), anO(), anS(), gdt() (+2 more)
 
 ### Community 330 - "m0"
-Cohesion: 0.12
-Nodes (19): a34(), a5g(), a_4(), a_7(), adM(), aDO(), b0i(), cK() (+11 more)
+Cohesion: 0.18
+Nodes (13): a34(), a5g(), b0i(), cK(), EX(), gl1(), H0(), ho() (+5 more)
 
-### Community 331 - "aXR"
-Cohesion: 0.48
-Nodes (7): aXR(), gfB(), glZ(), gr0(), guI(), gwp(), Xa()
+### Community 331 - "yy"
+Cohesion: 0.31
+Nodes (10): aXR(), gDC(), gfB(), glZ(), gMK(), gr0(), guI(), gwp() (+2 more)
 
 ### Community 332 - "cart_checkout_screen.dart"
 Cohesion: 0.03
-Nodes (57): _activeBank, _alternatePhoneController, _applyCoupon, _availableFreeDeliveryVouchers, build, _buildBillRow, _buildPaymentOption, _buildUnifiedBankOption (+49 more)
+Nodes (76): _activeBank, _alternatePhoneController, _applyCoupon, _availableFreeDeliveryVouchers, build, _buildBillRow, _buildPaymentOption, _buildUnifiedBankOption (+68 more)
 
-### Community 333 - "rz"
-Cohesion: 0.22
-Nodes (11): afO(), aIT(), b7I(), bgN(), dL(), gDA(), gEo(), glt() (+3 more)
+### Community 333 - "afO"
+Cohesion: 0.47
+Nodes (6): afO(), aIT(), ajN(), bgN(), gDA(), gEo()
 
-### Community 334 - "agr"
-Cohesion: 0.20
-Nodes (6): $1$allowPlatformDefault(), a15(), a2R(), agr(), qg(), r6()
+### Community 334 - "u5"
+Cohesion: 0.29
+Nodes (7): a2i(), a2j(), a2k(), a2l(), Ty(), u5(), Yl()
 
-### Community 335 - "OM"
-Cohesion: 0.15
-Nodes (16): a_I(), a_x(), aD(), b4B(), bas(), baz(), gb8(), gfm() (+8 more)
+### Community 335 - "gfm"
+Cohesion: 0.25
+Nodes (8): a_I(), abt(), aD(), aeG(), baz(), gfm(), giX(), saFa()
 
 ### Community 336 - "aRP"
-Cohesion: 0.25
-Nodes (9): ae1(), ae2(), ae3(), aRP(), bgG(), N0(), w2(), W6() (+1 more)
+Cohesion: 0.29
+Nodes (7): ae1(), ae2(), aRP(), bgG(), N0(), W6(), W7()
 
 ### Community 337 - "gi9"
 Cohesion: 0.29
@@ -1886,15 +1905,15 @@ Nodes (8): aSr(), gi9(), GT(), Jg(), N0(), N3(), saxE(), si9()
 
 ### Community 338 - "gd_"
 Cohesion: 0.25
-Nodes (8): am7(), aVE(), b_k(), beF(), gd_(), gwe(), gyp(), TG()
+Nodes (8): aVE(), b_k(), beF(), gd_(), gwe(), gyp(), Mc(), TG()
 
 ### Community 339 - "o4"
-Cohesion: 0.12
-Nodes (19): a2q(), a46(), ahe(), aSQ(), atu(), av8(), aw6(), b4s() (+11 more)
+Cohesion: 0.15
+Nodes (16): a1G(), ahe(), Al(), aw6(), bfq(), C7(), ga2F(), gkL() (+8 more)
 
-### Community 340 - "M_"
-Cohesion: 0.12
-Nodes (25): a4v(), abj(), aeW(), as2(), aVm(), b59(), b8_(), EJ() (+17 more)
+### Community 340 - "hp"
+Cohesion: 0.25
+Nodes (11): aeW(), EJ(), ga1W(), hp(), l9(), OW(), Ox(), P2() (+3 more)
 
 ### Community 341 - "gjV"
 Cohesion: 0.33
@@ -1904,49 +1923,53 @@ Nodes (6): a39(), amB(), gDS(), gjV(), gLz(), U1()
 Cohesion: 0.12
 Nodes (17): 2026-10-04T11:19:41Z, 2026-10-04T14:31:27Z, 2026-10-04T14:48:58Z, Acceptance Criteria, Build & Deliverables, Code Quality & Theme Integrity, R1. Shared Design System & Motion Engine (`packages/wasel_ui`), R2. Complete Theme Purge & Unified Architecture across All 4 Apps (+9 more)
 
-### Community 343 - "iN"
-Cohesion: 0.33
-Nodes (6): aAF(), agn(), ahg(), aZc(), gUS(), iN()
+### Community 343 - "ii"
+Cohesion: 0.29
+Nodes (7): agg(), aYk(), b4z(), bbS(), gaEq(), gx6(), ii()
 
 ### Community 344 - "gp9"
 Cohesion: 0.50
 Nodes (4): aju(), gaAb(), gp9(), P5()
 
 ### Community 345 - "gjC"
-Cohesion: 0.33
-Nodes (6): acR(), aY4(), aYf(), gIF(), gjC(), Os()
+Cohesion: 0.40
+Nodes (5): acR(), aYf(), gIF(), gjC(), Os()
 
 ### Community 346 - "تقرير التدقيق القانوني والتقني الشامل لسياسات متجر Google Play"
 Cohesion: 0.12
 Nodes (15): 1. تقرير تطهير العلامات التجارية والملكية الفكرية (Impersonation & Trademark Clearance), 2. معايير وهوية تطبيق التاجر (Wasel Partner Identity), 3. سياسة تتبع الموقع وأذونات الخلفية لأسطول الكباتن (Background Location Policy), 4. سياسة حذف الحساب والبيانات (Mandatory Account Deletion Policy), 5. استمارة أمان البيانات (Google Play Data Safety Form Answers), 6. الامتثال المالي والتجاري الليبي والضوابط الشرعية, الإجراءات المتخذة:, الإجراءات المنفذة: (+7 more)
 
-### Community 347 - "hg"
-Cohesion: 0.11
-Nodes (22): a5z(), agi(), ajs(), ajW(), aQ3(), aS3(), aTb(), b0n() (+14 more)
+### Community 347 - "fs"
+Cohesion: 0.18
+Nodes (14): a5z(), aTb(), aWf(), b0n(), b6U(), fs(), gfh(), gu9() (+6 more)
 
-### Community 349 - "b3"
-Cohesion: 0.10
-Nodes (30): a4X(), aF3(), af4(), alK(), aSy(), aZ9(), aZL(), b3() (+22 more)
+### Community 348 - "aTm"
+Cohesion: 0.29
+Nodes (7): a66(), aTm(), gaG(), gaR(), gb8(), Pq(), Z1()
+
+### Community 349 - "or"
+Cohesion: 0.15
+Nodes (14): agE(), aim(), ajJ(), akj(), akk(), Do(), gan_(), HM() (+6 more)
 
 ### Community 350 - "aQA"
 Cohesion: 0.25
 Nodes (8): aQA(), b08(), gKW(), glK(), gmN(), gmo(), gnk(), gob()
 
 ### Community 351 - "gck"
-Cohesion: 0.13
-Nodes (16): a6y(), a73(), a_C(), aVb(), ga1t(), ga2w(), gasX(), gck() (+8 more)
+Cohesion: 0.15
+Nodes (17): a0P(), a73(), ad4(), akV(), aSA(), E_(), gasX(), gck() (+9 more)
 
-### Community 352 - "VI"
-Cohesion: 0.67
-Nodes (3): aeN(), q3(), VI()
+### Community 352 - "hg"
+Cohesion: 0.21
+Nodes (12): aeN(), ajq(), ajU(), akF(), glt(), hg(), o4(), q3() (+4 more)
 
 ### Community 353 - "vouchers.routes.js"
 Cohesion: 0.16
 Nodes (6): { authMiddleware }, express, router, VoucherService, OrderService, VoucherService
 
-### Community 354 - "Ya"
-Cohesion: 0.47
-Nodes (6): a4F(), bib(), gMM(), gOF(), gyq(), Ya()
+### Community 354 - "aEI"
+Cohesion: 0.29
+Nodes (8): a4F(), a_a(), aDy(), aEI(), aoI(), Gl(), gMM(), gyq()
 
 ### Community 355 - "lb"
 Cohesion: 0.22
@@ -1956,73 +1979,73 @@ Nodes (9): b_Z(), ga0D(), ga37(), gaBZ(), gaDo(), gay6(), gLY(), gZe() (+1 more)
 Cohesion: 0.67
 Nodes (3): aO1(), bdl(), toString()
 
-### Community 357 - "iB"
-Cohesion: 0.40
-Nodes (6): abf(), gML(), gVt(), iB(), tC(), Xv()
+### Community 357 - "YD"
+Cohesion: 0.29
+Nodes (7): a6e(), aSQ(), ga4N(), gqV(), kC(), v2(), YD()
 
 ### Community 358 - "hN"
 Cohesion: 0.29
 Nodes (7): a_q(), a_r(), aX9(), aXa(), Db(), hN(), wV()
 
 ### Community 359 - "Jh"
-Cohesion: 0.14
-Nodes (22): $2$alignmentPolicy(), a14(), a29(), a_1(), aAE(), agg(), anj(), gaxY() (+14 more)
+Cohesion: 0.15
+Nodes (18): a29(), aPP(), aTn(), beS(), bhf(), bi3(), gfh(), guu() (+10 more)
 
-### Community 360 - "l0"
-Cohesion: 0.29
-Nodes (7): ahx(), aOU(), b_C(), bdh(), beI(), l0(), Z()
+### Community 360 - "NS"
+Cohesion: 0.22
+Nodes (9): a5B(), adN(), ahx(), b_C(), bdh(), beI(), hx(), l0() (+1 more)
 
 ### Community 361 - "jy"
 Cohesion: 0.50
 Nodes (5): b6H(), bcz(), gjr(), jy(), sqM()
 
 ### Community 364 - "gq"
-Cohesion: 0.12
-Nodes (18): a_d(), adi(), apk(), aPm(), aPO(), aY4(), aYn(), ba2() (+10 more)
+Cohesion: 0.14
+Nodes (15): a_d(), adi(), apk(), aPm(), aPO(), aYn(), ba2(), garO() (+7 more)
 
 ### Community 365 - "EP"
-Cohesion: 0.33
-Nodes (6): aki(), C9(), dV(), EP(), kz(), Rf()
+Cohesion: 0.20
+Nodes (11): a61(), acO(), aki(), C9(), dV(), EP(), fF(), kz() (+3 more)
 
-### Community 366 - "gez"
-Cohesion: 0.47
-Nodes (6): atw(), bh2(), bh4(), gej(), gez(), o0()
+### Community 366 - "gcO"
+Cohesion: 0.29
+Nodes (7): a_7(), a_B(), bft(), bfv(), ci(), gcO(), q7()
 
 ### Community 367 - "xP"
-Cohesion: 0.50
-Nodes (5): a2f(), aAx(), bhh(), bhi(), xP()
+Cohesion: 0.28
+Nodes (9): a2f(), aAx(), aQg(), bhh(), bhi(), ga2a(), gjD(), gku() (+1 more)
 
-### Community 368 - "mp"
-Cohesion: 0.40
-Nodes (5): alg(), b7x(), hT(), mp(), Wp()
+### Community 368 - "aEc"
+Cohesion: 0.33
+Nodes (7): aEc(), alQ(), amD(), gDS(), gDT(), gjV(), gLA()
 
 ### Community 369 - "a3Z"
 Cohesion: 0.33
 Nodes (6): a3Z(), gb4(), gb6(), gbc(), gbg(), gbh()
 
-### Community 370 - "dh"
-Cohesion: 0.11
-Nodes (42): a_T(), aDA(), aDV(), aEa(), aeE(), amc(), an0(), aOM() (+34 more)
+### Community 370 - "dk"
+Cohesion: 0.09
+Nodes (47): A3(), a_T(), acF(), aEa(), aeE(), amc(), aP(), aqq() (+39 more)
 
 ### Community 371 - "ga_M"
-Cohesion: 0.22
-Nodes (9): aS3(), aUA(), bb2(), ga2U(), ga63(), ga_M(), gawi(), gPu() (+1 more)
+Cohesion: 0.33
+Nodes (6): aS3(), bb2(), ga2U(), ga63(), ga_M(), gPu()
 
 ### Community 372 - "d9"
-Cohesion: 0.18
-Nodes (17): acG(), aif(), ajq(), akF(), amm(), aPS(), C8(), d9() (+9 more)
+Cohesion: 0.24
+Nodes (12): a0d(), acG(), aDY(), aif(), amm(), aPS(), d9(), gGN() (+4 more)
 
-### Community 373 - "gcW"
+### Community 373 - "T0"
+Cohesion: 0.67
+Nodes (3): gJG(), gU6(), T0()
+
+### Community 374 - "aG"
 Cohesion: 0.33
-Nodes (6): gasN(), gcW(), gJG(), gU6(), mo(), T0()
-
-### Community 374 - "We"
-Cohesion: 0.50
-Nodes (5): gvk(), SC(), SD(), Wd(), We()
+Nodes (7): aG(), ga3H(), gb2(), gb5(), gm9(), gxU(), jE()
 
 ### Community 375 - "$2"
-Cohesion: 0.08
-Nodes (27): $2(), a0z(), a3T(), a4E(), a5l(), aBD(), ac7(), aem() (+19 more)
+Cohesion: 0.09
+Nodes (23): $2(), abM(), adX(), amX(), aQv(), aR3(), aSI(), atY() (+15 more)
 
 ### Community 378 - "fs"
 Cohesion: 0.22
@@ -2040,25 +2063,25 @@ Nodes (6): a40(), gb4(), gb6(), gbf(), gbg(), gbh()
 Cohesion: 0.15
 Nodes (12): 1.1 Strict Isolation Rules, 1.2 Kitchen Display System (KDS) Columns, 1.3 Menu & Availability Manager, 1. Merchant Platform & Multi-Tenant Store Isolation, 2.1 Master Admin Security Gate (PIN Shield: `7788`), 2.2 Live Fleet Radar Map (Leaflet.js / OpenStreetMap), 2. Admin Operations & Master Dispatch Hub, 3. Financial Z-Audit Daily Close System (`daily_audits`) (+4 more)
 
-### Community 382 - "PV"
-Cohesion: 0.17
-Nodes (16): a53(), abh(), acD(), amH(), aQ5(), aUC(), Gj(), gv8() (+8 more)
+### Community 382 - "aH"
+Cohesion: 0.13
+Nodes (24): a53(), a6B(), abe(), af2(), aH(), amH(), aQ5(), aUC() (+16 more)
 
 ### Community 383 - "afQ"
-Cohesion: 0.47
-Nodes (6): afQ(), bgN(), EE(), gDB(), gEp(), sa3n()
+Cohesion: 0.38
+Nodes (7): afQ(), bgN(), EE(), gDB(), gEp(), mt(), sa3n()
 
-### Community 384 - "oL"
-Cohesion: 0.25
-Nodes (9): a5i(), a6x(), aB9(), aUt(), ga0b(), gro(), ml(), oL() (+1 more)
+### Community 384 - "c"
+Cohesion: 0.03
+Nodes (113): a0F(), a4e(), a5V(), a64(), a9I(), a_B(), aAu(), abw() (+105 more)
 
 ### Community 385 - "m2"
-Cohesion: 0.28
-Nodes (9): a0n(), a36(), ey(), gl2(), ho(), m2(), n9(), Td() (+1 more)
+Cohesion: 0.38
+Nodes (7): a36(), ey(), gl2(), ho(), m2(), n9(), vu()
 
 ### Community 386 - "dt"
-Cohesion: 0.11
-Nodes (24): a6l(), a6s(), aAL(), aBK(), abY(), af7(), af8(), aj9() (+16 more)
+Cohesion: 0.07
+Nodes (29): a2q(), a6l(), a6y(), aAL(), aBK(), aDR(), aeP(), aeY() (+21 more)
 
 ### Community 387 - "Pg"
 Cohesion: 0.67
@@ -2076,9 +2099,9 @@ Nodes (6): copyProperties(), inherit(), inheritMany(), setOrUpdateInterceptorsBy
 Cohesion: 0.15
 Nodes (12): Assumptions, Edge Cases, Feature Specification: [FEATURE NAME], Functional Requirements, Key Entities *(include if feature involves data)*, Measurable Outcomes, Requirements *(mandatory)*, Success Criteria *(mandatory)* (+4 more)
 
-### Community 392 - "l4"
-Cohesion: 0.50
-Nodes (4): abR(), bf6(), giY(), l4()
+### Community 392 - "aQA"
+Cohesion: 0.29
+Nodes (7): aQA(), b08(), glM(), gmP(), gmq(), gnl(), goc()
 
 ### Community 393 - "ahy"
 Cohesion: 0.67
@@ -2121,84 +2144,84 @@ Cohesion: 0.40
 Nodes (5): installInstanceTearOff(), installStaticTearOff(), instanceTearOffGetter(), staticTearOffGetter(), tearOffParameters()
 
 ### Community 403 - "gfm"
-Cohesion: 0.11
-Nodes (22): a3J(), abt(), aC7(), aeE(), ar1(), aXo(), b4B(), bas() (+14 more)
+Cohesion: 0.22
+Nodes (10): abt(), aeE(), ar1(), aXo(), bas(), baz(), gfB(), gfm() (+2 more)
 
 ### Community 404 - "afa"
 Cohesion: 0.50
 Nodes (4): aAC(), aAD(), afa(), gol()
 
-### Community 405 - "axv"
-Cohesion: 0.40
-Nodes (5): aXU(), axv(), La(), wY(), wz()
+### Community 405 - "dm"
+Cohesion: 0.12
+Nodes (19): a6s(), abN(), alv(), aRl(), aXU(), axv(), aYh(), b4L() (+11 more)
 
 ### Community 406 - "G"
-Cohesion: 0.28
-Nodes (9): a3y(), A5(), bT(), G(), gasK(), gFw(), gKR(), gO8() (+1 more)
+Cohesion: 0.24
+Nodes (11): a0B(), A5(), a_Y(), aRP(), bT(), G(), gasK(), geG() (+3 more)
 
-### Community 407 - "a07"
-Cohesion: 0.50
-Nodes (4): a07(), aDZ(), aOM(), w8()
+### Community 407 - ".$3"
+Cohesion: 0.14
+Nodes (13): a07(), abY(), aDZ(), aOM(), b9U(), b_J(), bdp(), gaBx() (+5 more)
 
-### Community 408 - "nR"
-Cohesion: 0.08
-Nodes (31): a0o(), a13(), a2d(), a2e(), a_Z(), agh(), akX(), amg() (+23 more)
+### Community 408 - "jB"
+Cohesion: 0.14
+Nodes (18): a13(), a_Z(), akX(), b6L(), bbx(), bgV(), gaBH(), gl7() (+10 more)
 
 ### Community 409 - "Wasel Captain Driver App — Flutter Mobile Architecture & Design Specification"
 Cohesion: 0.17
 Nodes (11): 1. Executive Overview, 2. Directory & Component Structure, 3. Order Lifecycle State Machine, 4.1 Driver Home Screen (`driver_home_screen.dart`), 4.2 Order Radar Dialog (`order_radar_dialog.dart`), 4.3 Active Delivery Flow (`active_delivery_flow_screen.dart`), 4.4 Driver Wallet & COD Ledger (`driver_wallet_screen.dart`), 4. Screen Breakdown & Logistics Features (+3 more)
 
-### Community 410 - "getTag"
-Cohesion: 0.50
-Nodes (4): getTag(), getTagFirefox(), getTagFixed(), getTagIE()
+### Community 410 - "A3"
+Cohesion: 0.40
+Nodes (6): $2$priority$scheduler(), A3(), ad3(), aZ3(), Mj(), yB()
 
-### Community 411 - "Fm"
-Cohesion: 0.25
-Nodes (8): a_P(), acW(), aRM(), aWv(), Cu(), Fm(), Lq(), RJ()
+### Community 411 - "LU"
+Cohesion: 0.33
+Nodes (6): a19(), a1b(), a47(), ajD(), am9(), LU()
 
-### Community 412 - "aE"
+### Community 412 - "aPR"
+Cohesion: 0.33
+Nodes (6): a3U(), a4U(), a6y(), aPR(), gA0(), u6()
+
+### Community 413 - "a21"
 Cohesion: 0.67
-Nodes (4): a2V(), aE(), KJ(), vF()
-
-### Community 413 - "a2g"
-Cohesion: 0.50
-Nodes (4): a21(), a2g(), a2i(), aAE()
+Nodes (3): a21(), a2i(), aAE()
 
 ### Community 414 - "hE"
-Cohesion: 0.15
-Nodes (17): a08(), a1M(), a6z(), ahW(), aYr(), bhi(), ga0c(), giq() (+9 more)
+Cohesion: 0.31
+Nodes (9): a2g(), a5X(), aAA(), bhh(), bhi(), giq(), hE(), Rn() (+1 more)
 
-### Community 415 - "fb"
-Cohesion: 0.15
-Nodes (13): abQ(), agb(), agv(), ahs(), aki(), aoT(), aQz(), aT8() (+5 more)
+### Community 415 - "aH"
+Cohesion: 0.09
+Nodes (26): a1K(), a51(), a6d(), a6M(), af1(), agv(), aH(), ahs() (+18 more)
 
-### Community 416 - "hB"
-Cohesion: 0.14
-Nodes (15): abR(), ac6(), aRz(), aS(), b6G(), b77(), bgD(), F1() (+7 more)
+### Community 416 - "rP"
+Cohesion: 0.29
+Nodes (7): a6C(), ad7(), ga_L(), rP(), sa2Q(), saP(), soj()
 
-### Community 417 - "a4G"
-Cohesion: 0.50
-Nodes (4): a4G(), a5L(), ga2x(), gNg()
+### Community 417 - "a_7"
+Cohesion: 0.40
+Nodes (6): a_4(), a_7(), adM(), aDO(), gpY(), gwH()
 
 ### Community 418 - "4. Test Tiers & Scenario Definitions"
 Cohesion: 0.17
 Nodes (11): 1. Test Philosophy & Principles, 2. Feature Inventory Mapping, 3.1 Test Harness (`test_harness.dart`), 3.2 Directory Structure, 3. Architecture & Test Harness, 4. Test Tiers & Scenario Definitions, Tier 1: Feature Verification (`tier1_feature_test.dart`), Tier 2: Boundary Conditions & Negative Testing (`tier2_boundary_test.dart`) (+3 more)
 
+### Community 419 - "di"
+Cohesion: 0.33
+Nodes (6): aAH(), abx(), b4x(), di(), S7(), yV()
+
 ### Community 420 - "getTag"
 Cohesion: 0.50
 Nodes (4): getTag(), getTagFirefox(), getTagFixed(), getTagIE()
 
-### Community 421 - "a1x"
-Cohesion: 0.67
-Nodes (3): a1x(), aYU(), gkV()
+### Community 421 - "aPV"
+Cohesion: 0.47
+Nodes (6): aPV(), aVQ(), ga_(), gaF(), gE(), gH()
 
-### Community 422 - "ZR"
-Cohesion: 0.50
-Nodes (4): abL(), b4L(), gNx(), ZR()
-
-### Community 423 - "a_Y"
-Cohesion: 0.33
-Nodes (7): a_Y(), gld(), glI(), gq8(), gqc(), gyz(), SZ()
+### Community 423 - "ku"
+Cohesion: 0.40
+Nodes (6): a_Y(), gaBG(), gld(), gq8(), gyz(), ku()
 
 ### Community 424 - "WASEL Customer App - Test Readiness Report (TEST_READY.md)"
 Cohesion: 0.17
@@ -2208,65 +2231,65 @@ Nodes (11): 1. Executive Summary, 2. Test Execution Commands, 3. Tier Breakdown 
 Cohesion: 0.50
 Nodes (4): ae0(), goO(), savR(), snO()
 
-### Community 426 - "jI"
-Cohesion: 0.67
-Nodes (3): abP(), b77(), jI()
+### Community 426 - "yt"
+Cohesion: 0.33
+Nodes (6): a02(), baG(), gvz(), me(), QW(), yt()
 
 ### Community 427 - "ir"
-Cohesion: 0.29
-Nodes (8): a_8(), aAt(), aDO(), alJ(), gaql(), gpZ(), gwI(), ir()
+Cohesion: 0.22
+Nodes (10): a_8(), aAt(), aDO(), aj3(), alJ(), gaql(), gpZ(), gwI() (+2 more)
 
-### Community 428 - "aP"
-Cohesion: 0.67
-Nodes (3): aeC(), aoz(), aP()
+### Community 428 - "hk"
+Cohesion: 0.40
+Nodes (5): a12(), a26(), a27(), hk(), U7()
 
-### Community 429 - "alV"
-Cohesion: 0.50
-Nodes (4): agw(), alV(), alX(), V5()
+### Community 429 - "iP"
+Cohesion: 0.40
+Nodes (5): a2u(), alk(), gUK(), iP(), Nk()
 
 ### Community 430 - "2. Mathematical Formulations"
 Cohesion: 0.18
 Nodes (10): 1. Architecture & Execution Flow, 2.1 Hungarian Bipartite Dispatch Matching (`dispatch_engine.py`), 2.2 Spatial Dynamic Surge Pricing (`pricing_engine.py`), 2.3 Order Batching Optimizer (`batching_optimizer.py`), 2. Mathematical Formulations, 3. Running the Logistics Benchmark Simulation, Continuous Sigmoid Surge Multiplier:, Document: 06_LOGISTICS_AND_DISPATCH_ENGINE.md (+2 more)
 
-### Community 431 - "oO"
+### Community 431 - "a_F"
+Cohesion: 0.40
+Nodes (5): a_F(), ga35(), gaBY(), gaDn(), lb()
+
+### Community 432 - "r2"
+Cohesion: 0.40
+Nodes (5): afP(), agd(), gamU(), r2(), Wh()
+
+### Community 433 - "eo"
+Cohesion: 0.40
+Nodes (5): agb(), b97(), eo(), gmP(), PL()
+
+### Community 434 - "gYf"
 Cohesion: 0.67
-Nodes (3): a5n(), gJ6(), oO()
+Nodes (3): guB(), guD(), gYf()
 
-### Community 432 - "oY"
-Cohesion: 0.29
-Nodes (7): aO1(), bc5(), bdl(), bn(), gash(), oY(), toString()
+### Community 436 - "aQI"
+Cohesion: 0.40
+Nodes (5): ahj(), aQI(), I0(), q5(), Wz()
 
-### Community 433 - "gj8"
-Cohesion: 0.50
-Nodes (4): aS0(), b0o(), ga0D(), gj8()
-
-### Community 434 - "aSQ"
-Cohesion: 0.50
-Nodes (4): aSQ(), guB(), guD(), gYf()
-
-### Community 436 - "gey"
-Cohesion: 0.67
-Nodes (4): bh2(), bh4(), gej(), gey()
-
-### Community 437 - "aWP"
-Cohesion: 0.50
-Nodes (4): aWP(), aWx(), aX6(), Lo()
+### Community 437 - "SB"
+Cohesion: 0.40
+Nodes (5): a48(), aAz(), gBp(), S6(), SB()
 
 ### Community 438 - "aFb"
 Cohesion: 0.50
 Nodes (4): aAF(), aAG(), aFb(), gom()
 
-### Community 443 - "ahc"
-Cohesion: 0.50
-Nodes (4): ahc(), gabL(), gabM(), gjr()
+### Community 443 - "savt"
+Cohesion: 0.40
+Nodes (5): ae2(), gM0(), goP(), savt(), snP()
 
 ### Community 444 - "Core Principles"
 Cohesion: 0.18
 Nodes (10): Core Principles, Governance, [PRINCIPLE_1_NAME], [PRINCIPLE_2_NAME], [PRINCIPLE_3_NAME], [PRINCIPLE_4_NAME], [PRINCIPLE_5_NAME], [PROJECT_NAME] Constitution (+2 more)
 
-### Community 445 - "aZI"
-Cohesion: 0.67
-Nodes (3): a4j(), aZI(), T1()
+### Community 445 - "fC"
+Cohesion: 0.18
+Nodes (11): a4j(), aDT(), aE6(), ah1(), ahj(), aUG(), aZI(), fC() (+3 more)
 
 ### Community 446 - "🎯 1. Executive Summary & Problem Breakdown"
 Cohesion: 0.18
@@ -2284,101 +2307,125 @@ Nodes (9): 1. Component Hierarchy & File Structure, 2.1 Food Mode (Wasel Eat & M
 Cohesion: 0.20
 Nodes (9): 1. Live Production Topology on Render, 2. Server Configuration (`backend/server.js`), 3. Docker Containerization (`Dockerfile`), 4. Full Release Pipeline Execution, 5. Google Play Compliance Checklist, Document: 07_PRODUCTION_DEPLOYMENT_AND_DEVOPS.md, Environment Variables:, Production Endpoints: (+1 more)
 
-### Community 450 - "aYl"
-Cohesion: 0.33
-Nodes (6): aYl(), aZE(), b6G(), bgD(), DO(), F0()
+### Community 450 - "k"
+Cohesion: 0.05
+Nodes (46): a10(), a9g(), a_6(), aBZ(), aD(), adL(), ag9(), agi() (+38 more)
 
-### Community 453 - "rE"
+### Community 453 - "$3"
 Cohesion: 0.50
-Nodes (4): alw(), gadR(), galW(), rE()
+Nodes (3): $3(), sc1(), sKN()
 
 ### Community 454 - "wD"
 Cohesion: 0.50
 Nodes (4): aPP(), bbb(), gx4(), wD()
 
 ### Community 455 - "fL"
-Cohesion: 0.67
-Nodes (4): fL(), Kw(), sa25(), ZA()
+Cohesion: 0.20
+Nodes (12): a_9(), Cf(), FI(), fL(), gkF(), gPX(), gxT(), Kw() (+4 more)
 
-### Community 456 - "a4w"
-Cohesion: 0.67
-Nodes (3): a4w(), bdR(), rG()
+### Community 456 - "a20"
+Cohesion: 0.50
+Nodes (4): a20(), a2e(), a2h(), aAB()
 
-### Community 457 - "mG"
-Cohesion: 0.67
-Nodes (3): a6S(), a_H(), mG()
+### Community 457 - "abe"
+Cohesion: 0.50
+Nodes (4): a4Z(), abe(), gMK(), nc()
 
-### Community 458 - "il"
-Cohesion: 0.13
-Nodes (19): a5F(), a69(), aht(), akw(), alT(), beG(), CF(), Dz() (+11 more)
+### Community 458 - "gGP"
+Cohesion: 0.50
+Nodes (4): akM(), akO(), akQ(), gGP()
 
-### Community 460 - "a6m"
-Cohesion: 0.67
-Nodes (3): a4g(), a6m(), aCr()
+### Community 460 - "Dx"
+Cohesion: 0.50
+Nodes (4): alE(), Dx(), gBP(), gPO()
 
-### Community 461 - "afT"
-Cohesion: 0.67
-Nodes (3): afT(), afU(), gVK()
+### Community 461 - "K1"
+Cohesion: 0.50
+Nodes (4): afT(), afU(), gVK(), K1()
 
 ### Community 462 - "l1"
-Cohesion: 0.25
-Nodes (8): ahz(), aOU(), aOV(), bdh(), beI(), l1(), U_(), uj()
+Cohesion: 0.33
+Nodes (6): aOU(), b_C(), bdh(), beI(), l1(), uj()
 
-### Community 463 - "aUG"
-Cohesion: 0.67
-Nodes (3): ah1(), ahj(), aUG()
+### Community 463 - "X8"
+Cohesion: 0.50
+Nodes (4): b8F(), gk7(), qF(), X8()
 
 ### Community 464 - "PRODUCT.md"
 Cohesion: 0.20
 Nodes (9): Accessibility & Inclusion, Brand Commitments, Capabilities and Constraints, Operating Context, Platform, Positioning, Product Principles, Product Purpose (+1 more)
 
-### Community 468 - "aPS"
-Cohesion: 0.32
-Nodes (8): anS(), aPS(), aQu(), gpj(), Oa(), vx(), X1(), X2()
+### Community 465 - "fU"
+Cohesion: 0.50
+Nodes (4): a5s(), aAu(), fU(), gavl()
+
+### Community 468 - "aPT"
+Cohesion: 0.50
+Nodes (4): a6A(), aPT(), gA1(), u7()
 
 ### Community 469 - "Core Principles"
 Cohesion: 0.20
 Nodes (9): Core Principles, Governance, I. Hyper-Local Nalut Context & Multi-Tenant Isolation, II. Sharia Compliance & Financial Transparency (NON-NEGOTIABLE), III. Multi-App Architecture & Modular Contracts, IV. Test-Driven Verification & Zero-Warning Gate (NON-NEGOTIABLE), Technology Stack & Standards, V. Offline Resilience & Mountainous Network Handling (+1 more)
 
-### Community 470 - "eL"
-Cohesion: 0.67
-Nodes (4): eL(), ga2P(), gwn(), mt()
+### Community 470 - "gmR"
+Cohesion: 0.50
+Nodes (4): agd(), b97(), gmR(), PM()
 
 ### Community 471 - "VZ"
 Cohesion: 0.25
 Nodes (8): aEQ(), ahm(), gacK(), gagB(), gk0(), gRm(), SO(), VZ()
 
+### Community 472 - "qx"
+Cohesion: 0.50
+Nodes (4): aje(), ajN(), qx(), WT()
+
 ### Community 473 - "👥 2. User Scenarios & Prioritized Stories"
 Cohesion: 0.20
 Nodes (9): 🎯 1. Overview & Problem Statement, 👥 2. User Scenarios & Prioritized Stories, 📋 3. Functional Requirements, 🛡️ 4. Non-Functional & Reliability Requirements, Feature Specification: Cross-App State Loss & Lifecycle Persistence, User Story 1 - Customer Cart & Order Recovery (Priority: P1), User Story 2 - Merchant Store Continuity & KDS Resilience (Priority: P1), User Story 3 - Captain Safe Navigation & Mutual Exclusion (Priority: P1) (+1 more)
 
-### Community 474 - "sr2"
-Cohesion: 0.50
-Nodes (4): gk7(), sr2(), X7(), X9()
+### Community 474 - "AX"
+Cohesion: 0.09
+Nodes (26): a34(), ahz(), ami(), aOV(), ati(), AX(), aX6(), gT2() (+18 more)
 
 ### Community 476 - "Document: 01_PLATFORM_ARCHITECTURE_AND_SPECS.md"
 Cohesion: 0.22
 Nodes (8): 1. High-Level Architecture Topology, 2. Libyan Localization & Business Rules, 3.1 Color Palette, 3.2 Typography Guidelines, 3. Global Design System Tokens (`design_system.dart`), 4. Entity Relationships & Core Schema Models, Document: 01_PLATFORM_ARCHITECTURE_AND_SPECS.md, 🏗️ Wasel Nalut: Platform Architecture & Design Specifications
 
-### Community 478 - "Lo"
-Cohesion: 0.33
-Nodes (6): aos(), ga1V(), ga1X(), gfc(), glR(), Lo()
+### Community 477 - "aKS"
+Cohesion: 0.50
+Nodes (4): akO(), akQ(), aKS(), gGQ()
+
+### Community 478 - "a0k"
+Cohesion: 0.67
+Nodes (3): a0k(), ag3(), jv()
 
 ### Community 484 - "op"
-Cohesion: 0.39
-Nodes (8): a5x(), A8(), aWC(), gu8(), gu9(), Oh(), op(), P3()
+Cohesion: 0.29
+Nodes (10): A8(), aWC(), aZr(), gu8(), gu9(), j1(), oG(), Oh() (+2 more)
 
-### Community 486 - "fF"
+### Community 485 - "giI"
+Cohesion: 0.67
+Nodes (3): adi(), giI(), Nl()
+
+### Community 486 - "ek"
+Cohesion: 1.00
+Nodes (3): ek(), ga2N(), gwm()
+
+### Community 487 - "XN"
 Cohesion: 0.50
-Nodes (5): a61(), acO(), fF(), n8(), pp()
-
-### Community 487 - "e4"
-Cohesion: 0.20
-Nodes (12): a0B(), a_Y(), agu(), agv(), aRP(), b5f(), b5k(), b60() (+4 more)
+Nodes (5): agu(), agv(), akF(), gv1(), XN()
 
 ### Community 488 - "eL"
-Cohesion: 0.08
-Nodes (35): a08(), a09(), A1(), a1F(), A4(), a5h(), aga(), aja() (+27 more)
+Cohesion: 0.11
+Nodes (21): a08(), a0w(), a1F(), a3t(), a5h(), a_t(), aga(), aiv() (+13 more)
+
+### Community 489 - "aY4"
+Cohesion: 0.67
+Nodes (3): a9I(), aY4(), y9()
+
+### Community 490 - "a_C"
+Cohesion: 0.67
+Nodes (3): a_C(), aVb(), ga2w()
 
 ### Community 522 - "Implementation Plan: [FEATURE]"
 Cohesion: 0.22
@@ -2401,12 +2448,12 @@ Cohesion: 0.33
 Nodes (6): aSO(), aSU(), aVA(), ga4L(), gi0(), YC()
 
 ### Community 528 - "gjN"
-Cohesion: 0.50
-Nodes (5): afd(), aFQ(), gjN(), K3(), vc()
+Cohesion: 0.67
+Nodes (4): afd(), aFQ(), gjN(), K3()
 
 ### Community 530 - "iQ"
-Cohesion: 0.12
-Nodes (17): a02(), aDT(), aDw(), aDy(), baG(), fC(), gG_(), grp() (+9 more)
+Cohesion: 0.20
+Nodes (10): a2v(), eG(), gG_(), gUL(), iQ(), Nl(), NY(), rq() (+2 more)
 
 ### Community 532 - "a_k"
 Cohesion: 0.67
@@ -2416,9 +2463,9 @@ Nodes (3): a_k(), bcT(), ga57()
 Cohesion: 0.25
 Nodes (7): 🏗️ 1. Technical Context & State Machine, 🎨 2. Component Design & Touchpoints, 🧪 3. Verification & Test Plan, Implementation Plan: Order Lifecycle Handover Audit & Modern Kitchen App Redesign, Phase 1: Driver App Handover & Bill Audit (`flutter_driver_app`), Phase 2: Merchant Kitchen App Auto-Identification (`flutter_merchant_app`), Phase 3: Kitchen Display System (KDS) Full Modern Redesign (`flutter_merchant_app`)
 
-### Community 535 - "Lp"
-Cohesion: 0.67
-Nodes (3): aWS(), aX9(), Lp()
+### Community 535 - "aWA"
+Cohesion: 0.50
+Nodes (4): aWA(), aWS(), aX9(), Lp()
 
 ### Community 540 - "Design System: Wasel Nalut (الهوية العصرية الفاتحة)"
 Cohesion: 0.29
@@ -2436,21 +2483,17 @@ Nodes (6): Phase 1: Dependencies & Core Service (P1), Phase 2: Customer App UI &
 Cohesion: 0.29
 Nodes (6): Phase 1: Captain Order Handover & Bill Audit Flow (Driver App), Phase 2: Kitchen App Auto-Identification & Store Switcher (Merchant App), Phase 3: KDS Kitchen Display System Modern Visual Redesign (Merchant App), Phase 4: Verification, Builds & Deployment, 📋 Task List, Tasks: Order Lifecycle Handover Audit & Modern Kitchen App Redesign
 
-### Community 550 - "wx"
-Cohesion: 0.67
-Nodes (3): acy(), Ey(), wx()
-
 ### Community 551 - "aDC"
-Cohesion: 0.16
-Nodes (14): aDB(), aDC(), aDD(), aDF(), adi(), EB(), gacm(), gami() (+6 more)
+Cohesion: 0.28
+Nodes (9): aDB(), aDC(), aDE(), aDF(), EB(), gami(), O5(), uq() (+1 more)
 
-### Community 553 - "jW"
-Cohesion: 0.17
-Nodes (16): a0p(), a0v(), a4p(), aPV(), aVQ(), dY(), FI(), ga_() (+8 more)
+### Community 553 - "j5"
+Cohesion: 0.13
+Nodes (20): a0p(), a0v(), a3O(), a_k(), aE9(), aEb(), ala(), F6() (+12 more)
 
-### Community 554 - "VF"
-Cohesion: 0.24
-Nodes (10): a0M(), acF(), aok(), ga5d(), gBv(), gV5(), VF(), W0() (+2 more)
+### Community 554 - "gBv"
+Cohesion: 0.40
+Nodes (6): a0M(), aok(), ga5d(), gBv(), W4(), W5()
 
 ### Community 561 - "installInstanceTearOff"
 Cohesion: 0.40
@@ -2463,22 +2506,22 @@ Nodes (4): [Category 1], [Category 2], [CHECKLIST TYPE] Checklist: [FEATURE NAME
 ## Knowledge Gaps
 - **2779 isolated node(s):** `@types/node`, `@types/pg`, `@types/socket.io`, `order`, `onFinishedDelivery` (+2774 more)
   These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 5033 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **71 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **73 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `f8()` connect `dq` to `backend/public/app/main.dart.js`, `gad`, `gU`, `b3`, `b`, `a`, `m`, `aN`, `gbw`, `gV`, `aW`, `b7`, `d4`, `gbe`, `i`, `.$2`, `gK`, `dm`?**
+- **Why does `f8()` connect `aW` to `backend/public/app/main.dart.js`, `dq`, `F`, `gU`, `qZ`, `b`, `a`, `m`, `aN`, `v`, `b3`, `d4`, `Ab`, `i`, `gK`, `dm`, `gc8`?**
   _High betweenness centrality (0.108) - this node is a cross-community bridge._
 - **Are the 155 inferred relationships involving `i()` (e.g. with `load()` and `load()`) actually correct?**
   _`i()` has 155 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `@types/node`, `@types/pg`, `@types/socket.io` to the rest of the system?**
   _2779 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `backend/public/app/main.dart.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.004123375110655547 - nodes in this community are weakly interconnected._
-- **Why does `bbw()` connect `b7` to `public/app/main.dart.js`, `dq`, `e5`, `aXZ`, `e4`, `c3`, `Fy`, `l`, `b`, `i`, `d9`, `gad`, `e2`, `b3`, `a`?**
+  _Cohesion score 0.004584203201113431 - nodes in this community are weakly interconnected._
+- **Why does `bbw()` connect `b3` to `public/app/main.dart.js`, `aXZ`, `b`, `i`, `l`, `c`, `Fy`, `aW`, `d9`, `gaj`, `e2`, `e5`, `a`?**
   _High betweenness centrality (0.099) - this node is a cross-community bridge._
 - **Are the 156 inferred relationships involving `i()` (e.g. with `load()` and `load()`) actually correct?**
   _`i()` has 156 INFERRED edges - model-reasoned connections that need verification._
 - **Should `public/app/main.dart.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.003891756172408983 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.0041071732438160355 - nodes in this community are weakly interconnected._

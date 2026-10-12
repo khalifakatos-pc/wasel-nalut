@@ -6,6 +6,7 @@ import 'order_radar_dialog.dart';
 import 'driver_wallet_screen.dart';
 import 'services/driver_supabase_service.dart';
 import 'services/driver_notification_service.dart';
+import 'services/driver_gps_service.dart';
 import 'package:wasel_ui/wasel_ui.dart';
 
 /// ============================================================================
@@ -71,39 +72,37 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
 
   void _startTelemetryStream() {
     _telemetryTimer?.cancel();
-    if (_onlineStatus == DriverOnlineStatus.offline) return;
+    if (_onlineStatus == DriverOnlineStatus.offline) {
+      DriverGpsService.instance.stopTracking();
+      return;
+    }
+
+    // Start high-precision device GPS telemetry streaming
+    DriverGpsService.instance.startTracking(
+      orderId: widget.activeDelivery?.orderId,
+    );
 
     // Immediate initial presence heartbeat to backend
     DriverSupabaseService.sendHeartbeat(
-      latitude: _currentLat,
-      longitude: _currentLng,
-      heading: 45.0,
-      speedKmh: 38.0,
+      latitude: DriverGpsService.instance.currentLat,
+      longitude: DriverGpsService.instance.currentLng,
+      heading: DriverGpsService.instance.currentHeading,
+      speedKmh: DriverGpsService.instance.currentSpeedKmh,
     );
 
     _telemetryTimer = Timer.periodic(const Duration(seconds: 4), (_) {
       if (_onlineStatus == DriverOnlineStatus.offline || !mounted) return;
       _telemetryPingCount++;
-      // Simulate minor vehicle GPS movement along Nalut main thoroughfare
-      final latOffset = ((_telemetryPingCount % 10) - 5) * 0.00012;
-      final lngOffset = ((_telemetryPingCount % 8) - 4) * 0.00015;
-      _currentLat = 31.8686 + latOffset;
-      _currentLng = 10.9818 + lngOffset;
-
-      DriverSupabaseService.broadcastTelemetry(
-        latitude: _currentLat,
-        longitude: _currentLng,
-        heading: 45.0,
-        speedKmh: 38.0,
-      );
+      _currentLat = DriverGpsService.instance.currentLat;
+      _currentLng = DriverGpsService.instance.currentLng;
 
       // Refresh presence heartbeat every 12 seconds
       if (_telemetryPingCount % 3 == 0) {
         DriverSupabaseService.sendHeartbeat(
           latitude: _currentLat,
           longitude: _currentLng,
-          heading: 45.0,
-          speedKmh: 38.0,
+          heading: DriverGpsService.instance.currentHeading,
+          speedKmh: DriverGpsService.instance.currentSpeedKmh,
         );
       }
 
@@ -116,6 +115,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     _radarTimer?.cancel();
     _telemetryTimer?.cancel();
     _pulseController.dispose();
+    DriverGpsService.instance.stopTracking();
     // Auto-set driver to offline when captain exits app
     DriverSupabaseService.updateStatus('offline');
     super.dispose();
@@ -362,6 +362,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
       _checkIncomingOrders();
     } else {
       _telemetryTimer?.cancel();
+      DriverGpsService.instance.stopTracking();
       DriverSupabaseService.updateStatus('offline');
     }
 

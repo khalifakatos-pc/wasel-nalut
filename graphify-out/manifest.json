@@ -618,10 +618,10 @@
     "semantic_hash": "7af78ce6636439bb182f383595e199b9"
   },
   "flutter_admin_app/lib/services/admin_socket_service.dart": {
-    "mtime": 1791564657.8767426,
-    "seen": 1791631278.0762508,
-    "ast_hash": "a972755de15d8f753525b9a6d5ebf590",
-    "semantic_hash": "a972755de15d8f753525b9a6d5ebf590"
+    "mtime": 1791809157.9939277,
+    "seen": 1791810058.6099126,
+    "ast_hash": "105a3b99f5e62773f6428d6372d4e349",
+    "semantic_hash": ""
   },
   "flutter_admin_app/lib/services/admin_supabase_service.dart": {
     "mtime": 1791656062.746077,
@@ -2086,12 +2086,6 @@
     "seen": 1791631278.076577,
     "ast_hash": "f19b1f42c6efda59a3d3c90cc4c4b8a9",
     "semantic_hash": "f19b1f42c6efda59a3d3c90cc4c4b8a9"
-  },
-  "scratch/generate_audio.py": {
-    "mtime": 1791273610.7232308,
-    "seen": 1791631278.0765789,
-    "ast_hash": "c009dfa5719e7df45e9406b7438825b3",
-    "semantic_hash": "c009dfa5719e7df45e9406b7438825b3"
   },
   "test/e2e/test_e2e_order_lifecycle.js": {
     "mtime": 1791558830.1392424,
@@ -3900,9 +3894,9 @@
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/services/merchant_socket_service.dart": {
-    "mtime": 1791651010.1014795,
-    "seen": 1791651400.4852142,
-    "ast_hash": "daddd977cae8caec188c2b6ea5d4e70d",
+    "mtime": 1791809151.8518462,
+    "seen": 1791810058.689719,
+    "ast_hash": "7a01ead96472943dc9a64cf8049c96ed",
     "semantic_hash": ""
   },
   "flutter_driver_app/assets/sounds/captain_radar_alarm.wav": {
