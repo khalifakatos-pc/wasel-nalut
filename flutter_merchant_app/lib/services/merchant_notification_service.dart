@@ -3,11 +3,79 @@ import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'kitchen_buzzer_service.dart';
 
 @pragma('vm:entry-point')
 Future<void> _merchantFirebaseBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint('Merchant background notification: ${message.messageId}');
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+    debugPrint('[Merchant FCM Background] Received message: ${message.messageId}');
+
+    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initSettings = InitializationSettings(android: androidSettings);
+    await localNotifications.initialize(initSettings);
+
+    const AndroidNotificationChannel kitchenAlertChannel = AndroidNotificationChannel(
+      'wasel_kitchen_alerts_channel',
+      '🔔 تنبيهات مطبخ شريك واصل (نالوت)',
+      description: 'رنين واهتزاز فوري عالي الأهمية لإشعار المطبخ بالطلبات الجديدة',
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('kitchen_bell'),
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    final androidPlatformChannel = localNotifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlatformChannel != null) {
+      await androidPlatformChannel.createNotificationChannel(kitchenAlertChannel);
+    }
+
+    final title = message.notification?.title ?? '🔔 طلب مطبخ جديد - واصل نالوت';
+    final body = message.notification?.body ?? 'وصل طلب جديد للمطعم، افتح شاشة KDS للبدء.';
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      kitchenAlertChannel.id,
+      kitchenAlertChannel.name,
+      channelDescription: kitchenAlertChannel.description,
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: const RawResourceAndroidNotificationSound('kitchen_bell'),
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
+      ticker: '🚨 طلب جديد وارد - واصل نالوت',
+      icon: '@mipmap/ic_launcher',
+      styleInformation: BigTextStyleInformation(body),
+      actions: const <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'open_kds',
+          '📋 عرض الطلب في KDS',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      platformDetails,
+      payload: message.data.toString(),
+    );
+  } catch (e) {
+    debugPrint('[Merchant FCM Background] Error displaying background notification: $e');
+  }
 }
 
 class MerchantNotificationService {
@@ -40,7 +108,9 @@ class MerchantNotificationService {
 
     try {
       // 1. Initialize Firebase
-      await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
 
       // 2. Set background handler
       FirebaseMessaging.onBackgroundMessage(_merchantFirebaseBackgroundHandler);
@@ -67,6 +137,7 @@ class MerchantNotificationService {
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
           debugPrint('Merchant notification clicked: ${response.payload}');
+          KitchenBuzzerService.instance.stopBuzzer();
           if (onNotificationTapped != null && response.payload != null) {
             onNotificationTapped({'payload': response.payload});
           }
@@ -89,6 +160,9 @@ class MerchantNotificationService {
       // 7. Foreground message handler
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
         debugPrint('Merchant foreground message: ${message.notification?.title}');
+        final orderId = message.data['order_id'] ?? message.data['orderId'];
+        // Start continuous kitchen buzzer audio until cook accepts
+        KitchenBuzzerService.instance.startBuzzer(orderId: orderId?.toString());
         showKitchenOrderAlert(
           title: message.notification?.title ?? '🔔 طلب مطبخ جديد - واصل نالوت',
           body: message.notification?.body ?? 'وصل طلب جديد للمطعم، افتح شاشة KDS للبدء.',
@@ -98,6 +172,7 @@ class MerchantNotificationService {
 
       // 8. Background launch handler
       FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+        KitchenBuzzerService.instance.stopBuzzer();
         if (onNotificationTapped != null) {
           onNotificationTapped(message.data);
         }
@@ -124,6 +199,7 @@ class MerchantNotificationService {
       playSound: true,
       sound: const RawResourceAndroidNotificationSound('kitchen_bell'),
       enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 1000, 500, 1000, 500, 1000]),
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
       visibility: NotificationVisibility.public,

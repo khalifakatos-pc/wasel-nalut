@@ -270,6 +270,29 @@ class SocketService {
     // 5. Target Admin
     this.io.to('admin:fleet').emit(`admin:${eventType}`, notificationPayload);
 
+    // 6. Push Notification to Customer via FCM
+    try {
+      const WaselFcmDispatcher = require('../fcm_dispatcher');
+      const fcm = new WaselFcmDispatcher();
+      const statusTextMap = {
+        'preparing': 'بدأ تحضير وجبتك بالمطعم',
+        'ready_for_pickup': 'الوجبة جاهزة وبانتظار الكابتن',
+        'out_for_delivery': 'الكابتن استلم الوجبة وفي الطريق إليك',
+        'picked_up': 'الكابتن استلم الوجبة وفي الطريق إليك',
+        'arrived': 'الكابتن وصل إلى موقعك في نالوت',
+        'delivered': 'تم تسليم الوجبة بنجاح، صحتين وعافية!',
+        'cancelled': 'تم إلغاء الطلب'
+      };
+      fcm.notifyCustomerOrderStatus({
+        orderId: order.order_number || order.id,
+        status: order.status,
+        statusTextAr: statusTextMap[order.status] || `حالة الطلب: ${order.status}`,
+        restaurantName: store?.name || 'مطعم واصل'
+      }).catch(err => console.error('[FCM] Customer status push error:', err.message));
+    } catch (fcmErr) {
+      console.error('[FCM] Dispatcher init error in socketService:', fcmErr.message);
+    }
+
     console.log(`[SocketService] Notification sent: ${eventType} for Order ${order.order_number}`);
   }
 

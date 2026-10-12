@@ -10,8 +10,69 @@ Future<void> _customerFirebaseBackgroundHandler(RemoteMessage message) async {
     if (Firebase.apps.isEmpty) {
       await Firebase.initializeApp();
     }
-  } catch (_) {}
-  debugPrint('Customer background notification: ${message.messageId}');
+    debugPrint('[Customer FCM Background] Received message: ${message.messageId}');
+
+    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initSettings = InitializationSettings(android: androidSettings);
+    await localNotifications.initialize(initSettings);
+
+    const AndroidNotificationChannel customerOrderChannel = AndroidNotificationChannel(
+      'wasel_customer_orders_channel',
+      '🛍️ تحديثات طلباتي - واصل نالوت',
+      description: 'إشعارات لحظية عن مراحل طهي وتوصيل وجبتك في نالوت',
+      importance: Importance.high,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('order_status_chime'),
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    final androidPlatformChannel = localNotifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlatformChannel != null) {
+      await androidPlatformChannel.createNotificationChannel(customerOrderChannel);
+    }
+
+    final title = message.notification?.title ?? 'تحديث على طلبك - واصل نالوت';
+    final body = message.notification?.body ?? 'هناك تحديث جديد على مسار وجبتك.';
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      customerOrderChannel.id,
+      customerOrderChannel.name,
+      channelDescription: customerOrderChannel.description,
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: const RawResourceAndroidNotificationSound('order_status_chime'),
+      enableVibration: true,
+      fullScreenIntent: true,
+      visibility: NotificationVisibility.public,
+      ticker: '🛍️ تحديث حالة طلبك - واصل نالوت',
+      icon: '@mipmap/ic_launcher',
+      styleInformation: BigTextStyleInformation(body),
+      actions: const <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'track',
+          '🛵 تتبع الكابتن مباشرة',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      platformDetails,
+      payload: message.data.toString(),
+    );
+  } catch (e) {
+    debugPrint('[Customer FCM Background] Error displaying background notification: $e');
+  }
 }
 
 class CustomerNotificationService {

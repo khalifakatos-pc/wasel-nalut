@@ -74,6 +74,20 @@ class DispatchService {
       });
     });
 
+    // 5. Send High-Priority FCM Push Alert to all Nalut Captains (Topic: wasel_captains)
+    try {
+      const WaselFcmDispatcher = require('../fcm_dispatcher');
+      const fcm = new WaselFcmDispatcher();
+      fcm.notifyCaptainsNewOrder({
+        orderId: order.order_number || order.id,
+        storeName: store.name,
+        totalAmountLyd: order.total_amount_lyd || order.total_amount || '0.0',
+        deliveryFeeLyd: order.delivery_fee_lyd || '5.0'
+      }).catch(err => console.error('[FCM] Error notifying captains:', err.message));
+    } catch (fcmErr) {
+      console.error('[FCM] Error initializing FCM in DispatchService:', fcmErr.message);
+    }
+
     // Start timeout mechanism to notify admin if no one accepts
     this._startTimeout(order, db);
 

@@ -6,8 +6,80 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  debugPrint('Handling background message: ${message.messageId}');
+  try {
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp();
+    }
+    debugPrint('[Driver FCM Background] Received message: ${message.messageId}');
+
+    final FlutterLocalNotificationsPlugin localNotifications = FlutterLocalNotificationsPlugin();
+    const AndroidInitializationSettings androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+    const InitializationSettings initSettings = InitializationSettings(android: androidSettings);
+    await localNotifications.initialize(initSettings);
+
+    const AndroidNotificationChannel driverAlertChannel = AndroidNotificationChannel(
+      'wasel_driver_alerts_channel',
+      '🚨 تنبيهات طلبات كباتن واصل',
+      description: 'رنين واهتزاز فوري عالي الأهمية لإشعار الكابتن بالطلبات الجديدة في نالوت',
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('driver_order_alert'),
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    final androidPlatformChannel = localNotifications.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlatformChannel != null) {
+      await androidPlatformChannel.createNotificationChannel(driverAlertChannel);
+    }
+
+    final title = message.notification?.title ?? '🚨 طلب توصيل جديد - واصل نالوت';
+    final body = message.notification?.body ?? 'يوجد طلب جديد متاح في منطقتك، افتح التطبيق للقبول.';
+
+    final AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      driverAlertChannel.id,
+      driverAlertChannel.name,
+      channelDescription: driverAlertChannel.description,
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: const RawResourceAndroidNotificationSound('driver_order_alert'),
+      enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 800, 300, 800, 300, 800]),
+      fullScreenIntent: true,
+      category: AndroidNotificationCategory.alarm,
+      visibility: NotificationVisibility.public,
+      ticker: '🚨 طلب جديد متاح - كابتن واصل',
+      icon: '@mipmap/ic_launcher',
+      styleInformation: BigTextStyleInformation(body),
+      actions: const <AndroidNotificationAction>[
+        AndroidNotificationAction(
+          'accept',
+          '✅ قبول الطلب',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+        AndroidNotificationAction(
+          'reject',
+          '❌ تجاهل',
+          cancelNotification: true,
+        ),
+      ],
+    );
+
+    final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);
+    await localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      platformDetails,
+      payload: message.data.toString(),
+    );
+  } catch (e) {
+    debugPrint('[Driver FCM Background] Error displaying background notification: $e');
+  }
 }
 
 class DriverNotificationService {
@@ -40,7 +112,9 @@ class DriverNotificationService {
 
     try {
       // 1. Initialize Firebase
-      await Firebase.initializeApp();
+      if (Firebase.apps.isEmpty) {
+        await Firebase.initializeApp();
+      }
 
       // 2. Set background handler
       FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
