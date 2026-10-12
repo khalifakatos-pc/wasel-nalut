@@ -60,6 +60,9 @@ class CartItem {
 
   double get total => price * quantity;
 
+  /// Display string for unit price multiplied by quantity (e.g. "3 × 10.00 = 30.00 د.ل")
+  String get priceCalculationText => '$quantity × ${price.toStringAsFixed(2)} = ${total.toStringAsFixed(2)} د.ل';
+
   String get formattedCustomizationText {
     final parts = <String>[];
     if (spiceLevel != null && spiceLevel!.isNotEmpty) {
@@ -112,6 +115,9 @@ class CartService {
   /// Observable notifier for total items count (for badges and header icons)
   static final ValueNotifier<int> cartCountNotifier = ValueNotifier<int>(0);
 
+  /// Alias for count notifier to support wasel_ui and screen contracts
+  static ValueNotifier<int> get itemCountNotifier => cartCountNotifier;
+
   /// Get current cart items list
   static List<CartItem> get items => _items;
 
@@ -136,13 +142,16 @@ class CartService {
     _notifyUpdate();
   }
 
-  /// Add item to cart or increment quantity if matching item & addons already exist
+  /// Add item to cart or increment quantity if matching item, addons, notes & customizations already match completely
   static void addItem(CartItem newItem) {
     final existingIndex = _items.indexWhere(
       (item) =>
           item.id == newItem.id &&
           item.storeName == newItem.storeName &&
-          listEquals(item.selectedAddons, newItem.selectedAddons),
+          listEquals(item.selectedAddons, newItem.selectedAddons) &&
+          (item.notes ?? '').trim() == (newItem.notes ?? '').trim() &&
+          (item.spiceLevel ?? '') == (newItem.spiceLevel ?? '') &&
+          listEquals(item.exclusions, newItem.exclusions),
     );
 
     if (existingIndex != -1) {

@@ -33,25 +33,26 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    // Reveal duration <= 900ms using signature curves
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 850),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+      CurvedAnimation(parent: _controller, curve: WaselMotion.joy),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: const Interval(0.2, 1.0, curve: Curves.easeIn),
+        curve: const Interval(0.1, 0.75, curve: WaselMotion.signature),
       ),
     );
 
     _controller.forward();
 
-    // Primary timer: 1400ms (< 1.7s total elapsed)
+    // Primary timer: 1400ms preserved for M1 lifecycle tests
     _navigationTimer = Timer(const Duration(milliseconds: 1400), _navigateToDestination);
 
     // Fallback timer: 2500ms safety net ensuring navigation never hangs
@@ -115,6 +116,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (WaselMotion.isAnimationDisabled(context) && _controller.value < 1.0) {
+      _controller.value = 1.0;
+    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
@@ -122,9 +128,19 @@ class _SplashScreenState extends State<SplashScreen>
         child: Container(
           width: double.infinity,
           height: double.infinity,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-              colors: [Color(0xFF0F172A), Color(0xFF1E293B), Color(0xFF134E4A)],
+              colors: isDark
+                  ? [
+                      WaselColors.backgroundDark,
+                      WaselColors.surfaceDark,
+                      const Color(0xFF064E3B),
+                    ]
+                  : [
+                      WaselColors.backgroundLight,
+                      WaselColors.primaryTint,
+                      const Color(0xFFECFDF5),
+                    ],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
@@ -139,15 +155,11 @@ class _SplashScreenState extends State<SplashScreen>
                   width: 125,
                   height: 125,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.waselPrimary, AppColors.waselSecondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: AppRadius.radiusXxl,
+                    gradient: WaselColors.primaryGradient,
+                    borderRadius: WaselRadius.radiusXxl,
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.waselPrimary.withValues(alpha: 0.45),
+                        color: WaselColors.primary.withValues(alpha: 0.45),
                         blurRadius: 35,
                         spreadRadius: 6,
                       ),
@@ -171,24 +183,28 @@ class _SplashScreenState extends State<SplashScreen>
               // App Name
               FadeTransition(
                 opacity: _fadeAnimation,
-                child: const Column(
+                child: Column(
                   children: [
                     Text(
                       'واصل | WASEL',
-                      style: TextStyle(
+                      style: WaselTypography.cairo(
                         fontSize: 30,
                         fontWeight: FontWeight.w900,
-                        color: Colors.white,
+                        color: isDark
+                            ? WaselColors.textPrimaryDark
+                            : WaselColors.textPrimaryLight,
                         letterSpacing: 1.0,
                       ),
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'سوبر آب التوصيل والتسوق الأول في نالوت والجبل 🏔️',
                       textAlign: TextAlign.center,
-                      style: TextStyle(
+                      style: WaselTypography.cairo(
                         fontSize: 14,
-                        color: Colors.white70,
+                        color: isDark
+                            ? WaselColors.textSecondaryDark
+                            : WaselColors.textSecondaryLight,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -206,7 +222,7 @@ class _SplashScreenState extends State<SplashScreen>
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 2.5,
-                    color: AppColors.waselPrimary,
+                    color: WaselColors.primary,
                   ),
                 ),
               ),
@@ -218,8 +234,10 @@ class _SplashScreenState extends State<SplashScreen>
                 child: TextButton(
                   onPressed: _navigateToDestination,
                   style: TextButton.styleFrom(
-                    foregroundColor: Colors.white60,
-                    textStyle: const TextStyle(
+                    foregroundColor: isDark
+                        ? WaselColors.textMutedDark
+                        : WaselColors.textMutedLight,
+                    textStyle: WaselTypography.cairo(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),

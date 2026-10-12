@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gmap;
+import 'package:flutter_map/flutter_map.dart' as fmap;
+import 'package:latlong2/latlong.dart' as osm;
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
 import '../widgets/digital_voucher_dialog.dart';
@@ -569,77 +572,171 @@ class _CaptainsTabState extends State<CaptainsTab> {
 }
 
   void _showLiveRadarDialog() {
-    // Nalut Core Coordinates: 31.8687, 10.9818
+    int radarMode = 0; // 0 = Google Maps, 1 = Concentric Radar, 2 = ArcGIS Satellite
+
     showDialog(
       context: context,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
-        child: Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
-          child: Container(
-            width: 700,
-            height: 620,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0F172A),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.5), width: 1.5),
-              boxShadow: const [
-                BoxShadow(color: Colors.black87, blurRadius: 30, spreadRadius: 4),
-              ],
-            ),
-            child: Column(
-              children: [
-                // Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF1E293B),
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
-                    border: Border(bottom: BorderSide(color: Color(0xFF334155))),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AdminColors.primaryGold.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: const Icon(Icons.radar, color: AdminColors.primaryGold, size: 22),
-                      ),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'رادار الأسطول الحي • نالوت المركزية',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                            ),
-                            Text(
-                              'مركز التغطية: نالوت (31.8687° N, 10.9818° E) • بث تيليماتري مباشر',
-                              style: TextStyle(fontSize: 11, color: AdminColors.emeraldGreen),
-                            ),
-                          ],
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(ctx),
-                        icon: const Icon(Icons.close, color: Colors.white70),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Radar Viewport (Visual GIS Radar Canvas)
-                Expanded(
-                  child: Stack(
-                    children: [
-                      // Grid & Radar Concentric Circles
-                      Positioned.fill(
-                        child: Container(
+      builder: (ctx) => StatefulBuilder(
+        builder: (dialogCtx, setDlgState) => Directionality(
+          textDirection: TextDirection.rtl,
+          child: Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 20),
+            child: Container(
+              width: 700,
+              height: 620,
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.5), width: 1.5),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black87, blurRadius: 30, spreadRadius: 4),
+                ],
+              ),
+              child: Column(
+                children: [
+                  // Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF1E293B),
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+                      border: Border(bottom: BorderSide(color: Color(0xFF334155))),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
+                            color: AdminColors.primaryGold.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.radar, color: AdminColors.primaryGold, size: 22),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'رادار الأسطول الحي • نالوت المركزية',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
+                              ),
+                              Text(
+                                'مركز التغطية: نالوت (31.8687° N, 10.9818° E) • بث تيليماتري مباشر',
+                                style: TextStyle(fontSize: 11, color: AdminColors.emeraldGreen),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // Mode Switcher Pill
+                        InkWell(
+                          onTap: () {
+                            setDlgState(() {
+                              radarMode = (radarMode + 1) % 3;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.black54,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: AdminColors.primaryGold.withValues(alpha: 0.6)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  radarMode == 0
+                                      ? Icons.map_rounded
+                                      : (radarMode == 1 ? Icons.radar_rounded : Icons.satellite_alt_rounded),
+                                  size: 14,
+                                  color: AdminColors.primaryGold,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  radarMode == 0
+                                      ? 'Google Maps ⚡'
+                                      : (radarMode == 1 ? 'رادار رقمي 📡' : 'أقمار صناعية 🛰️'),
+                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Radar Viewport (Visual GIS Radar Canvas or Google Maps)
+                  Expanded(
+                    child: radarMode == 0
+                        ? ClipRRect(
+                            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                            child: gmap.GoogleMap(
+                              initialCameraPosition: const gmap.CameraPosition(
+                                target: gmap.LatLng(31.8687, 10.9818),
+                                zoom: 14.5,
+                              ),
+                              mapType: gmap.MapType.normal,
+                              myLocationButtonEnabled: false,
+                              zoomControlsEnabled: true,
+                              compassEnabled: true,
+                              markers: {
+                                const gmap.Marker(
+                                  markerId: gmap.MarkerId('nalut_center'),
+                                  position: gmap.LatLng(31.8687, 10.9818),
+                                  infoWindow: gmap.InfoWindow(title: 'قلعة وقصر نالوت المركزية'),
+                                ),
+                                ..._drivers.asMap().entries.map((entry) {
+                                  final idx = entry.key;
+                                  final driver = entry.value;
+                                  final dLat = 31.8687 + (idx % 2 == 0 ? 0.003 : -0.003) * ((idx + 1) * 0.6);
+                                  final dLng = 10.9818 + (idx % 3 == 0 ? 0.004 : -0.004) * ((idx + 1) * 0.5);
+                                  final isBusy = driver['status'] == 'busy_delivery';
+                                  return gmap.Marker(
+                                    markerId: gmap.MarkerId('driver_${driver['id'] ?? idx}'),
+                                    position: gmap.LatLng(dLat, dLng),
+                                    infoWindow: gmap.InfoWindow(
+                                      title: '${driver['full_name'] ?? 'كابتن'} (${isBusy ? 'في مشوار' : 'متاح'})',
+                                      snippet: 'هاتف: ${driver['phone'] ?? ''}',
+                                    ),
+                                    icon: gmap.BitmapDescriptor.defaultMarkerWithHue(
+                                      isBusy ? gmap.BitmapDescriptor.hueViolet : gmap.BitmapDescriptor.hueAzure,
+                                    ),
+                                  );
+                                }),
+                              },
+                            ),
+                          )
+                        : radarMode == 2
+                            ? ClipRRect(
+                                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(22)),
+                                child: fmap.FlutterMap(
+                                  options: const fmap.MapOptions(
+                                    initialCenter: osm.LatLng(31.8687, 10.9818),
+                                    initialZoom: 14.5,
+                                  ),
+                                  children: [
+                                    fmap.TileLayer(
+                                      urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                                      userAgentPackageName: 'com.wasel.admin.wasel_admin_app',
+                                    ),
+                                  ],
+                                ),
+                              )
+                            : Stack(
+                                children: [
+                                  // Grid & Radar Concentric Circles
+                                  Positioned.fill(
+                                    child: Container(
+                                      decoration: BoxDecoration(
                             gradient: RadialGradient(
                               center: Alignment.center,
                               radius: 0.85,
@@ -811,8 +908,9 @@ class _CaptainsTabState extends State<CaptainsTab> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildCaptainRadarMarker({
     required String name,

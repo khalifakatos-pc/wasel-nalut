@@ -24,6 +24,7 @@ class DriverNotificationService {
     description: 'رنين واهتزاز فوري عالي الأهمية لإشعار الكابتن بالطلبات الجديدة في نالوت',
     importance: Importance.max,
     playSound: true,
+    sound: RawResourceAndroidNotificationSound('driver_order_alert'),
     enableVibration: true,
     showBadge: true,
   );
@@ -67,9 +68,12 @@ class DriverNotificationService {
       await _localNotifications.initialize(
         initSettings,
         onDidReceiveNotificationResponse: (NotificationResponse response) {
-          debugPrint('Notification clicked with payload: ${response.payload}');
-          if (onNotificationTapped != null && response.payload != null) {
-            onNotificationTapped({'payload': response.payload});
+          debugPrint('Notification clicked with payload: ${response.payload}, action: ${response.actionId}');
+          if (onNotificationTapped != null) {
+            onNotificationTapped({
+              'payload': response.payload,
+              'action': response.actionId,
+            });
           }
         },
       );
@@ -147,13 +151,28 @@ class DriverNotificationService {
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      sound: const RawResourceAndroidNotificationSound('driver_order_alert'),
       enableVibration: true,
+      vibrationPattern: Int64List.fromList([0, 800, 300, 800, 300, 800]),
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
       visibility: NotificationVisibility.public,
       ticker: '🚨 طلب جديد متاح - كابتن واصل',
       icon: '@mipmap/ic_launcher',
       styleInformation: BigTextStyleInformation(body),
+      actions: <AndroidNotificationAction>[
+        const AndroidNotificationAction(
+          'accept',
+          '✅ قبول الطلب',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+        const AndroidNotificationAction(
+          'reject',
+          '❌ تجاهل',
+          cancelNotification: true,
+        ),
+      ],
     );
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);

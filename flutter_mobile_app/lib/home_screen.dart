@@ -11,7 +11,6 @@ import 'store_menu_screen.dart';
 import 'cart_checkout_screen.dart';
 import 'services/api_service.dart';
 import 'services/customer_notification_service.dart';
-import 'widgets/motion_widgets.dart';
 
 /// ============================================================================
 /// WASEL SUPER-APP HOME SCREEN (واصل نالوت والجبل الغربي)
@@ -273,7 +272,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
         bottom: false,
         child: Column(
@@ -330,9 +329,10 @@ class _HomeScreenState extends State<HomeScreen> {
   /// TOP APP BAR (Nalut Location + Notification + Cart Counter)
   /// ---------------------------------------------------------------------------
   Widget _buildTopAppBar(bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
-      color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+      color: colorScheme.surface,
       child: Row(
         children: [
           // Location Pin Icon
@@ -362,15 +362,15 @@ class _HomeScreenState extends State<HomeScreen> {
                     children: [
                       Text(
                         'التوصيل إلى:',
-                        style: TextStyle(
+                        style: WaselTypography.cairo(
                           fontSize: 11,
-                          color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                          color: colorScheme.onSurfaceVariant,
                         ),
                       ),
                       const SizedBox(width: 6),
                       Text(
                         ApiService.activeAddress['title'] ?? 'المنزل (الحوش)',
-                        style: TextStyle(
+                        style: WaselTypography.cairo(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: _activeBrandColor,
@@ -383,10 +383,10 @@ class _HomeScreenState extends State<HomeScreen> {
                       Flexible(
                         child: Text(
                           ApiService.activeAddress['details'] ?? 'نالوت - حي القلعة',
-                          style: TextStyle(
+                          style: WaselTypography.cairo(
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
-                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                            color: colorScheme.onSurface,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -395,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       Icon(
                         Icons.keyboard_arrow_down_rounded,
                         size: 18,
-                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                     ],
                   ),
@@ -411,7 +411,7 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Icon(
                   Icons.notifications_none_rounded,
-                  color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                  color: colorScheme.onSurface,
                   size: 24,
                 ),
                 Positioned(
@@ -420,8 +420,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: const BoxDecoration(
-                      color: AppColors.waselPrimary,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary,
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -563,13 +563,14 @@ class _HomeScreenState extends State<HomeScreen> {
   /// BRAND TAB SWITCHER (واصل طعام | واصل فوري | سوق واصل)
   /// ---------------------------------------------------------------------------
   Widget _buildBrandSwitcher(bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 8.0),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        color: colorScheme.surface,
         border: Border(
           bottom: BorderSide(
-            color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+            color: colorScheme.outlineVariant,
             width: 1,
           ),
         ),
@@ -577,8 +578,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         padding: const EdgeInsets.all(4.0),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : const Color(0xFFF1F5F9),
-          borderRadius: AppRadius.radiusFull,
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: WaselRadius.radiusFull,
         ),
         child: Row(
           children: [
@@ -586,19 +587,22 @@ class _HomeScreenState extends State<HomeScreen> {
               tab: WaselTab.food,
               label: 'واصل طعام',
               icon: Icons.restaurant_menu_rounded,
-              color: AppColors.waselPrimary,
+              color: WaselColors.primary,
+              isDark: isDark,
             ),
             _buildBrandTabItem(
               tab: WaselTab.fastGrocery,
               label: 'واصل فوري',
               icon: Icons.bolt_rounded,
-              color: AppColors.jetPrimary,
+              color: WaselColors.success,
+              isDark: isDark,
             ),
             _buildBrandTabItem(
               tab: WaselTab.marketplace,
               label: 'سوق واصل',
               icon: Icons.storefront_rounded,
-              color: AppColors.waselPurple,
+              color: const Color(0xFF8B5CF6),
+              isDark: isDark,
             ),
           ],
         ),
@@ -611,8 +615,10 @@ class _HomeScreenState extends State<HomeScreen> {
     required String label,
     required IconData icon,
     required Color color,
+    required bool isDark,
   }) {
     final isSelected = _activeTab == tab;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Expanded(
       child: WaselBouncyPressable(
@@ -628,12 +634,14 @@ class _HomeScreenState extends State<HomeScreen> {
           curve: Curves.easeInOut,
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white : Colors.transparent,
-            borderRadius: AppRadius.radiusFull,
+            color: isSelected
+                ? (isDark ? colorScheme.surfaceContainer : Colors.white)
+                : Colors.transparent,
+            borderRadius: WaselRadius.radiusFull,
             boxShadow: isSelected
                 ? [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.08),
                       blurRadius: 8,
                       offset: const Offset(0, 2),
                     ),
@@ -646,13 +654,13 @@ class _HomeScreenState extends State<HomeScreen> {
               Icon(
                 icon,
                 size: 16,
-                color: isSelected ? color : AppColors.lightTextMuted,
+                color: isSelected ? color : colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 5),
               Text(
                 label,
-                style: TextStyle(
-                  color: isSelected ? color : AppColors.lightTextSecondary,
+                style: WaselTypography.cairo(
+                  color: isSelected ? color : colorScheme.onSurfaceVariant,
                   fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
                   fontSize: 12,
                 ),
@@ -668,15 +676,16 @@ class _HomeScreenState extends State<HomeScreen> {
   /// SEARCH BAR
   /// ---------------------------------------------------------------------------
   Widget _buildSearchBar(bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       child: Container(
         height: 50,
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : const Color(0xFFF1F5F9),
-          borderRadius: AppRadius.radiusFull,
+          color: colorScheme.surfaceContainerHighest,
+          borderRadius: WaselRadius.radiusFull,
           border: Border.all(
-            color: isDark ? AppColors.darkBorder : const Color(0xFFE2E8F0),
+            color: colorScheme.outlineVariant,
             width: 1,
           ),
           boxShadow: isDark
@@ -692,22 +701,22 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Row(
           children: [
             const SizedBox(width: 14),
-            Icon(Icons.search_rounded, color: isDark ? Colors.white70 : const Color(0xFF64748B), size: 22),
+            Icon(Icons.search_rounded, color: colorScheme.onSurfaceVariant, size: 22),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
                 controller: _searchController,
-                style: TextStyle(
+                style: WaselTypography.cairo(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  color: colorScheme.onSurface,
                 ),
                 decoration: InputDecoration(
                   hintText: _searchHintText,
-                  hintStyle: TextStyle(
+                  hintStyle: WaselTypography.cairo(
                     fontSize: 12,
                     fontWeight: FontWeight.normal,
-                    color: isDark ? Colors.white38 : const Color(0xFF94A3B8),
+                    color: colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
                   ),
                   border: InputBorder.none,
                 ),
@@ -717,7 +726,7 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.all(6),
               padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white10 : Colors.white,
+                color: colorScheme.surface,
                 shape: BoxShape.circle,
                 boxShadow: isDark
                     ? null
@@ -867,8 +876,8 @@ class _HomeScreenState extends State<HomeScreen> {
                               const SizedBox(height: 4),
                               Text(
                                 banner['subtitle'] as String,
-                                style: const TextStyle(
-                                  color: Colors.white70,
+                                style: WaselTypography.cairo(
+                                  color: Colors.white.withValues(alpha: 0.85),
                                   fontSize: 12,
                                 ),
                               ),
@@ -964,11 +973,12 @@ class _HomeScreenState extends State<HomeScreen> {
           itemCount: categories.length,
           itemBuilder: (context, index) {
             final cat = categories[index];
+            final colorScheme = Theme.of(context).colorScheme;
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6),
               child: WaselBouncyPressable(
                 behavior: HitTestBehavior.opaque,
-                pressedScale: 0.92,
+                pressedScale: WaselMotion.pressScaleIcon,
                 onTap: () {
                   final catName = cat['name'] as String;
                   ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -979,7 +989,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       duration: const Duration(seconds: 1),
                       content: Text(
                         'تصنيف: $catName (متاح في نالوت)',
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: WaselTypography.cairo(fontWeight: FontWeight.bold),
                       ),
                     ),
                   );
@@ -990,15 +1000,19 @@ class _HomeScreenState extends State<HomeScreen> {
                       width: 58,
                       height: 58,
                       decoration: BoxDecoration(
-                        color: isDark ? AppColors.darkCard : const Color(0xFFFEF3C7),
+                        color: isDark
+                            ? colorScheme.surfaceContainer
+                            : colorScheme.primaryContainer.withValues(alpha: 0.35),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: isDark ? AppColors.darkBorder : const Color(0xFFFDE68A),
+                          color: isDark
+                              ? colorScheme.outlineVariant
+                              : colorScheme.primary.withValues(alpha: 0.25),
                           width: 1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
+                            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -1011,10 +1025,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 6),
                     Text(
                       cat['name'] as String,
-                      style: TextStyle(
+                      style: WaselTypography.cairo(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                        color: colorScheme.onSurface,
                       ),
                     ),
                   ],
@@ -1035,15 +1049,24 @@ class _HomeScreenState extends State<HomeScreen> {
       return const SizedBox.shrink();
     }
 
+    final colorScheme = Theme.of(context).colorScheme;
     final orderNum = _activeOrder!['order_number'] ?? 'WAS-9831';
     final statusStr = _activeOrder!['status'] ?? 'placed';
     final dynamic rawOtp = _activeOrder!['otp_code'] ?? _activeOrder!['delivery_pin'] ?? _activeOrder!['handover_code'] ?? _activeOrder!['pickup_code'];
     final String? otpCode = rawOtp?.toString();
 
     String statusTitle = 'تم تأكيد الطلب';
-    if (statusStr == 'preparing') statusTitle = 'المطبخ يجهز طلبك 🍳';
-    if (statusStr == 'out_for_delivery') statusTitle = 'الكابتن في الطريق إليك 🛵';
-    if (statusStr == 'ready') statusTitle = 'الطلب جاهز للاستلام 📦';
+    StatusPillType pillType = StatusPillType.neutral;
+    if (statusStr == 'preparing') {
+      statusTitle = 'المطبخ يجهز طلبك 🍳';
+      pillType = StatusPillType.warning;
+    } else if (statusStr == 'out_for_delivery') {
+      statusTitle = 'الكابتن في الطريق إليك 🛵';
+      pillType = StatusPillType.info;
+    } else if (statusStr == 'ready') {
+      statusTitle = 'الطلب جاهز للاستلام 📦';
+      pillType = StatusPillType.success;
+    }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
@@ -1063,10 +1086,10 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : Colors.white,
-            borderRadius: AppRadius.radiusXl,
+            color: colorScheme.surface,
+            borderRadius: WaselRadius.radiusXl,
             border: Border.all(
-              color: isDark ? AppColors.darkBorder : const Color(0xFFFDE68A),
+              color: colorScheme.outlineVariant,
               width: 1.2,
             ),
             boxShadow: [
@@ -1085,10 +1108,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: AppRadius.radiusMd,
+                      color: colorScheme.primaryContainer.withValues(alpha: 0.35),
+                      borderRadius: WaselRadius.radiusMd,
                     ),
-                    child: const Icon(Icons.two_wheeler_rounded, color: AppColors.waselPrimary, size: 24),
+                    child: Icon(Icons.two_wheeler_rounded, color: colorScheme.primary, size: 24),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1099,42 +1122,32 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             Text(
                               'طلب نشط #$orderNum',
-                              style: TextStyle(
-                                color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                              style: WaselTypography.cairo(
+                                color: colorScheme.onSurface,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFD1FAE5),
-                                borderRadius: AppRadius.radiusSm,
-                              ),
-                              child: Text(
-                                statusTitle,
-                                style: const TextStyle(
-                                  color: Color(0xFF047857),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                            StatusPill(
+                              label: statusTitle,
+                              type: pillType,
+                              showDot: true,
                             ),
                           ],
                         ),
                         const SizedBox(height: 4),
                         Text(
                           'تتبع مباشر على خريطة نالوت لحظة بلحظة',
-                          style: TextStyle(
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                          style: WaselTypography.cairo(
+                            color: colorScheme.onSurfaceVariant,
                             fontSize: 11,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.arrow_forward_ios_rounded, color: AppColors.waselPrimary, size: 14),
+                  Icon(Icons.arrow_forward_ios_rounded, color: colorScheme.primary, size: 14),
                 ],
               ),
               if (otpCode != null && otpCode.isNotEmpty) ...[
@@ -1142,22 +1155,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.black26 : const Color(0xFFFFFBEB),
-                    borderRadius: AppRadius.radiusMd,
-                    border: Border.all(color: const Color(0xFFFDE68A)),
+                    color: colorScheme.surfaceContainerHighest,
+                    borderRadius: WaselRadius.radiusMd,
+                    border: Border.all(color: colorScheme.outlineVariant),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.vpn_key_rounded, size: 14, color: AppColors.waselPrimary),
+                          Icon(Icons.vpn_key_rounded, size: 14, color: colorScheme.primary),
                           const SizedBox(width: 6),
                           Text(
                             'كود استلام الطلب الآمن (أعطه للكابتن):',
-                            style: TextStyle(
+                            style: WaselTypography.cairo(
                               fontSize: 11,
-                              color: isDark ? AppColors.darkTextSecondary : const Color(0xFF78350F),
+                              color: colorScheme.onSurfaceVariant,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1166,14 +1179,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.waselPrimary.withValues(alpha: 0.15),
+                          color: colorScheme.primary.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: AppColors.waselPrimary),
+                          border: Border.all(color: colorScheme.primary),
                         ),
                         child: Text(
                           '#$otpCode',
-                          style: const TextStyle(
-                            color: AppColors.waselPrimary,
+                          style: TextStyle(
+                            color: colorScheme.primary,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 1.5,
                             fontSize: 13,
@@ -1264,8 +1277,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           value: _userLoyaltyPoints.toDouble(),
                           decimalPlaces: 0,
                           suffix: ' نقطة ولاء',
-                          style: TextStyle(
-                            color: isDark ? Colors.white : AppColors.lightTextPrimary,
+                          style: WaselTypography.cairo(
+                            color: Theme.of(context).colorScheme.onSurface,
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
                           ),
@@ -1291,8 +1304,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 3),
                     Text(
                       'ادعُ أصدقاءك في نالوت واكسب توصيل مجاني 100% 🛵🎁',
-                      style: TextStyle(
-                        color: isDark ? Colors.white70 : AppColors.lightTextSecondary,
+                      style: WaselTypography.cairo(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                         fontSize: 11,
                       ),
                     ),
@@ -1352,13 +1365,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'أشهر مطاعم نالوت 🍔',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                style: WaselTypography.cairo(fontSize: 18, fontWeight: FontWeight.w800),
               ),
               Text(
                 '${foodStores.length} مطعم متاح',
-                style: TextStyle(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
+                style: WaselTypography.cairo(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -1368,51 +1381,61 @@ class _HomeScreenState extends State<HomeScreen> {
           else if (foodStores.isEmpty)
             _buildEmptyStoresCard(isDark, 'لا توجد مطاعم مسجلة حالياً في نالوت', Icons.restaurant_rounded)
           else
-            ...foodStores.map((store) => _buildStoreCard(store, isDark)),
+            ...foodStores.asMap().entries.map((entry) {
+              final index = entry.key;
+              final store = entry.value;
+              return WaselSlideFade(
+                key: ValueKey('store_food_${store['id'] ?? index}'),
+                delay: Duration(milliseconds: index.clamp(0, 8) * 60),
+                duration: WaselMotion.standard,
+                offset: const Offset(0.0, 0.08),
+                curve: WaselMotion.signature,
+                child: _buildStoreCard(store, isDark),
+              );
+            }),
         ],
       ),
     );
   }
 
   Widget _buildShimmerStoreLoading(bool isDark) {
-    return WaselShimmer(
-      child: Column(
-        children: List.generate(
-          3,
-          (index) => Container(
-            margin: const EdgeInsets.only(bottom: 14),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : Colors.white,
-              borderRadius: AppRadius.radiusLg,
-              border: Border.all(
-                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-              ),
+    final colorScheme = Theme.of(context).colorScheme;
+    return Column(
+      children: List.generate(
+        3,
+        (index) => Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: colorScheme.surface,
+            borderRadius: WaselRadius.radiusLg,
+            border: Border.all(
+              color: colorScheme.outlineVariant,
             ),
-            child: const Row(
-              children: [
-                WaselShimmerBox(width: 70, height: 70),
-                SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      WaselShimmerBox(width: 160, height: 16),
-                      SizedBox(height: 8),
-                      WaselShimmerBox(width: 110, height: 12),
-                      SizedBox(height: 10),
-                      Row(
-                        children: [
-                          WaselShimmerBox(width: 60, height: 12),
-                          SizedBox(width: 12),
-                          WaselShimmerBox(width: 50, height: 12),
-                        ],
-                      ),
-                    ],
-                  ),
+          ),
+          child: const Row(
+            children: [
+              ShimmerSkeleton(width: 74, height: 74, borderRadius: WaselRadius.radiusLg),
+              SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerSkeleton(width: 160, height: 16, borderRadius: WaselRadius.radiusXs),
+                    SizedBox(height: 8),
+                    ShimmerSkeleton(width: 110, height: 12, borderRadius: WaselRadius.radiusXs),
+                    SizedBox(height: 10),
+                    Row(
+                      children: [
+                        ShimmerSkeleton(width: 60, height: 12, borderRadius: WaselRadius.radiusXs),
+                        SizedBox(width: 12),
+                        ShimmerSkeleton(width: 50, height: 12, borderRadius: WaselRadius.radiusXs),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1430,13 +1453,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'واصل فوري ⚡ تموينات وسوبرماركت نالوت',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                style: WaselTypography.cairo(fontSize: 16, fontWeight: FontWeight.w800),
               ),
               Text(
                 '${groceryStores.length} متجر',
-                style: TextStyle(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
+                style: WaselTypography.cairo(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -1446,7 +1469,18 @@ class _HomeScreenState extends State<HomeScreen> {
           else if (groceryStores.isEmpty)
             _buildEmptyStoresCard(isDark, 'لا توجد تموينات أو أسواق مضافة حالياً في نالوت', Icons.shopping_basket_rounded)
           else
-            ...groceryStores.map((s) => _buildStoreCard(s, isDark)),
+            ...groceryStores.asMap().entries.map((entry) {
+              final index = entry.key;
+              final store = entry.value;
+              return WaselSlideFade(
+                key: ValueKey('store_grocery_${store['id'] ?? index}'),
+                delay: Duration(milliseconds: index.clamp(0, 8) * 60),
+                duration: WaselMotion.standard,
+                offset: const Offset(0.0, 0.08),
+                curve: WaselMotion.signature,
+                child: _buildStoreCard(store, isDark),
+              );
+            }),
         ],
       ),
     );
@@ -1463,13 +1497,13 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'سوق واصل 🛍️ منتجات ومحلات نالوت',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                style: WaselTypography.cairo(fontSize: 16, fontWeight: FontWeight.w800),
               ),
               Text(
                 '${marketStores.length} متجر',
-                style: TextStyle(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
+                style: WaselTypography.cairo(color: _activeBrandColor, fontSize: 13, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -1479,44 +1513,56 @@ class _HomeScreenState extends State<HomeScreen> {
           else if (marketStores.isEmpty)
             _buildEmptyStoresCard(isDark, 'سوق واصل شاغر حالياً - بانتظار إدراج المحلات الحرفية', Icons.storefront_rounded)
           else
-            ...marketStores.map((s) => _buildStoreCard(s, isDark)),
+            ...marketStores.asMap().entries.map((entry) {
+              final index = entry.key;
+              final store = entry.value;
+              return WaselSlideFade(
+                key: ValueKey('store_market_${store['id'] ?? index}'),
+                delay: Duration(milliseconds: index.clamp(0, 8) * 60),
+                duration: WaselMotion.standard,
+                offset: const Offset(0.0, 0.08),
+                curve: WaselMotion.signature,
+                child: _buildStoreCard(store, isDark),
+              );
+            }),
         ],
       ),
     );
   }
 
   Widget _buildEmptyStoresCard(bool isDark, String message, IconData icon) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 8),
       padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 20),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : Colors.white,
-        borderRadius: AppRadius.radiusLg,
+        color: colorScheme.surfaceContainer,
+        borderRadius: WaselRadius.radiusLg,
         border: Border.all(
-          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+          color: colorScheme.outlineVariant,
         ),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 48, color: isDark ? Colors.white38 : Colors.grey.shade400),
+          Icon(icon, size: 48, color: colorScheme.onSurfaceVariant.withValues(alpha: 0.6)),
           const SizedBox(height: 12),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: WaselTypography.cairo(
               fontSize: 14,
               fontWeight: FontWeight.w700,
-              color: isDark ? Colors.white70 : Colors.black87,
+              color: colorScheme.onSurface,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             'يمكن للمدير إضافة المتاجر والمنتجات الحقيقية عبر تطبيق Wasel Admin',
             textAlign: TextAlign.center,
-            style: TextStyle(
+            style: WaselTypography.cairo(
               fontSize: 12,
-              color: isDark ? Colors.white38 : Colors.grey.shade600,
+              color: colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -1525,6 +1571,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStoreCard(Map<String, dynamic> store, bool isDark) {
+    final colorScheme = Theme.of(context).colorScheme;
     final name = store['name']?.toString() ?? 'متجر نالوت';
     final rating = store['rating']?.toString() ?? '4.8';
     final cuisine = store['cuisine']?.toString() ?? store['district']?.toString() ?? 'نالوت';
@@ -1554,19 +1601,17 @@ class _HomeScreenState extends State<HomeScreen> {
           margin: const EdgeInsets.only(bottom: 14),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : Colors.white,
-            borderRadius: AppRadius.radiusLg,
+            color: colorScheme.surface,
+            borderRadius: WaselRadius.radiusLg,
             border: Border.all(
               color: !isOpen
                   ? Colors.red.withValues(alpha: 0.4)
-                  : (isDark ? AppColors.darkBorder : const Color(0xFFF1F5F9)),
+                  : colorScheme.outlineVariant,
               width: !isOpen ? 1.5 : 1.0,
             ),
             boxShadow: [
               BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.3)
-                    : const Color(0x0A0F172A),
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
                 blurRadius: 14,
                 offset: const Offset(0, 4),
               ),
@@ -1574,53 +1619,56 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           child: Row(
             children: [
-              // Store thumbnail with status overlay if closed
-              Stack(
-                children: [
-                  Container(
-                    width: 74,
-                    height: 74,
-                    decoration: BoxDecoration(
-                      gradient: !isOpen
-                          ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade600])
-                          : (isGrocery
-                              ? const LinearGradient(
-                                  colors: [Color(0xFF10B981), Color(0xFF059669)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              : const LinearGradient(
-                                  colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )),
-                      borderRadius: AppRadius.radiusLg,
-                    ),
-                    child: Center(
-                      child: Icon(
-                        isGrocery ? Icons.shopping_basket_rounded : Icons.restaurant_rounded,
-                        color: Colors.white,
-                        size: 36,
-                      ),
-                    ),
-                  ),
-                  if (!isOpen)
+              // Store thumbnail with Hero tag pairing & status overlay if closed
+              Hero(
+                tag: 'store_cover_${store['id']}',
+                child: Stack(
+                  children: [
                     Container(
                       width: 74,
                       height: 74,
                       decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: AppRadius.radiusLg,
+                        gradient: !isOpen
+                            ? LinearGradient(colors: [Colors.grey.shade400, Colors.grey.shade600])
+                            : (isGrocery
+                                ? const LinearGradient(
+                                    colors: [Color(0xFF10B981), Color(0xFF059669)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )
+                                : const LinearGradient(
+                                    colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  )),
+                        borderRadius: WaselRadius.radiusLg,
                       ),
-                      child: const Center(
+                      child: Center(
                         child: Icon(
-                          Icons.lock_rounded,
+                          isGrocery ? Icons.shopping_basket_rounded : Icons.restaurant_rounded,
                           color: Colors.white,
-                          size: 26,
+                          size: 36,
                         ),
                       ),
                     ),
-                ],
+                    if (!isOpen)
+                      Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: WaselRadius.radiusLg,
+                        ),
+                        child: const Center(
+                          child: Icon(
+                            Icons.lock_rounded,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
               ),
               const SizedBox(width: 14),
 
@@ -1634,12 +1682,12 @@ class _HomeScreenState extends State<HomeScreen> {
                         Expanded(
                           child: Text(
                             name,
-                            style: TextStyle(
+                            style: WaselTypography.cairo(
                               fontSize: 15,
                               fontWeight: FontWeight.w800,
                               color: !isOpen
                                   ? (isDark ? Colors.white60 : Colors.black54)
-                                  : (isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary),
+                                  : colorScheme.onSurface,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1690,9 +1738,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       cuisine,
-                      style: TextStyle(
+                      style: WaselTypography.cairo(
                         fontSize: 12,
-                        color: isDark ? AppColors.darkTextMuted : AppColors.lightTextMuted,
+                        color: colorScheme.onSurfaceVariant,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1715,17 +1763,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                              color: colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFF1F5F9)),
+                              border: Border.all(color: colorScheme.outlineVariant),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.access_time_rounded, size: 12, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700),
+                                Icon(Icons.access_time_rounded, size: 12, color: colorScheme.onSurfaceVariant),
                                 const SizedBox(width: 4),
                                 Text(
                                   timeStr,
-                                  style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : Colors.grey.shade700, fontWeight: FontWeight.w600),
+                                  style: WaselTypography.cairo(fontSize: 11, color: colorScheme.onSurfaceVariant, fontWeight: FontWeight.w600),
                                 ),
                               ],
                             ),
@@ -1734,17 +1782,17 @@ class _HomeScreenState extends State<HomeScreen> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                             decoration: BoxDecoration(
-                              color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF8FAFC),
+                              color: colorScheme.surfaceContainerHighest,
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFF1F5F9)),
+                              border: Border.all(color: colorScheme.outlineVariant),
                             ),
                             child: Row(
                               children: [
-                                Icon(Icons.delivery_dining_rounded, size: 13, color: AppColors.waselPrimary),
+                                Icon(Icons.delivery_dining_rounded, size: 13, color: colorScheme.primary),
                                 const SizedBox(width: 4),
                                 Text(
                                   feeStr,
-                                  style: const TextStyle(fontSize: 11, color: AppColors.waselPrimary, fontWeight: FontWeight.w800),
+                                  style: WaselTypography.cairo(fontSize: 11, color: colorScheme.primary, fontWeight: FontWeight.w800),
                                 ),
                               ],
                             ),

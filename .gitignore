@@ -44,3 +44,8 @@ logs/
 findings.json
 skills-lock.json
 
+# Scratch & Obsidian
+.obsidian/
+scratch/
+*.canvas
+*.base

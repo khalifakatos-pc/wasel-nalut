@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:wasel_ui/wasel_ui.dart';
+
+export 'package:wasel_ui/wasel_ui.dart';
 
 /// ============================================================================
 /// WASEL (واصل) SUPER-APP DESIGN SYSTEM - NALUT & LIBYA
@@ -332,93 +335,8 @@ class AppTypography {
 /// 6. THEME DATA CONFIGURATION
 /// ---------------------------------------------------------------------------
 class AppTheme {
-  static ThemeData get lightTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      primaryColor: AppColors.waselPrimary,
-      scaffoldBackgroundColor: AppColors.lightBackground,
-      cardColor: AppColors.lightCard,
-      dividerColor: AppColors.lightBorder,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.waselPrimary,
-        secondary: AppColors.waselPurple,
-        tertiary: AppColors.jetPrimary,
-        surface: AppColors.lightSurface,
-        error: AppColors.error,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: AppColors.lightTextPrimary,
-        onError: Colors.white,
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.lightCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.radiusLg,
-          side: const BorderSide(color: AppColors.lightBorder, width: 1),
-        ),
-        margin: EdgeInsets.zero,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.lightSurface,
-        foregroundColor: AppColors.lightTextPrimary,
-        elevation: 0,
-        centerTitle: true,
-        scrolledUnderElevation: 1,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.lightSurface,
-        indicatorColor: AppColors.waselPrimary.withValues(alpha: 0.12),
-        elevation: 4,
-        height: 68,
-      ),
-    );
-  }
-
-  static ThemeData get darkTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      primaryColor: AppColors.waselPrimary,
-      scaffoldBackgroundColor: AppColors.darkBackground,
-      cardColor: AppColors.darkCard,
-      dividerColor: AppColors.darkBorder,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.waselPrimary,
-        secondary: AppColors.waselPurple,
-        tertiary: AppColors.jetPrimary,
-        surface: AppColors.darkSurface,
-        error: AppColors.error,
-        onPrimary: Colors.white,
-        onSecondary: Colors.white,
-        onSurface: AppColors.darkTextPrimary,
-        onError: Colors.white,
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.darkCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.radiusLg,
-          side: const BorderSide(color: AppColors.darkBorder, width: 1),
-        ),
-        margin: EdgeInsets.zero,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AppColors.darkSurface,
-        foregroundColor: AppColors.darkTextPrimary,
-        elevation: 0,
-        centerTitle: true,
-        scrolledUnderElevation: 1,
-      ),
-      navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: AppColors.darkSurface,
-        indicatorColor: AppColors.waselPrimary.withValues(alpha: 0.2),
-        elevation: 4,
-        height: 68,
-      ),
-    );
-  }
+  static ThemeData get lightTheme => WaselTheme.lightTheme;
+  static ThemeData get darkTheme => WaselTheme.darkTheme;
 }
 
 /// ---------------------------------------------------------------------------

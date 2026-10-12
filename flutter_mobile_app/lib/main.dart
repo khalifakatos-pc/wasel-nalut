@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 import 'design_system.dart';
 import 'home_screen.dart';
 import 'cart_checkout_screen.dart';
@@ -63,7 +65,20 @@ class _WaselCustomerAppState extends State<WaselCustomerApp> {
   @override
   void initState() {
     super.initState();
+    _loadSavedTheme();
     _initServicesAsync();
+  }
+
+  Future<void> _loadSavedTheme() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final saved = prefs.getString('wasel_theme_mode');
+      if (saved == 'dark' && mounted) {
+        setState(() => _themeMode = ThemeMode.dark);
+      } else if (saved == 'light' && mounted) {
+        setState(() => _themeMode = ThemeMode.light);
+      }
+    } catch (_) {}
   }
 
   Future<void> _initServicesAsync() async {
@@ -79,11 +94,17 @@ class _WaselCustomerAppState extends State<WaselCustomerApp> {
     super.dispose();
   }
 
-  void toggleTheme() {
+  void toggleTheme() async {
+    final next =
+        _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
     setState(() {
-      _themeMode =
-          _themeMode == ThemeMode.light ? ThemeMode.dark : ThemeMode.light;
+      _themeMode = next;
     });
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          'wasel_theme_mode', next == ThemeMode.dark ? 'dark' : 'light');
+    } catch (_) {}
   }
 
   @override
@@ -93,8 +114,8 @@ class _WaselCustomerAppState extends State<WaselCustomerApp> {
       navigatorKey: navigatorKey,
       title: 'واصل نالوت | Wasel Super-App',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
+      theme: WaselTheme.lightTheme,
+      darkTheme: WaselTheme.darkTheme,
       themeMode: _themeMode,
       locale: const Locale('ar'),
       supportedLocales: const [
@@ -176,10 +197,10 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: widget.isDark ? AppColors.darkSurface : Colors.white,
+          color: Theme.of(context).colorScheme.surface,
           border: Border(
             top: BorderSide(
-              color: widget.isDark ? AppColors.darkBorderSubtle : AppColors.lightBorder,
+              color: Theme.of(context).colorScheme.outlineVariant,
               width: 1,
             ),
           ),
@@ -195,7 +216,7 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
           top: false,
           child: NavigationBar(
             backgroundColor: Colors.transparent,
-            indicatorColor: AppColors.waselPrimary.withValues(alpha: widget.isDark ? 0.22 : 0.15),
+            indicatorColor: Theme.of(context).colorScheme.primary.withValues(alpha: widget.isDark ? 0.22 : 0.15),
             selectedIndex: _currentIndex,
             onDestinationSelected: (index) => setState(() {
               _currentIndex = index;
@@ -203,35 +224,35 @@ class _MainNavigationShellState extends State<MainNavigationShell> {
             }),
             elevation: 0,
             height: 64,
-            destinations: const [
+            destinations: [
               NavigationDestination(
-                icon: Icon(Icons.home_outlined),
+                icon: const Icon(Icons.home_outlined),
                 selectedIcon:
-                    Icon(Icons.home_rounded, color: AppColors.waselPrimary),
+                    Icon(Icons.home_rounded, color: Theme.of(context).colorScheme.primary),
                 label: 'الرئيسية',
               ),
               NavigationDestination(
-                icon: Icon(Icons.shopping_bag_outlined),
+                icon: const Icon(Icons.shopping_bag_outlined),
                 selectedIcon: Icon(Icons.shopping_bag_rounded,
-                    color: AppColors.waselPrimary),
+                    color: Theme.of(context).colorScheme.primary),
                 label: 'السلة',
               ),
               NavigationDestination(
-                icon: Icon(Icons.receipt_long_outlined),
+                icon: const Icon(Icons.receipt_long_outlined),
                 selectedIcon: Icon(Icons.receipt_long_rounded,
-                    color: AppColors.waselPrimary),
+                    color: Theme.of(context).colorScheme.primary),
                 label: 'طلباتي',
               ),
               NavigationDestination(
-                icon: Icon(Icons.account_balance_wallet_outlined),
+                icon: const Icon(Icons.account_balance_wallet_outlined),
                 selectedIcon: Icon(Icons.account_balance_wallet_rounded,
-                    color: AppColors.waselPrimary),
+                    color: Theme.of(context).colorScheme.primary),
                 label: 'المحفظة',
               ),
               NavigationDestination(
-                icon: Icon(Icons.person_outline_rounded),
+                icon: const Icon(Icons.person_outline_rounded),
                 selectedIcon:
-                    Icon(Icons.person_rounded, color: AppColors.waselPrimary),
+                    Icon(Icons.person_rounded, color: Theme.of(context).colorScheme.primary),
                 label: 'حسابي',
               ),
             ],

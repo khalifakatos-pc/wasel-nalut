@@ -4,7 +4,7 @@ import 'design_system.dart';
 import 'cart_checkout_screen.dart';
 import 'product_detail_sheet.dart';
 import 'services/api_service.dart';
-import 'widgets/motion_widgets.dart';
+import 'widgets/fly_to_cart_overlay.dart';
 
 /// ============================================================================
 /// WASEL STORE & RESTAURANT MENU SCREEN (قائمة المتجر الحقيقية - نالوت)
@@ -19,6 +19,7 @@ class StoreMenuScreen extends StatefulWidget {
 }
 
 class _StoreMenuScreenState extends State<StoreMenuScreen> {
+  final GlobalKey _cartBarKey = GlobalKey();
   bool _isLoading = true;
   List<Map<String, dynamic>> _products = [];
   late bool _isOpen;
@@ -318,12 +319,21 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
         category: cat,
         isFood: true,
         onAddToCart: (itemDetails) {
+          final int qty = (itemDetails['quantity'] as num?)?.toInt() ?? 1;
+          final double? rawUnit = (itemDetails['unitPrice'] as num?)?.toDouble() ?? (itemDetails['price'] as num?)?.toDouble();
+          final double resolvedUnitPrice = rawUnit ??
+              (((itemDetails['totalPrice'] as num?)?.toDouble() ?? (price * qty)) / (qty > 0 ? qty : 1));
+
+          final stableId = itemDetails['id']?.toString() ??
+              product['id']?.toString() ??
+              'prod_${title.trim().replaceAll(' ', '_')}';
+
           final item = CartItem(
-            id: itemDetails['id']?.toString() ?? product['id']?.toString() ?? 'item_${DateTime.now().millisecondsSinceEpoch}',
+            id: stableId,
             title: itemDetails['title']?.toString() ?? title,
             storeName: widget.store['name'] ?? 'متجر واصل',
-            price: (itemDetails['totalPrice'] as num?)?.toDouble() ?? (itemDetails['price'] as num?)?.toDouble() ?? price,
-            quantity: (itemDetails['quantity'] as num?)?.toInt() ?? 1,
+            price: resolvedUnitPrice,
+            quantity: qty,
             selectedAddons: (itemDetails['selectedAddons'] as List?)?.map((e) => e.toString()).toList() ?? const [],
             spiceLevel: itemDetails['spiceLevel']?.toString(),
             exclusions: (itemDetails['exclusions'] as List?)?.map((e) => e.toString()).toList() ?? const [],
@@ -331,6 +341,11 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
           );
           CartService.addItem(item);
           setState(() {});
+          FlyToCartOverlay.run(
+            context: context,
+            startOffset: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
+            targetKey: _cartBarKey,
+          );
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               behavior: SnackBarBehavior.floating,
@@ -364,7 +379,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
     final storeName = widget.store['name'] ?? 'متجر نالوت';
     final rating = widget.store['rating']?.toString() ?? '4.9';
     final timeMin = widget.store['delivery_time_min']?.toString() ?? '20';
@@ -376,7 +391,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     return Directionality(
       textDirection: TextDirection.rtl,
       child: Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.lightBackground,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         body: CustomScrollView(
           physics: const BouncingScrollPhysics(),
           slivers: [
@@ -384,7 +399,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
             SliverAppBar(
               expandedHeight: 200.0,
               pinned: true,
-              backgroundColor: AppColors.waselPrimary,
+              backgroundColor: colorScheme.primary,
               leading: IconButton(
                 icon: Container(
                   padding: const EdgeInsets.all(6),
@@ -397,76 +412,79 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                 onPressed: () => Navigator.pop(context),
               ),
               flexibleSpace: FlexibleSpaceBar(
-                background: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Container(
-                      decoration: const BoxDecoration(
-                        gradient: AppColors.waselGradient,
+                background: Hero(
+                  tag: 'store_cover_${widget.store['id']}',
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Container(
+                        decoration: const BoxDecoration(
+                          gradient: AppColors.waselGradient,
+                        ),
+                        child: const Center(
+                          child: Icon(Icons.restaurant_rounded, size: 80, color: Colors.white30),
+                        ),
                       ),
-                      child: const Center(
-                        child: Icon(Icons.restaurant_rounded, size: 80, color: Colors.white30),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.black.withValues(alpha: 0.3),
+                              Colors.black.withValues(alpha: 0.8),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.3),
-                            Colors.black.withValues(alpha: 0.8),
+                      Positioned(
+                        bottom: 16,
+                        right: 16,
+                        left: 16,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _isOpen ? AppColors.success : Colors.red.shade700,
+                                borderRadius: AppRadius.radiusSm,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    _isOpen ? Icons.check_circle_rounded : Icons.lock_clock_rounded,
+                                    color: Colors.white,
+                                    size: 13,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _isOpen ? 'مفتوح ويستقبل الطلبات في نالوت 🟢' : 'مغلق مؤقتاً ولا يستقبل طلبات 🔴',
+                                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              storeName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              district,
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
+                            ),
                           ],
                         ),
                       ),
-                    ),
-                    Positioned(
-                      bottom: 16,
-                      right: 16,
-                      left: 16,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: _isOpen ? AppColors.success : Colors.red.shade700,
-                              borderRadius: AppRadius.radiusSm,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _isOpen ? Icons.check_circle_rounded : Icons.lock_clock_rounded,
-                                  color: Colors.white,
-                                  size: 13,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  _isOpen ? 'مفتوح ويستقبل الطلبات في نالوت 🟢' : 'مغلق مؤقتاً ولا يستقبل طلبات 🔴',
-                                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            storeName,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            district,
-                            style: const TextStyle(color: Colors.white70, fontSize: 12),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -477,20 +495,20 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                 padding: const EdgeInsets.all(16),
                 margin: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : Colors.white,
+                  color: colorScheme.surface,
                   borderRadius: AppRadius.radiusLg,
                   boxShadow: AppShadows.subtle,
-                  border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  border: Border.all(color: colorScheme.outlineVariant),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
                     _buildInfoItem(Icons.star_rounded, AppColors.gold, rating, 'التقييم'),
-                    _buildDivider(isDark),
-                    _buildInfoItem(Icons.timer_rounded, AppColors.waselPrimary, '$timeMin-$timeMax د', 'وقت التوصيل'),
-                    _buildDivider(isDark),
+                    _buildDivider(),
+                    _buildInfoItem(Icons.timer_rounded, colorScheme.primary, '$timeMin-$timeMax د', 'وقت التوصيل'),
+                    _buildDivider(),
                     _buildInfoItem(Icons.delivery_dining_rounded, AppColors.jetPrimary, '$deliveryFee د.ل', 'التوصيل'),
-                    _buildDivider(isDark),
+                    _buildDivider(),
                     _buildInfoItem(Icons.shopping_bag_outlined, Colors.purple, '$minOrder د.ل', 'أقل طلب'),
                   ],
                 ),
@@ -582,7 +600,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final p = _products[index];
-                      return _buildProductCard(p, isDark);
+                      return _buildProductCard(p);
                     },
                     childCount: _products.length,
                   ),
@@ -594,35 +612,40 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
         // Bottom Floating Cart Bar
         bottomNavigationBar: _cartCount > 0
             ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.darkCard : Colors.white,
+                  color: colorScheme.surface,
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.15),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 16,
                       offset: const Offset(0, -4),
                     ),
                   ],
                 ),
                 child: SafeArea(
-                  child: Row(
+                  top: false,
+                  bottom: true,
+                  minimum: const EdgeInsets.only(bottom: 8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Row(
                     children: [
                       Container(
+                        key: _cartBarKey,
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.waselPrimary.withValues(alpha: 0.1),
+                          color: colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: AppRadius.radiusMd,
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.shopping_bag_rounded, color: AppColors.waselPrimary, size: 20),
+                            Icon(Icons.shopping_bag_rounded, color: colorScheme.primary, size: 20),
                             const SizedBox(width: 6),
                             Text(
                               '$_cartCount',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                color: AppColors.waselPrimary,
+                                color: colorScheme.primary,
                                 fontSize: 16,
                               ),
                             ),
@@ -634,15 +657,21 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('إجمالي الطلب', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                          Text(
-                            '${_cartTotal.toStringAsFixed(2)} د.ل',
-                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.waselPrimary),
+                          Text('إجمالي الطلب', style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+                          OdometerCounter(
+                            value: _cartTotal,
+                            decimalPlaces: 2,
+                            suffix: ' د.ل',
+                            style: WaselTypography.cairo(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800,
+                              color: colorScheme.primary,
+                            ),
                           ),
                         ],
                       ),
                       const Spacer(),
-                      ElevatedButton(
+                      WaselBouncyButton(
                         onPressed: _isOpen
                             ? () {
                                 Navigator.push(
@@ -668,12 +697,9 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                                   ),
                                 );
                               },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _isOpen ? AppColors.waselPrimary : Colors.grey.shade600,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
-                        ),
+                        backgroundColor: _isOpen ? colorScheme.primary : Colors.grey.shade600,
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        borderRadius: AppRadius.radiusLg,
                         child: Row(
                           children: [
                             Text(
@@ -688,8 +714,9 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                     ],
                   ),
                 ),
-              )
-            : null,
+              ),
+            )
+          : null,
       ),
     );
   }
@@ -711,160 +738,165 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
     );
   }
 
-  Widget _buildDivider(bool isDark) {
-    return Container(
-      width: 1,
-      height: 28,
-      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-    );
+  Widget _buildDivider() {
+    return Builder(builder: (context) {
+      return Container(
+        width: 1,
+        height: 28,
+        color: Theme.of(context).colorScheme.outlineVariant,
+      );
+    });
   }
 
-  Widget _buildProductCard(Map<String, dynamic> product, bool isDark) {
-    final title = product['name_ar'] ?? product['name'] ?? 'صنف';
-    final desc = product['desc_ar'] ?? product['desc'] ?? '';
-    final price = (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 0.0;
-    final inStock = _isProductInStock(product);
-    final remainingQty = _getProductQuantity(product);
-    final isPopular = product['is_popular'] == true;
+  Widget _buildProductCard(Map<String, dynamic> product) {
+    return Builder(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+      final title = product['name_ar'] ?? product['name'] ?? 'صنف';
+      final desc = product['desc_ar'] ?? product['desc'] ?? '';
+      final price = (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 0.0;
+      final inStock = _isProductInStock(product);
+      final remainingQty = _getProductQuantity(product);
+      final isPopular = product['is_popular'] == true;
 
-    return WaselBouncyPressable(
-      behavior: HitTestBehavior.opaque,
-      pressedScale: 0.98,
-      onTap: (_isOpen && inStock) ? () => _addToCart(product) : null,
-      child: Opacity(
-        opacity: (!_isOpen || !inStock) ? 0.65 : 1.0,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.darkCard : Colors.white,
-            borderRadius: AppRadius.radiusLg,
-            border: Border.all(
-              color: !_isOpen
-                  ? Colors.red.withValues(alpha: 0.2)
-                  : (!inStock
-                      ? Colors.orange.withValues(alpha: 0.3)
-                      : (isDark ? AppColors.darkBorder : AppColors.lightBorder)),
+      return WaselBouncyPressable(
+        behavior: HitTestBehavior.opaque,
+        pressedScale: 0.98,
+        onTap: (_isOpen && inStock) ? () => _addToCart(product) : null,
+        child: Opacity(
+          opacity: (!_isOpen || !inStock) ? 0.65 : 1.0,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: colorScheme.surface,
+              borderRadius: AppRadius.radiusLg,
+              border: Border.all(
+                color: !_isOpen
+                    ? colorScheme.error.withValues(alpha: 0.2)
+                    : (!inStock
+                        ? Colors.orange.withValues(alpha: 0.3)
+                        : colorScheme.outlineVariant),
+              ),
+              boxShadow: AppShadows.subtle,
             ),
-            boxShadow: AppShadows.subtle,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (isPopular)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: colorScheme.primary.withValues(alpha: 0.15),
+                            borderRadius: AppRadius.radiusSm,
+                          ),
+                          child: Text(
+                            '🔥 الأكثر طلباً في نالوت',
+                            style: TextStyle(color: colorScheme.primary, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      if (remainingQty != null && remainingQty > 0 && remainingQty <= 3)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.2),
+                            borderRadius: AppRadius.radiusSm,
+                          ),
+                          child: Text(
+                            '⚠️ متبقي $remainingQty قطع فقط',
+                            style: TextStyle(color: Colors.amber.shade900, fontSize: 10, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      Text(
+                        title,
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: (!_isOpen || !inStock) ? colorScheme.onSurfaceVariant : colorScheme.onSurface,
+                        ),
+                      ),
+                      if (desc.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          desc,
+                          style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Text(
+                        '${price.toStringAsFixed(2)} د.ل',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: (_isOpen && inStock) ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                if (!_isOpen)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.withValues(alpha: 0.18),
+                      borderRadius: AppRadius.radiusMd,
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.lock_outline_rounded, size: 14, color: Colors.grey),
+                        SizedBox(width: 4),
+                        Text(
+                          'مغلق',
+                          style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  )
+                else if (inStock)
+                  ElevatedButton.icon(
+                    onPressed: () => _addToCart(product),
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('إضافة'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: colorScheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                      elevation: 0,
+                    ),
+                  )
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.12),
+                      borderRadius: AppRadius.radiusMd,
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '🔴 نفد المخزون',
+                          style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (isPopular)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.waselPrimary.withValues(alpha: 0.15),
-                        borderRadius: AppRadius.radiusSm,
-                      ),
-                      child: const Text(
-                        '🔥 الأكثر طلباً في نالوت',
-                        style: TextStyle(color: AppColors.waselPrimary, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  if (remainingQty != null && remainingQty > 0 && remainingQty <= 3)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 4),
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.2),
-                        borderRadius: AppRadius.radiusSm,
-                      ),
-                      child: Text(
-                        '⚠️ متبقي $remainingQty قطع فقط',
-                        style: TextStyle(color: Colors.amber.shade900, fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: (!_isOpen || !inStock) ? Colors.grey.shade600 : null,
-                    ),
-                  ),
-                  if (desc.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      desc,
-                      style: TextStyle(fontSize: 11, color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                  const SizedBox(height: 8),
-                  Text(
-                    '${price.toStringAsFixed(2)} د.ل',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: (_isOpen && inStock) ? AppColors.waselPrimary : Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            if (!_isOpen)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.18),
-                  borderRadius: AppRadius.radiusMd,
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.lock_outline_rounded, size: 14, color: Colors.grey),
-                    SizedBox(width: 4),
-                    Text(
-                      'مغلق',
-                      style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              )
-            else if (inStock)
-              ElevatedButton.icon(
-                onPressed: () => _addToCart(product),
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('إضافة'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.waselPrimary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-                  elevation: 0,
-                ),
-              )
-            else
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.12),
-                  borderRadius: AppRadius.radiusMd,
-                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '🔴 نفد المخزون',
-                      style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.bold),
-                    ),
-                  ],
-                ),
-              ),
-          ],
         ),
-      ),
-    ),
-  );
-}
+      );
+    });
+  }
 }

@@ -3,9 +3,10 @@ import 'services/referral_service.dart';
 import 'services/cart_service.dart';
 export 'services/cart_service.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'design_system.dart';
 import 'order_tracking_screen.dart';
-import 'satellite_location_picker.dart';
+import 'address_management_sheet.dart';
 import 'services/api_service.dart';
 
 class CartCheckoutScreen extends StatefulWidget {
@@ -37,11 +38,70 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
   final TextEditingController _couponController = TextEditingController();
   final TextEditingController _alternatePhoneController = TextEditingController();
   String _selectedPaymentMethod = 'cod';
+  String _selectedBankId = 'jumhouria';
+
+  final List<Map<String, dynamic>> _libyanBanks = [
+    {
+      'id': 'jumhouria',
+      'title': 'مصرف الجمهورية (مصرفي Pay)',
+      'subtitle': 'خصم فوري لعملاء مصرف الجمهورية عبر رمز OTP',
+      'icon': Icons.account_balance_rounded,
+      'color': const Color(0xFF0D47A1),
+      'badge': 'الأكثر استخداماً ⭐',
+    },
+    {
+      'id': 'nab',
+      'title': 'مصرف شمال أفريقيا (NAB Pay)',
+      'subtitle': 'سداد فوري ومجاني لتجار وزبائن شمال أفريقيا',
+      'icon': Icons.account_balance_wallet_outlined,
+      'color': const Color(0xFFE65100),
+      'badge': 'حساب المنصة 🏦',
+    },
+    {
+      'id': 'sadad',
+      'title': 'خدمة سداد الإلكترونية (Sadad)',
+      'subtitle': 'الدفع عبر رقم الهاتف ورسالة OTP المدار/ليبيانا',
+      'icon': Icons.phone_android_rounded,
+      'color': AppColors.waselPrimary,
+      'badge': 'سداد فوري ⚡',
+    },
+    {
+      'id': 'lypay',
+      'title': 'منصة لي باي الوطنية (LyPay)',
+      'subtitle': 'محفظة معاملات الموحدة لكافة المصارف الليبية',
+      'icon': Icons.qr_code_2_rounded,
+      'color': const Color(0xFF00897B),
+      'badge': 'الشبكة الوطنية 🇱🇾',
+    },
+    {
+      'id': 'onepay',
+      'title': 'منصة ون باي (OnePay)',
+      'subtitle': 'بوابة الدفع الإلكتروني الشاملة للبطاقات والمحافظ الرقمية',
+      'icon': Icons.credit_score_rounded,
+      'color': const Color(0xFF6200EA),
+      'badge': null,
+    },
+    {
+      'id': 'tadawul',
+      'title': 'بطاقة تداول المصرفية (Tadawul)',
+      'subtitle': 'الدفع المباشر عبر بطاقة الصراف المحلية',
+      'icon': Icons.credit_card_rounded,
+      'color': AppColors.info,
+      'badge': null,
+    },
+  ];
+
+  Map<String, dynamic> get _activeBank =>
+      _libyanBanks.firstWhere((b) => b['id'] == _selectedBankId, orElse: () => _libyanBanks.first);
+
+  bool get _isBankMethodSelected =>
+      _selectedPaymentMethod != 'cod' && _selectedPaymentMethod != 'wallet';
+
   double _discountAmount = 0.0;
   bool _isCouponApplied = false;
   String? _couponMessage;
 
-  final double _deliveryFee = 3.00;
+  double _deliveryFee = 5.00;
 
   @override
   void initState() {
@@ -50,6 +110,8 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
       CartService.setItems(widget.initialCartItems!);
     }
     _cartItems = CartService.items;
+
+    _fetchDynamicDeliveryFee();
 
     ReferralService.getActiveVouchers().then((vouchers) {
       if (mounted && vouchers.isNotEmpty) {
@@ -61,6 +123,19 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
     ApiService.getLoyaltyPoints().then((pts) {
       if (mounted) setState(() => _userLoyaltyPoints = pts);
     });
+  }
+
+  Future<void> _fetchDynamicDeliveryFee() async {
+    final storeId = widget.storeId ?? 'store_nalut_01';
+    final lat = (ApiService.activeAddress['latitude'] as num?)?.toDouble() ?? 31.8686;
+    final lng = (ApiService.activeAddress['longitude'] as num?)?.toDouble() ?? 10.9818;
+
+    final fee = await ApiService.getPricingQuote(storeId: storeId, lat: lat, lng: lng);
+    if (mounted) {
+      setState(() {
+        _deliveryFee = fee;
+      });
+    }
   }
 
   @override
@@ -177,7 +252,8 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
               TextField(
                 controller: phoneCtrl,
                 keyboardType: TextInputType.phone,
-                maxLength: 9,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                maxLength: 10,
                 decoration: InputDecoration(
                   labelText: 'رقم الهاتف الليبي',
                   hintText: '091XXXXXXX أو 092XXXXXXX',
@@ -581,7 +657,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
               Text(
                 'رقم الطلب: #$orderNum\nتم حجز المشوار وإرسال الإشعار للمطعم والكابتن الأقرب في نالوت.',
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                style: TextStyle(fontSize: 12, color: Theme.of(ctx).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
@@ -617,7 +693,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
 
     if (_cartItems.isEmpty) {
       return Scaffold(
@@ -633,10 +709,10 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: AppColors.waselPrimary.withValues(alpha: 0.1),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.shopping_bag_outlined, size: 48, color: AppColors.waselPrimary),
+                child: Icon(Icons.shopping_bag_outlined, size: 48, color: colorScheme.primary),
               ),
               const SizedBox(height: 16),
               const Text(
@@ -644,9 +720,9 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'استكشف المطاعم والمتاجر وأضف وجباتك المفضلة',
-                style: TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
+                style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 24),
               ElevatedButton.icon(
@@ -654,7 +730,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                 icon: const Icon(Icons.restaurant_rounded),
                 label: const Text('تصفح المطاعم الآن'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.waselPrimary,
+                  backgroundColor: colorScheme.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
@@ -684,9 +760,9 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colorScheme.surface,
               borderRadius: AppRadius.radiusLg,
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Row(
               children: [
@@ -694,10 +770,10 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: AppColors.waselPrimary.withValues(alpha: 0.15),
+                    color: colorScheme.primary.withValues(alpha: 0.15),
                     borderRadius: AppRadius.radiusMd,
                   ),
-                  child: const Icon(Icons.restaurant_rounded, color: AppColors.waselPrimary),
+                  child: Icon(Icons.restaurant_rounded, color: colorScheme.primary),
                 ),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
@@ -708,9 +784,9 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                         _cartItems.first.storeName,
                         style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
                       ),
-                      const Text(
+                      Text(
                         'وقت التجهيز والتوصيل: 25-35 دقيقة',
-                        style: TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                        style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                       ),
                     ],
                   ),
@@ -733,15 +809,16 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
               margin: const EdgeInsets.only(bottom: AppSpacing.sm),
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                color: colorScheme.surface,
                 borderRadius: AppRadius.radiusLg,
-                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
@@ -749,13 +826,27 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                           style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                         ),
                       ),
-                      Text(
-                        '${item.total.toStringAsFixed(2)} د.ل',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.waselPrimary,
-                        ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            '${item.total.toStringAsFixed(2)} د.ل',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                          if (item.quantity > 1)
+                            Text(
+                              '(${item.quantity} × ${item.price.toStringAsFixed(2)} د.ل)',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
@@ -764,17 +855,17 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
-                        color: AppColors.waselPrimary.withValues(alpha: isDark ? 0.14 : 0.07),
+                        color: colorScheme.primary.withValues(alpha: 0.1),
                         borderRadius: AppRadius.radiusSm,
                         border: Border.all(
-                          color: AppColors.waselPrimary.withValues(alpha: isDark ? 0.25 : 0.15),
+                          color: colorScheme.primary.withValues(alpha: 0.25),
                         ),
                       ),
                       child: Text(
                         item.formattedCustomizationText,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppColors.waselPrimary,
+                          color: colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -783,7 +874,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                     const SizedBox(height: 4),
                     Text(
                       item.selectedAddons.join(' • '),
-                      style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                      style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                     ),
                   ],
                   const SizedBox(height: AppSpacing.sm),
@@ -791,14 +882,20 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        '${item.price.toStringAsFixed(2)} د.ل للقطعة',
-                        style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                        item.quantity > 1
+                            ? item.priceCalculationText
+                            : '${item.price.toStringAsFixed(2)} د.ل للقطعة',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: colorScheme.onSurfaceVariant,
+                        ),
                       ),
                       Container(
                         decoration: BoxDecoration(
-                          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+                          color: colorScheme.surfaceContainerHighest,
                           borderRadius: AppRadius.radiusMd,
-                          border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                          border: Border.all(color: colorScheme.outlineVariant),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -847,13 +944,13 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colorScheme.surface,
               borderRadius: AppRadius.radiusLg,
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Row(
               children: [
-                const Icon(Icons.location_on_rounded, color: AppColors.waselPrimary),
+                Icon(Icons.location_on_rounded, color: colorScheme.primary),
                 const SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: Column(
@@ -885,41 +982,42 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colorScheme.surface,
               borderRadius: AppRadius.radiusLg,
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.phone_in_talk_rounded, color: AppColors.waselPrimary, size: 20),
-                    SizedBox(width: 8),
-                    Text(
+                    Icon(Icons.phone_in_talk_rounded, color: colorScheme.primary, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
                       'رقم هاتف بديل (احتياطي للطوارئ)',
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                     ),
                   ],
                 ),
                 const SizedBox(height: 4),
-                const Text(
+                Text(
                   'لضمان وصول الكابتن في حال ضعف تغطية المدار أو ليبيانا في الجبل',
-                  style: TextStyle(fontSize: 10, color: AppColors.darkTextSecondary),
+                  style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _alternatePhoneController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
                   decoration: InputDecoration(
                     hintText: 'رقم الشبكة الأخرى (مثال: 0921234567 أو 091...)',
-                    hintStyle: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                    hintStyle: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                     filled: true,
-                    fillColor: isDark ? AppColors.darkBackground : Colors.white,
+                    fillColor: colorScheme.surfaceContainerHighest,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(
                       borderRadius: AppRadius.radiusMd,
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
                     ),
                   ),
                 ),
@@ -943,13 +1041,13 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                   textCapitalization: TextCapitalization.characters,
                   decoration: InputDecoration(
                     hintText: 'أدخل كود الخصم (مثال: WASEL2026)',
-                    hintStyle: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                    hintStyle: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                     filled: true,
-                    fillColor: isDark ? AppColors.darkCard : AppColors.lightCard,
+                    fillColor: colorScheme.surfaceContainerHighest,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     border: OutlineInputBorder(
                       borderRadius: AppRadius.radiusMd,
-                      borderSide: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                      borderSide: BorderSide(color: colorScheme.outlineVariant),
                     ),
                   ),
                 ),
@@ -958,7 +1056,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
               ElevatedButton(
                 onPressed: _applyCoupon,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.waselPrimary,
+                  backgroundColor: colorScheme.primary,
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
@@ -1121,12 +1219,12 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
             const SizedBox(height: AppSpacing.md),
           ],
 
-          // 5. PAYMENT METHODS (LIBYAN BANKING & FINTECH INTEGRATION)
+          // 5. PAYMENT METHODS (UNIFIED STREAMLINED CARDS)
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
-                'طريقة الدفع (المصارف والمنصات الليبية)',
+                'طريقة الدفع',
                 style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
               ),
               Container(
@@ -1140,7 +1238,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                   children: [
                     Icon(Icons.verified_user_rounded, color: AppColors.success, size: 12),
                     SizedBox(width: 4),
-                    Text('معتمد في نالوت', style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.bold)),
+                    Text('دفع آمن ومعتمد في نالوت', style: TextStyle(fontSize: 10, color: AppColors.success, fontWeight: FontWeight.bold)),
                   ],
                 ),
               ),
@@ -1148,88 +1246,27 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
 
-          // 1. Jumhouria Bank
-          _buildPaymentOption(
-            id: 'jumhouria',
-            title: 'مصرف الجمهورية (خدمة رفيق / مصرفي Pay)',
-            subtitle: 'خصم فوري مباشر لعملاء مصرف الجمهورية عبر رمز OTP',
-            icon: Icons.account_balance_rounded,
-            color: const Color(0xFF0D47A1),
-            badgeText: 'الأكثر استخداماً في نالوت ⭐',
-            isDark: isDark,
-          ),
-
-          // 2. North Africa Bank (NAB)
-          _buildPaymentOption(
-            id: 'nab',
-            title: 'مصرف شمال أفريقيا (ناب باي NAB Pay)',
-            subtitle: 'سداد فوري ومجاني لتجار وزبائن مصرف شمال أفريقيا',
-            icon: Icons.account_balance_wallet_outlined,
-            color: const Color(0xFFE65100),
-            badgeText: 'حساب المنصة المعتمد 🏦',
-            isDark: isDark,
-          ),
-
-          // 3. LyPay (National Mobile Payment)
-          _buildPaymentOption(
-            id: 'lypay',
-            title: 'منصة لي باي الوطنية (LyPay)',
-            subtitle: 'محفظة شركة معاملات الموحدة لكافة الحسابات والمصارف الليبية',
-            icon: Icons.qr_code_2_rounded,
-            color: const Color(0xFF00897B),
-            badgeText: 'الشبكة الوطنية 🇱🇾',
-            isDark: isDark,
-          ),
-
-          // 4. OnePay Platform
-          _buildPaymentOption(
-            id: 'onepay',
-            title: 'منصة ون باي (OnePay)',
-            subtitle: 'بوابة الدفع الإلكتروني الشاملة للبطاقات والمحافظ الرقمية',
-            icon: Icons.credit_score_rounded,
-            color: const Color(0xFF6200EA),
-            isDark: isDark,
-          ),
-
-          // 5. Wasel Digital Wallet
-          _buildPaymentOption(
-            id: 'wallet',
-            title: 'محفظة واصل الرقمية (Wasel Wallet)',
-            subtitle: 'الرصيد المتاح: 120.00 د.ل (خصم لحظي آمن)',
-            icon: Icons.wallet_rounded,
-            color: AppColors.warning,
-            isDark: isDark,
-          ),
-
-          // 6. Cash on Delivery (COD)
+          // 1. Cash on Delivery (COD)
           _buildPaymentOption(
             id: 'cod',
-            title: 'الدفع نقداً عند الاستلام (Cash on Delivery)',
+            title: 'الدفع نقداً عند الاستلام (كاش للكابتن)',
             subtitle: 'ادفع للكابتن نقداً عند وصول الطلب لباب منزلك',
             icon: Icons.payments_rounded,
             color: AppColors.success,
-            isDark: isDark,
+            badgeText: 'الخيار المفضل ⭐',
           ),
 
-          // 7. Sadad Service
+          // 2. Wasel Digital Wallet
           _buildPaymentOption(
-            id: 'sadad',
-            title: 'خدمة سداد الإلكترونية (Sadad)',
-            subtitle: 'الدفع عبر رقم الهاتف ورسالة OTP المدار/ليبيانا',
-            icon: Icons.phone_android_rounded,
-            color: AppColors.waselPrimary,
-            isDark: isDark,
+            id: 'wallet',
+            title: 'محفظة واصل الرقمية (Wasel Wallet)',
+            subtitle: 'الرصيد المتاح: 120.00 د.ل (خصم فوري آمن)',
+            icon: Icons.wallet_rounded,
+            color: AppColors.warning,
           ),
 
-          // 8. Tadawul Card
-          _buildPaymentOption(
-            id: 'tadawul',
-            title: 'بطاقة تداول المصرفية (Tadawul)',
-            subtitle: 'الدفع المباشر عبر بطاقة الصراف المحلية',
-            icon: Icons.credit_card_rounded,
-            color: AppColors.info,
-            isDark: isDark,
-          ),
+          // 3. Unified Libyan Banking & Fintech Option
+          _buildUnifiedBankOption(),
 
           const SizedBox(height: AppSpacing.md),
 
@@ -1237,9 +1274,9 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colorScheme.surface,
               borderRadius: AppRadius.radiusLg,
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1263,13 +1300,27 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                       'المبلغ الإجمالي',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                     ),
-                    Text(
-                      '${_grandTotal.toStringAsFixed(2)} د.ل',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.waselPrimary,
-                      ),
+                    Stack(
+                      alignment: Alignment.centerLeft,
+                      children: [
+                        Opacity(
+                          opacity: 0.001,
+                          child: Text(
+                            '${_grandTotal.toStringAsFixed(2)} د.ل',
+                            style: const TextStyle(fontSize: 1),
+                          ),
+                        ),
+                        OdometerCounter(
+                          value: _grandTotal,
+                          decimalPlaces: 2,
+                          suffix: ' د.ل',
+                          style: WaselTypography.cairo(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: colorScheme.primary,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -1301,49 +1352,278 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
             ),
           ),
 
-          const SizedBox(height: 100),
+          const SizedBox(height: 24),
         ],
       ),
-      bottomSheet: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
+      bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+          color: colorScheme.surface,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 10,
               offset: const Offset(0, -4),
             ),
           ],
         ),
         child: SafeArea(
-          child: SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: _placeOrder,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.waselPrimary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
-                elevation: 4,
+          top: false,
+          bottom: true,
+          minimum: const EdgeInsets.only(bottom: 8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: WaselBouncyButton(
+                onPressed: _placeOrder,
+                backgroundColor: colorScheme.primary,
+                borderRadius: AppRadius.radiusLg,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.lock_outline_rounded, size: 20, color: Colors.white),
+                    const SizedBox(width: 8),
+                    Text(
+                      'تأكيد الطلب والدفع (${_grandTotal.toStringAsFixed(2)} د.ل)',
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnifiedBankOption() {
+    final isSelected = _isBankMethodSelected;
+    final bank = _activeBank;
+    final color = bank['color'] as Color? ?? const Color(0xFF0D47A1);
+
+    return Builder(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+      return Container(
+        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+        decoration: BoxDecoration(
+          color: colorScheme.surface,
+          borderRadius: AppRadius.radiusLg,
+          border: Border.all(
+            color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          children: [
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                setState(() => _selectedPaymentMethod = _selectedBankId);
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: AppRadius.radiusMd,
+                      ),
+                      child: Icon(bank['icon'] as IconData? ?? Icons.account_balance_rounded, color: color, size: 22),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Flexible(
+                                child: Text(
+                                  'الدفع المصرفي والإلكتروني (المصارف الليبية)',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: color.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
+                                ),
+                                child: Text(
+                                  bank['badge'] as String? ?? 'معتمد 🏦',
+                                  style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'المصرف المختار: ${bank['title']}',
+                            style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Icon(
+                      isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                      color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(12)),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Icon(Icons.lock_outline_rounded, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'تأكيد الطلب والدفع (${_grandTotal.toStringAsFixed(2)} د.ل)',
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                  Row(
+                    children: [
+                      Icon(Icons.swap_horiz_rounded, size: 16, color: colorScheme.primary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'المصرف: ${bank['title']}',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                      ),
+                    ],
+                  ),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
+                    onPressed: _openBankSelectionSheet,
+                    icon: const Icon(Icons.tune_rounded, size: 14),
+                    label: const Text('تغيير المصرف', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
                 ],
               ),
             ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _openBankSelectionSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.paddingOf(context).bottom > 0 ? MediaQuery.paddingOf(context).bottom + 10 : 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withValues(alpha: 0.3),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Row(
+                children: [
+                  Icon(Icons.account_balance_rounded, color: AppColors.waselPrimary),
+                  SizedBox(width: 8),
+                  Text(
+                    'اختر المصرف أو الخدمة المصرفية 🏦',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'اختر حسابك البنكي أو محفظتك للدفع الفوري المعتمد في نالوت:',
+                style: TextStyle(fontSize: 11, color: Colors.grey),
+              ),
+              const SizedBox(height: 14),
+              ..._libyanBanks.map((bank) {
+                final isSelected = _selectedBankId == bank['id'];
+                final color = bank['color'] as Color;
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedBankId = bank['id'] as String;
+                      _selectedPaymentMethod = bank['id'] as String;
+                    });
+                    Navigator.pop(ctx);
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: isSelected ? color.withValues(alpha: 0.08) : Theme.of(context).cardColor,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isSelected ? color : Colors.grey.withValues(alpha: 0.2),
+                        width: isSelected ? 2 : 1,
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(bank['icon'] as IconData, color: color, size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                bank['title'] as String,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                              ),
+                              Text(
+                                bank['subtitle'] as String,
+                                style: const TextStyle(fontSize: 10, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (isSelected)
+                          Icon(Icons.check_circle_rounded, color: color, size: 20),
+                      ],
+                    ),
+                  ),
+                );
+              }),
+            ],
           ),
         ),
       ),
@@ -1356,183 +1636,121 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
     required String subtitle,
     required IconData icon,
     required Color color,
-    required bool isDark,
     String? badgeText,
   }) {
     final isSelected = _selectedPaymentMethod == id;
 
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () => setState(() => _selectedPaymentMethod = id),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-        padding: const EdgeInsets.all(AppSpacing.md),
-        decoration: BoxDecoration(
-          color: isDark ? AppColors.darkCard : AppColors.lightCard,
-          borderRadius: AppRadius.radiusLg,
-          border: Border.all(
-            color: isSelected ? AppColors.waselPrimary : (isDark ? AppColors.darkBorder : AppColors.lightBorder),
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                borderRadius: AppRadius.radiusMd,
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Flexible(
-                        child: Text(
-                          title,
-                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (badgeText != null) ...[
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
-                          ),
-                          child: Text(
-                            badgeText,
-                            style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(fontSize: 10, color: AppColors.darkTextSecondary),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
-              color: isSelected ? AppColors.waselPrimary : AppColors.darkTextSecondary,
-              size: 20,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBillRow(String label, String value, {bool isDiscount = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: isDiscount ? AppColors.success : null,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _openAddressPicker(BuildContext context) async {
-    final addresses = await ApiService.getUserAddresses();
-    if (!context.mounted) return;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (ctx) => Directionality(
-        textDirection: TextDirection.rtl,
+    return Builder(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+      return GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => setState(() => _selectedPaymentMethod = id),
         child: Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            color: colorScheme.surface,
+            borderRadius: AppRadius.radiusLg,
+            border: Border.all(
+              color: isSelected ? colorScheme.primary : colorScheme.outlineVariant,
+              width: isSelected ? 2 : 1,
+            ),
           ),
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Row(
             children: [
-              const Text('اختر وجهة التوصيل للطلب', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 14),
-              ...addresses.map((addr) {
-                final isSelected = ApiService.activeAddress['id'] == addr['id'];
-                String icon = '📍';
-                if (addr['tag'] == 'home') icon = '🏠';
-                if (addr['tag'] == 'work') icon = '💼';
-                if (addr['tag'] == 'chalet') icon = '🌴';
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: isSelected ? AppColors.waselPrimary : Colors.transparent, width: 1.5),
-                  ),
-                  child: ListTile(
-                    leading: Text(icon, style: const TextStyle(fontSize: 26)),
-                    title: Text(addr['title'] ?? 'مكان', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(addr['details'] ?? '', maxLines: 1, overflow: TextOverflow.ellipsis),
-                    trailing: isSelected ? const Icon(Icons.check_circle, color: AppColors.waselPrimary) : null,
-                    onTap: () {
-                      setState(() {
-                        ApiService.activeAddress = addr;
-                      });
-                      Navigator.pop(ctx);
-                    },
-                  ),
-                );
-              }),
-              const SizedBox(height: 10),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  side: const BorderSide(color: AppColors.waselPrimary),
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  borderRadius: AppRadius.radiusMd,
                 ),
-                icon: const Icon(Icons.satellite_alt, color: AppColors.waselPrimary),
-                label: const Text('تحديد موقع جديد بالقمر الصناعي 🛰️', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.waselPrimary)),
-                onPressed: () async {
-                  Navigator.pop(ctx);
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SatelliteLocationPicker()),
-                  );
-                  if (result != null) {
-                    setState(() {});
-                  }
-                },
+                child: Icon(icon, color: color, size: 22),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (badgeText != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: color.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: color.withValues(alpha: 0.4), width: 0.8),
+                            ),
+                            child: Text(
+                              badgeText,
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: color),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
+                color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                size: 20,
+              ),
             ],
           ),
         ),
-      ),
-    );
+      );
+    });
+  }
+
+  Widget _buildBillRow(String label, String value, {bool isDiscount = false}) {
+    return Builder(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant),
+            ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: isDiscount ? AppColors.success : colorScheme.onSurface,
+              ),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
+  void _openAddressPicker(BuildContext context) async {
+    final selected = await AddressManagementSheet.show(context);
+    if (selected != null && mounted) {
+      setState(() {
+        ApiService.activeAddress = selected;
+      });
+      _fetchDynamicDeliveryFee();
+    }
   }
 }

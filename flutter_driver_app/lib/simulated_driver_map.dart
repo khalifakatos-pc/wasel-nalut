@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart' as gmap;
 import 'driver_theme.dart';
 import 'driver_models.dart';
 
@@ -45,6 +46,8 @@ class SimulatedDriverMap extends StatefulWidget {
 
 class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTickerProviderStateMixin {
   late final MapController _mapController;
+  gmap.GoogleMapController? _googleMapController;
+  int _mapEngineMode = 0; // 0 = Google Maps, 1 = ArcGIS Satellite, 2 = OpenStreetMap
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
 
@@ -135,39 +138,49 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
   void dispose() {
     _pulseController.dispose();
     _mapController.dispose();
+    _googleMapController?.dispose();
     super.dispose();
   }
 
   void _recenterOnDriver() {
-    if (!_isMapReady) return;
-    try {
-      _mapController.move(_driverPos, _currentZoom);
-    } catch (e) {
-      debugPrint('Error recentering on driver: $e');
+    if (_mapEngineMode == 0 && _googleMapController != null) {
+      try {
+        _googleMapController!.animateCamera(
+          gmap.CameraUpdate.newLatLng(
+            gmap.LatLng(_driverPos.latitude, _driverPos.longitude),
+          ),
+        );
+      } catch (e) {
+        debugPrint('Error recentering Google Maps: $e');
+      }
+    } else if (_isMapReady) {
+      try {
+        _mapController.move(_driverPos, _currentZoom);
+      } catch (e) {
+        debugPrint('Error recentering on driver: $e');
+      }
     }
     widget.onRecenter?.call();
   }
 
   void _zoomIn() {
-    if (!_isMapReady) return;
-    try {
-      _currentZoom = (_currentZoom + 1).clamp(11.0, 19.0);
+    _currentZoom = (_currentZoom + 1).clamp(11.0, 19.0);
+    if (_mapEngineMode == 0 && _googleMapController != null) {
+      _googleMapController!.animateCamera(gmap.CameraUpdate.zoomIn());
+    } else if (_isMapReady) {
       _mapController.move(_mapController.camera.center, _currentZoom);
-      setState(() {});
-    } catch (e) {
-      debugPrint('Error zooming in: $e');
     }
+    setState(() {});
   }
 
   void _zoomOut() {
-    if (!_isMapReady) return;
-    try {
-      _currentZoom = (_currentZoom - 1).clamp(11.0, 19.0);
+    _currentZoom = (_currentZoom - 1).clamp(11.0, 19.0);
+    if (_mapEngineMode == 0 && _googleMapController != null) {
+      _googleMapController!.animateCamera(gmap.CameraUpdate.zoomOut());
+    } else if (_isMapReady) {
       _mapController.move(_mapController.camera.center, _currentZoom);
-      setState(() {});
-    } catch (e) {
-      debugPrint('Error zooming out: $e');
     }
+    setState(() {});
   }
 
   @override
@@ -180,84 +193,128 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
       color: isDark ? const Color(0xFF080C14) : const Color(0xFFE2E8F0),
       child: Stack(
         children: [
-          // 1. Real Satellite / Streets Map View
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _driverPos,
-              initialZoom: _currentZoom,
-              minZoom: 11.0,
-              maxZoom: 19.0,
-              interactionOptions: InteractionOptions(
-                flags: widget.isInteractive ? InteractiveFlag.all : InteractiveFlag.none,
-              ),
-              onMapReady: () {
-                _isMapReady = true;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted && _isMapReady) {
-                    _recenterOnDriver();
-                  }
-                });
-              },
-            ),
-            children: [
-              // Tile Layer (ArcGIS Satellite or OpenStreetMap)
-              if (_isSatelliteMode)
-                TileLayer(
-                  urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-                  userAgentPackageName: 'com.wasel.captain.wasel_captain_app',
-                  maxZoom: 19,
+          // 1. Map Layer: Google Maps or Satellite/OSM Fallback
+          _mapEngineMode == 0
+              ? gmap.GoogleMap(
+                  initialCameraPosition: gmap.CameraPosition(
+                    target: gmap.LatLng(_driverPos.latitude, _driverPos.longitude),
+                    zoom: _currentZoom,
+                  ),
+                  mapType: _isSatelliteMode ? gmap.MapType.satellite : gmap.MapType.normal,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  compassEnabled: true,
+                  trafficEnabled: false,
+                  onMapCreated: (ctrl) {
+                    _googleMapController = ctrl;
+                    _isMapReady = true;
+                  },
+                  markers: {
+                    gmap.Marker(
+                      markerId: const gmap.MarkerId('driver_vehicle'),
+                      position: gmap.LatLng(_driverPos.latitude, _driverPos.longitude),
+                      infoWindow: const gmap.InfoWindow(title: 'موقع الكابتن الحالي (واصل نالوت)'),
+                      icon: gmap.BitmapDescriptor.defaultMarkerWithHue(gmap.BitmapDescriptor.hueCyan),
+                    ),
+                    gmap.Marker(
+                      markerId: const gmap.MarkerId('store_pickup'),
+                      position: gmap.LatLng(_storePos.latitude, _storePos.longitude),
+                      infoWindow: gmap.InfoWindow(title: widget.storeName ?? 'المطعم (استلام الطلب)'),
+                      icon: gmap.BitmapDescriptor.defaultMarkerWithHue(gmap.BitmapDescriptor.hueOrange),
+                    ),
+                    gmap.Marker(
+                      markerId: const gmap.MarkerId('customer_destination'),
+                      position: gmap.LatLng(_customerPos.latitude, _customerPos.longitude),
+                      infoWindow: gmap.InfoWindow(title: widget.destinationAddress ?? 'موقع الزبون (التوصيل)'),
+                      icon: gmap.BitmapDescriptor.defaultMarkerWithHue(gmap.BitmapDescriptor.hueGreen),
+                    ),
+                  },
+                  polylines: {
+                    gmap.Polyline(
+                      polylineId: const gmap.PolylineId('driver_navigation_route'),
+                      points: _routePoints.map((p) => gmap.LatLng(p.latitude, p.longitude)).toList(),
+                      color: DriverColors.primary,
+                      width: 6,
+                    ),
+                  },
                 )
-              else
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.wasel.captain.wasel_captain_app',
-                  maxZoom: 19,
+              : FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _driverPos,
+                    initialZoom: _currentZoom,
+                    minZoom: 11.0,
+                    maxZoom: 19.0,
+                    interactionOptions: InteractionOptions(
+                      flags: widget.isInteractive ? InteractiveFlag.all : InteractiveFlag.none,
+                    ),
+                    onMapReady: () {
+                      _isMapReady = true;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (mounted && _isMapReady) {
+                          _recenterOnDriver();
+                        }
+                      });
+                    },
+                  ),
+                  children: [
+                    // Tile Layer (ArcGIS Satellite or OpenStreetMap)
+                    if (_isSatelliteMode)
+                      TileLayer(
+                        urlTemplate: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                        userAgentPackageName: 'com.wasel.captain.wasel_captain_app',
+                        maxZoom: 19,
+                      )
+                    else
+                      TileLayer(
+                        urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        userAgentPackageName: 'com.wasel.captain.wasel_captain_app',
+                        maxZoom: 19,
+                      ),
+
+                    // Route Polyline
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: _routePoints,
+                          strokeWidth: 5.5,
+                          color: DriverColors.primary.withValues(alpha: 0.9),
+                          borderStrokeWidth: 2.0,
+                          borderColor: Colors.black.withValues(alpha: 0.4),
+                        ),
+                      ],
+                    ),
+
+                    // Markers: Store, Customer, Captain Vehicle
+                    MarkerLayer(
+                      markers: [
+                        // Store Marker
+                        Marker(
+                          point: _storePos,
+                          width: 70,
+                          height: 60,
+                          child: _buildStorePin(isDark),
+                        ),
+
+                        // Customer House Marker
+                        Marker(
+                          point: _customerPos,
+                          width: 70,
+                          height: 60,
+                          child: _buildCustomerPin(isDark),
+                        ),
+
+                        // Captain Vehicle Marker (Animated)
+                        Marker(
+                          point: _driverPos,
+                          width: 60,
+                          height: 60,
+                          child: _buildCaptainVehicleMarker(),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-
-              // Route Polyline
-              PolylineLayer(
-                polylines: [
-                  Polyline(
-                    points: _routePoints,
-                    strokeWidth: 5.5,
-                    color: DriverColors.primary.withValues(alpha: 0.9),
-                    borderStrokeWidth: 2.0,
-                    borderColor: Colors.black.withValues(alpha: 0.4),
-                  ),
-                ],
-              ),
-
-              // Markers: Store, Customer, Captain Vehicle
-              MarkerLayer(
-                markers: [
-                  // Store Marker
-                  Marker(
-                    point: _storePos,
-                    width: 70,
-                    height: 60,
-                    child: _buildStorePin(isDark),
-                  ),
-
-                  // Customer House Marker
-                  Marker(
-                    point: _customerPos,
-                    width: 70,
-                    height: 60,
-                    child: _buildCustomerPin(isDark),
-                  ),
-
-                  // Captain Vehicle Marker (Animated)
-                  Marker(
-                    point: _driverPos,
-                    width: 60,
-                    height: 60,
-                    child: _buildCaptainVehicleMarker(),
-                  ),
-                ],
-              ),
-            ],
-          ),
 
           // 2. Turn-by-Turn Instruction Banner
           if (widget.activeStep != null && widget.activeStep != DeliveryStep.deliveryFinished)
@@ -275,7 +332,20 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
             child: Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () => setState(() => _isSatelliteMode = !_isSatelliteMode),
+                onTap: () {
+                  setState(() {
+                    if (_mapEngineMode == 0) {
+                      _mapEngineMode = 1;
+                      _isSatelliteMode = true;
+                    } else if (_mapEngineMode == 1) {
+                      _mapEngineMode = 2;
+                      _isSatelliteMode = false;
+                    } else {
+                      _mapEngineMode = 0;
+                      _isSatelliteMode = false;
+                    }
+                  });
+                },
                 borderRadius: BorderRadius.circular(20),
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -283,7 +353,9 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
                     color: Colors.black.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _isSatelliteMode ? Colors.greenAccent : Colors.amberAccent,
+                      color: _mapEngineMode == 0
+                          ? DriverColors.primary
+                          : (_isSatelliteMode ? Colors.greenAccent : Colors.amberAccent),
                       width: 1.2,
                     ),
                     boxShadow: const [
@@ -294,13 +366,19 @@ class _SimulatedDriverMapState extends State<SimulatedDriverMap> with SingleTick
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _isSatelliteMode ? Icons.satellite_alt_rounded : Icons.map_rounded,
+                        _mapEngineMode == 0
+                            ? Icons.map_rounded
+                            : (_isSatelliteMode ? Icons.satellite_alt_rounded : Icons.explore_rounded),
                         size: 14,
-                        color: _isSatelliteMode ? Colors.greenAccent : Colors.amberAccent,
+                        color: _mapEngineMode == 0
+                            ? DriverColors.primary
+                            : (_isSatelliteMode ? Colors.greenAccent : Colors.amberAccent),
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        _isSatelliteMode ? 'قمر صناعي 🛰️' : 'خريطة الشوارع 🗺️',
+                        _mapEngineMode == 0
+                            ? 'Google Maps ⚡'
+                            : (_isSatelliteMode ? 'قمر صناعي 🛰️' : 'شوارع نالوت 🗺️'),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11,

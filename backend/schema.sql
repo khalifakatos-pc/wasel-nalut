@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS users (
     role user_role NOT NULL DEFAULT 'customer',
     status user_status NOT NULL DEFAULT 'active',
     avatar_url TEXT,
-    locale VARCHAR(10) DEFAULT 'ar-IQ',
+    locale VARCHAR(10) DEFAULT 'ar-LY',
     device_token TEXT,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -132,8 +132,8 @@ CREATE TABLE IF NOT EXISTS user_addresses (
     building_name VARCHAR(100),
     floor_number VARCHAR(20),
     apartment_number VARCHAR(20),
-    city VARCHAR(100) NOT NULL DEFAULT 'Baghdad',
-    state VARCHAR(100) DEFAULT 'Baghdad',
+    city VARCHAR(100) NOT NULL DEFAULT 'Nalut',
+    state VARCHAR(100) DEFAULT 'Nalut',
     postal_code VARCHAR(20),
     location GEOMETRY(Point, 4326) NOT NULL,
     latitude NUMERIC(10, 7) GENERATED ALWAYS AS (ST_Y(location)) STORED,
@@ -156,7 +156,7 @@ CREATE TABLE IF NOT EXISTS wallets (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID REFERENCES users(id) ON DELETE RESTRICT,
     wallet_type wallet_type NOT NULL,
-    currency VARCHAR(3) NOT NULL DEFAULT 'IQD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'LYD',
     balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00,
     locked_balance NUMERIC(14, 2) NOT NULL DEFAULT 0.00, -- Amount reserved for active escrows
     status wallet_status NOT NULL DEFAULT 'active',
@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
     net_amount NUMERIC(14, 2) NOT NULL,
     balance_before NUMERIC(14, 2) NOT NULL,
     balance_after NUMERIC(14, 2) NOT NULL,
-    currency VARCHAR(3) NOT NULL DEFAULT 'IQD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'LYD',
     status transaction_status NOT NULL DEFAULT 'completed',
     reference_id VARCHAR(100),
     narration TEXT NOT NULL,
@@ -353,11 +353,11 @@ CREATE TABLE IF NOT EXISTS orders (
     status order_status NOT NULL DEFAULT 'placed',
     payment_method payment_method NOT NULL DEFAULT 'wallet',
     payment_status payment_status NOT NULL DEFAULT 'pending',
-    currency VARCHAR(3) NOT NULL DEFAULT 'IQD',
+    currency VARCHAR(3) NOT NULL DEFAULT 'LYD',
     subtotal NUMERIC(12, 2) NOT NULL,
     tax_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     delivery_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
-    platform_fee NUMERIC(12, 2) NOT NULL DEFAULT 500.00,
+    platform_fee NUMERIC(12, 2) NOT NULL DEFAULT 1.00,
     store_commission_fee NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     discount_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
     tip_amount NUMERIC(12, 2) NOT NULL DEFAULT 0.00,
@@ -570,13 +570,13 @@ BEGIN
     -- Check if platform escrow wallet exists
     IF NOT EXISTS (SELECT 1 FROM wallets WHERE wallet_type = 'platform_escrow' AND user_id IS NULL) THEN
         INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
-        VALUES ('00000000-0000-0000-0000-000000000001', NULL, 'platform_escrow', 'IQD', 0.00, 0.00, 'active');
+        VALUES ('00000000-0000-0000-0000-000000000001', NULL, 'platform_escrow', 'LYD', 0.00, 0.00, 'active');
     END IF;
 
     -- Check if platform revenue wallet exists
     IF NOT EXISTS (SELECT 1 FROM wallets WHERE wallet_type = 'platform_revenue' AND user_id IS NULL) THEN
         INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
-        VALUES ('00000000-0000-0000-0000-000000000002', NULL, 'platform_revenue', 'IQD', 0.00, 0.00, 'active');
+        VALUES ('00000000-0000-0000-0000-000000000002', NULL, 'platform_revenue', 'LYD', 0.00, 0.00, 'active');
     END IF;
 END $$;
 

@@ -28,11 +28,17 @@ class AdminSupabaseService {
   // KPI CALCULATOR
   // --------------------------------------------------------------------------
   static Future<Map<String, dynamic>> fetchKpis() async {
-    for (int attempt = 0; attempt < 2; attempt++) {
+    final candidateUrls = <String>[
+      backendBaseUrl,
+      'http://localhost:3000/api/v1',
+      localBackendUrl,
+    ];
+
+    for (final base in candidateUrls) {
       try {
         final res = await http
-            .get(Uri.parse('$backendBaseUrl/admin/overview?admin_key=9832'))
-            .timeout(const Duration(seconds: 15));
+            .get(Uri.parse('$base/admin/overview?admin_key=9832'))
+            .timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
           final dynamic body = jsonDecode(res.body);
@@ -48,12 +54,14 @@ class AdminSupabaseService {
                 (((fleet['available'] as num?)?.toInt() ?? 0) + ((fleet['busy'] as num?)?.toInt() ?? 0));
             final openStores = (metrics['open_stores_count'] as num?)?.toInt() ??
                 ((metrics['stores_count'] as num?)?.toInt() ?? 0);
+            final codPending = (metrics['cod_pending_lyd'] as num?)?.toDouble() ??
+                ((metrics['driver_cash_liability_lyd'] as num?)?.toDouble() ?? 0.0);
 
             return {
               'total_orders': totalOrders,
               'gmv_lyd': gmv,
               'platform_fee_lyd': platformFee,
-              'cod_with_drivers_lyd': (metrics['cod_pending_lyd'] as num?)?.toDouble() ?? 0.0,
+              'cod_with_drivers_lyd': codPending,
               'active_orders': activeOrders,
               'online_drivers': onlineDrivers,
               'open_stores': openStores,
@@ -61,25 +69,28 @@ class AdminSupabaseService {
           }
         }
       } catch (_) {
-        if (attempt == 1) break;
+        // Continue to next candidate URL
       }
     }
 
-    // Fallback: Compute KPIs directly from stores and orders
+    // Dynamic Fallback: Compute KPIs directly from stores, orders, and real driver liabilities
     try {
       final stores = await fetchStores();
       final orders = await fetchOrders();
+      final drivers = await fetchDrivers();
       final openStores = stores.where((s) => s['is_open'] == true || s['is_open'] == 'true').length;
       final activeOrders = orders.where((o) => !['delivered', 'cancelled'].contains(o['status'])).length;
       final gmv = orders.fold<double>(0.0, (sum, o) => sum + ((o['total_amount_lyd'] as num?)?.toDouble() ?? 0.0));
+      final codPending = drivers.fold<double>(0.0, (sum, d) => sum + ((d['cash_in_hand_lyd'] ?? d['wallet_balance_lyd'] as num?)?.toDouble() ?? 0.0));
+      final onlineDrivers = drivers.where((d) => d['status'] == 'available' || d['status'] == 'busy_delivery' || d['status'] == 'online').length;
 
       return {
         'total_orders': orders.length,
         'gmv_lyd': gmv,
         'platform_fee_lyd': gmv * 0.10,
-        'cod_with_drivers_lyd': 0.0,
+        'cod_with_drivers_lyd': codPending,
         'active_orders': activeOrders,
-        'online_drivers': 1,
+        'online_drivers': onlineDrivers > 0 ? onlineDrivers : drivers.length,
         'open_stores': openStores,
       };
     } catch (_) {
@@ -846,8 +857,37 @@ class AdminSupabaseService {
     required String mealDisposal, // 'captain_bonus', 'flash_deal', 'discarded'
     String? notes,
   }) async {
+    // 1. Try Live Unified Backend Server first
+    for (final base in [
+      'http://localhost:3000/api/v1',
+      localBackendUrl,
+      'https://wasel-nalut-api.onrender.com/api/v1',
+    ]) {
+      try {
+        final res = await http.post(
+          Uri.parse('$base/admin/disputes/resolve'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'order_id': orderId,
+            'store_id': storeId,
+            'driver_id': driverId,
+            'total_amount_lyd': totalAmountLyd,
+            'delivery_fee_lyd': deliveryFeeLyd,
+            'customer_phone': customerPhone,
+            'customer_action': customerAction,
+            'meal_disposal': mealDisposal,
+            'notes': notes ?? '',
+          }),
+        ).timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200) {
+          break;
+        }
+      } catch (_) {}
+    }
+
     try {
-      // 1. Compensate Restaurant (90% of food subtotal) via Disbursement Voucher
+      // 2. Compensate Restaurant (90% of food subtotal) via Disbursement Voucher
       final double foodSubtotal = (totalAmountLyd - deliveryFeeLyd).clamp(0.0, double.infinity);
       final double restaurantCompensation = foodSubtotal * 0.90;
 

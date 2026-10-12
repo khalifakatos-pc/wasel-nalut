@@ -35,6 +35,7 @@ class CustomerNotificationService {
     description: 'إشعارات لحظية عن مراحل طهي وتوصيل وجبتك في نالوت',
     importance: Importance.high,
     playSound: true,
+    sound: RawResourceAndroidNotificationSound('order_status_chime'),
     enableVibration: true,
     showBadge: true,
   );
@@ -178,12 +179,21 @@ class CustomerNotificationService {
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      sound: const RawResourceAndroidNotificationSound('order_status_chime'),
       enableVibration: true,
       fullScreenIntent: true,
       visibility: NotificationVisibility.public,
       ticker: '🛍️ تحديث حالة طلبك - واصل نالوت',
       icon: '@mipmap/ic_launcher',
       styleInformation: BigTextStyleInformation(body),
+      actions: <AndroidNotificationAction>[
+        const AndroidNotificationAction(
+          'track',
+          '🛵 تتبع الكابتن مباشرة',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
     );
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 
 /// ============================================================================
 /// CAPTAIN WASEL (كابتن واصل) DRIVER APP DESIGN SYSTEM & TOKENS
@@ -138,77 +139,19 @@ class DriverTypography {
 }
 
 class DriverTheme {
-  static ThemeData get darkTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: DriverColors.darkBg,
-      primaryColor: DriverColors.primary,
-      colorScheme: const ColorScheme.dark(
-        primary: DriverColors.primary,
-        secondary: DriverColors.secondary,
-        tertiary: DriverColors.onlineGreen,
-        surface: DriverColors.darkSurface,
-        error: DriverColors.urgentRed,
-        onPrimary: Colors.white,
-        onSurface: DriverColors.darkTextPrimary,
-      ),
-      cardTheme: CardThemeData(
-        color: DriverColors.darkCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: DriverRadius.radiusLg,
-          side: const BorderSide(color: DriverColors.darkBorder, width: 1),
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: DriverColors.darkSurface,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          color: DriverColors.darkTextPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
+  static ThemeData get darkTheme => WaselTheme.darkTheme.copyWith(
+    colorScheme: WaselTheme.darkTheme.colorScheme.copyWith(
+      secondary: DriverColors.secondary,
+      tertiary: DriverColors.onlineGreen,
+    ),
+  );
 
-  static ThemeData get lightTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: DriverColors.lightBg,
-      primaryColor: DriverColors.primary,
-      colorScheme: const ColorScheme.light(
-        primary: DriverColors.primary,
-        secondary: DriverColors.secondary,
-        tertiary: DriverColors.onlineGreen,
-        surface: DriverColors.lightSurface,
-        error: DriverColors.urgentRed,
-        onPrimary: Colors.white,
-        onSurface: DriverColors.lightTextPrimary,
-      ),
-      cardTheme: CardThemeData(
-        color: DriverColors.lightCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: DriverRadius.radiusLg,
-          side: const BorderSide(color: DriverColors.lightBorder, width: 1),
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: DriverColors.lightSurface,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          color: DriverColors.lightTextPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
+  static ThemeData get lightTheme => WaselTheme.lightTheme.copyWith(
+    colorScheme: WaselTheme.lightTheme.colorScheme.copyWith(
+      secondary: DriverColors.secondary,
+      tertiary: DriverColors.onlineGreen,
+    ),
+  );
 }
 
 /// ---------------------------------------------------------------------------

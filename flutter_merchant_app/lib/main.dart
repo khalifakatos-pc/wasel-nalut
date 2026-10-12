@@ -12,6 +12,8 @@ import 'retail_picking_screen.dart';
 import 'sales_analytics_screen.dart';
 import 'services/merchant_supabase_service.dart';
 import 'services/merchant_notification_service.dart';
+import 'services/kitchen_buzzer_service.dart';
+import 'services/merchant_socket_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -202,6 +204,8 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   StoreStatus _storeStatus = StoreStatus.open;
   Timer? _pollTimer;
   Timer? _heartbeatTimer;
+  StreamSubscription? _socketOrderSub;
+  StreamSubscription? _socketStatusSub;
 
   late PartnerStore _currentStore;
   late List<KdsOrder> _orders;
@@ -218,6 +222,7 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
 
     _initNotifications();
     _loadLiveMerchantData();
+    _initSocketMesh();
 
     // Auto-open store via immediate heartbeat upon entering the app shell
     MerchantSupabaseService.sendHeartbeat(_currentStore.id);
@@ -229,9 +234,24 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
       }
     });
 
-    // Poll Supabase / backend every 4 seconds for new incoming orders
-    _pollTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+    // Relaxed polling fallback (every 8 seconds) as safety net behind instant Socket.io
+    _pollTimer = Timer.periodic(const Duration(seconds: 8), (_) {
       _pollOrdersSilently();
+    });
+  }
+
+  void _initSocketMesh() {
+    MerchantSocketService.instance.connect(storeId: _currentStore.id);
+    _socketOrderSub?.cancel();
+    _socketOrderSub = MerchantSocketService.instance.onNewOrder.listen((payload) {
+      debugPrint('[MerchantShell] ⚡ Instant incoming order via Socket.io: $payload');
+      _loadLiveMerchantData();
+    });
+
+    _socketStatusSub?.cancel();
+    _socketStatusSub = MerchantSocketService.instance.onOrderStatusChanged.listen((payload) {
+      debugPrint('[MerchantShell] ⚡ Order status changed via Socket.io: $payload');
+      _loadLiveMerchantData();
     });
   }
 
@@ -245,6 +265,9 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
 
   @override
   void dispose() {
+    _socketOrderSub?.cancel();
+    _socketStatusSub?.cancel();
+    MerchantSocketService.instance.disconnect();
     _pollTimer?.cancel();
     _heartbeatTimer?.cancel();
     // Unsubscribe from store push alerts
@@ -310,6 +333,9 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
           body: 'طلب بقيمة ${newOrd.totalAmountLyd.toStringAsFixed(2)} د.ل لـ ${_currentStore.name}.',
         );
 
+        // Start continuous kitchen buzzer alert until accepted
+        KitchenBuzzerService.instance.startBuzzer(orderId: newOrd.id);
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -333,6 +359,11 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
   }
 
   void _onOrderUpdated(KdsOrder updatedOrder) {
+    // Stop buzzer when order is accepted or moved to preparation
+    if (updatedOrder.status != KdsTicketStatus.newOrder) {
+      KitchenBuzzerService.instance.stopBuzzer(orderId: updatedOrder.id);
+    }
+
     setState(() {
       final idx = _orders.indexWhere((o) => o.id == updatedOrder.id);
       if (idx != -1) {
@@ -439,6 +470,7 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     await prefs.setString('wasel_active_store_mode', newStore.mode == PartnerAppMode.retail ? 'retail' : 'kitchen');
 
     _initNotifications();
+    MerchantSocketService.instance.updateStore(newStore.id);
     _loadLiveMerchantData();
     MerchantSupabaseService.sendHeartbeat(newStore.id);
 

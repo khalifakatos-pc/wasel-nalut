@@ -1,4 +1,5 @@
 const { v4: uuidv4 } = require('uuid');
+const { calculateDynamicDeliveryFee } = require('../utils/geo');
 
 /**
  * Orders & Logistics Service
@@ -9,70 +10,7 @@ class OrderService {
    * Calculates delivery fee based on distance, weight, and system pricing.
    */
   calculateDeliveryFee(db, store, deliveryLat, deliveryLng, totalWeightKg = 1.0) {
-    const calculateHaversineDistance = (lat1, lon1, lat2, lon2) => {
-      if (!lat1 || !lon1 || !lat2 || !lon2) return 0;
-      const R = 6371000; // Earth radius in meters
-      const dLat = ((lat2 - lat1) * Math.PI) / 180;
-      const dLon = ((lon2 - lon1) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-        Math.cos((lat1 * Math.PI) / 180) *
-          Math.cos((lat2 * Math.PI) / 180) *
-          Math.sin(dLon / 2) *
-          Math.sin(dLon / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      return R * c;
-    };
-
-    const estimateEtaMinutes = (distanceMeters, currentSpeedKmh) => {
-      const effectiveSpeed = currentSpeedKmh > 10 ? currentSpeedKmh : 25;
-      const speedMetersPerMinute = (effectiveSpeed * 1000) / 60;
-      return Math.max(1, Math.ceil(distanceMeters / speedMetersPerMinute));
-    };
-
-    const distanceMeters = calculateHaversineDistance(
-      store.latitude,
-      store.longitude,
-      deliveryLat,
-      deliveryLng
-    );
-    const distanceKm = distanceMeters / 1000.0;
-
-    const pricing = db.system_config.pricing_config || {
-      base_fee: 3.00,
-      base_distance_km: 2.5,
-      per_km_rate: 0.75,
-      long_distance_threshold_km: 8.0,
-      long_distance_multiplier: 1.25,
-      free_weight_kg: 3.0,
-      per_kg_surcharge: 0.50
-    };
-
-    let deliveryFee = pricing.base_fee;
-
-    if (distanceKm > pricing.base_distance_km) {
-      const extraKm = distanceKm - pricing.base_distance_km;
-      if (distanceKm > pricing.long_distance_threshold_km) {
-        const normalExtra = pricing.long_distance_threshold_km - pricing.base_distance_km;
-        const longExtra = distanceKm - pricing.long_distance_threshold_km;
-        deliveryFee += (normalExtra * pricing.per_km_rate) + (longExtra * pricing.per_km_rate * pricing.long_distance_multiplier);
-      } else {
-        deliveryFee += extraKm * pricing.per_km_rate;
-      }
-    }
-
-    if (totalWeightKg > pricing.free_weight_kg) {
-      const extraWeight = totalWeightKg - pricing.free_weight_kg;
-      deliveryFee += extraWeight * pricing.per_kg_surcharge;
-    }
-
-    deliveryFee = Math.round(deliveryFee * 2) / 2;
-    return {
-      delivery_fee_lyd: Math.max(3.00, deliveryFee),
-      distance_km: Math.round(distanceKm * 10) / 10,
-      distance_meters: Math.round(distanceMeters),
-      estimated_eta_minutes: estimateEtaMinutes(distanceMeters, 25)
-    };
+    return calculateDynamicDeliveryFee(store, deliveryLat, deliveryLng, totalWeightKg, db ? db.system_config : {});
   }
 
   /**
@@ -275,27 +213,175 @@ class OrderService {
   }
 
   /**
+   * Enforces strict forward order lifecycle transitions according to FSM rules:
+   *  placed -> accepted -> preparing -> ready_for_pickup -> picked_up -> delivered (or cancelled)
+   *
+   * Transition rules:
+   *  - placed can transition to: accepted, cancelled.
+   *  - accepted can transition to: preparing, cancelled.
+   *  - preparing can transition to: ready_for_pickup. (Cannot be cancelled without admin override).
+   *  - ready_for_pickup can transition to: picked_up (or out_for_delivery).
+   *  - picked_up can transition to: delivered.
+   *  - delivered is a terminal state. Any further transition must be strictly rejected with HTTP 400 Bad Request.
+   *  - cancelled is a terminal state. Any further transition must be strictly rejected with HTTP 400 Bad Request.
+   *  - Backward transitions (e.g. preparing -> placed or picked_up -> preparing) must be strictly rejected with HTTP 400 Bad Request.
+   *  - Disallow skips (e.g. placed -> picked_up).
+   *  - Duplicate idempotent transition to the current status should be handled safely.
+   */
+  validateTransition(currentStatus, targetStatus, options = {}, order = null) {
+    const validStatuses = [
+      'pending',
+      'placed',
+      'accepted',
+      'preparing',
+      'ready_for_pickup',
+      'driver_assigned',
+      'driver_arrived',
+      'picked_up',
+      'out_for_delivery',
+      'delivered',
+      'cancelled'
+    ];
+
+    if (!validStatuses.includes(targetStatus)) {
+      return {
+        valid: false,
+        statusCode: 400,
+        error: `Invalid status "${targetStatus}". Valid statuses: ${validStatuses.join(', ')}`
+      };
+    }
+
+    // Helper: are statuses equivalent pickup aliases?
+    const isPickupEquivalent = (s1, s2) => {
+      const set = ['picked_up', 'out_for_delivery'];
+      return set.includes(s1) && set.includes(s2);
+    };
+
+    // 1. Idempotent check: same status or equivalent alias
+    if (currentStatus === targetStatus || isPickupEquivalent(currentStatus, targetStatus)) {
+      return { valid: true, isIdempotent: true };
+    }
+
+    // 2. Terminal state protection: delivered & cancelled cannot be transitioned further
+    if (currentStatus === 'delivered') {
+      return {
+        valid: false,
+        statusCode: 400,
+        error: `Order is in terminal state "${currentStatus}" and cannot be transitioned to "${targetStatus}".`
+      };
+    }
+
+    if (currentStatus === 'cancelled') {
+      return {
+        valid: false,
+        statusCode: 400,
+        error: `Order is in terminal state "${currentStatus}" and cannot be transitioned to "${targetStatus}".`
+      };
+    }
+
+    // 3. Allowed transitions mapping
+    const ALLOWED_TRANSITIONS = {
+      pending: ['placed', 'accepted', 'cancelled'],
+      placed: ['accepted', 'cancelled'],
+      accepted: ['preparing', 'cancelled'],
+      preparing: ['ready_for_pickup'],
+      ready_for_pickup: ['picked_up', 'out_for_delivery', 'driver_assigned'],
+      driver_assigned: ['driver_arrived', 'picked_up', 'out_for_delivery', 'ready_for_pickup'],
+      driver_arrived: ['picked_up', 'out_for_delivery'],
+      picked_up: ['delivered', 'out_for_delivery'],
+      out_for_delivery: ['delivered', 'picked_up']
+    };
+
+    // Cancellation check for in-flight / kitchen orders
+    if (targetStatus === 'cancelled') {
+      if (['preparing', 'ready_for_pickup', 'driver_assigned', 'driver_arrived', 'picked_up', 'out_for_delivery'].includes(currentStatus)) {
+        if (options.isAdmin || options.adminOverride || options.role === 'admin') {
+          return { valid: true, isCancellation: true };
+        }
+        return {
+          valid: false,
+          statusCode: 400,
+          error: `Cannot cancel order in state "${currentStatus}" without admin override.`
+        };
+      }
+    }
+
+    const allowedNext = ALLOWED_TRANSITIONS[currentStatus] || [];
+    if (allowedNext.includes(targetStatus)) {
+      if ((targetStatus === 'picked_up' || targetStatus === 'out_for_delivery') &&
+          !options.driver_id && !order?.driver_id && !options.isAdmin) {
+        return {
+          valid: false,
+          statusCode: 400,
+          error: 'لا يمكن تأكيد استلام الوجبة أو بدء التوصيل لعدم تعيين أو قبول كابتن توصيل للطلب بعد.'
+        };
+      }
+      return { valid: true };
+    }
+
+    // Categorize failure as backward transition or skip for exact diagnostic error
+    const statusRank = {
+      pending: 0,
+      placed: 1,
+      accepted: 2,
+      preparing: 3,
+      ready_for_pickup: 4,
+      driver_assigned: 4.2,
+      driver_arrived: 4.5,
+      picked_up: 5,
+      out_for_delivery: 5,
+      delivered: 6
+    };
+
+    const currentRank = statusRank[currentStatus] ?? 0;
+    const targetRank = statusRank[targetStatus] ?? 0;
+
+    if (targetRank < currentRank) {
+      return {
+        valid: false,
+        statusCode: 400,
+        error: `Invalid backward transition from "${currentStatus}" to "${targetStatus}". Backward transitions are strictly disallowed.`
+      };
+    }
+
+    return {
+      valid: false,
+      statusCode: 400,
+      error: `Invalid status transition from "${currentStatus}" to "${targetStatus}". Skips are disallowed.`
+    };
+  }
+
+  /**
    * Updates order status and handles the state machine logic.
    */
   async updateStatus(db, orderId, body, systemWallets) {
     const order = db.orders.find(o => o.id === orderId || o.order_number === orderId);
     if (!order) throw new Error('Order not found');
 
-    const { status, driver_id, notes } = body;
-    const validStatuses = ['pending', 'placed', 'accepted', 'preparing', 'ready_for_pickup', 'driver_assigned', 'picked_up', 'out_for_delivery', 'delivered', 'cancelled'];
-    if (!validStatuses.includes(status)) {
-      throw new Error(`Invalid status. Valid statuses: ${validStatuses.join(', ')}`);
-    }
+    const { status, driver_id, notes, admin_override } = body;
 
-    if (status === 'out_for_delivery' || status === 'picked_up') {
-      if (order.status !== 'ready_for_pickup' && order.status !== 'out_for_delivery' && order.status !== 'picked_up') {
-        throw new Error(order.status === 'preparing'
-          ? 'الوجبة لا تزال قيد التحضير بالمطعم! لا يمكن نقل الطلب للتوصيل حتى يضغط المطعم على "تم التجهيز".'
-          : `لا يمكن استلام الطلب ونقله للتوصيل وهو في حالة: ${order.status}`);
-      }
+    const validation = this.validateTransition(order.status, status, {
+      isAdmin: Boolean(admin_override) || body.role === 'admin',
+      adminOverride: Boolean(admin_override),
+      driver_id: driver_id || order.driver_id
+    }, order);
+
+    if (!validation.valid) {
+      const err = new Error(validation.error);
+      err.statusCode = validation.statusCode || 400;
+      throw err;
     }
 
     const previousStatus = order.status;
+
+    if (validation.isIdempotent) {
+      if (driver_id && !order.driver_id) {
+        order.driver_id = driver_id;
+      }
+      order.updated_at = new Date().toISOString();
+      return { order, previousStatus, isIdempotent: true };
+    }
+
     order.status = status;
     order.updated_at = new Date().toISOString();
 
@@ -374,8 +460,8 @@ class OrderService {
           driver.active_order_id = null;
           driver.total_trips = (driver.total_trips || 0) + 1;
 
-          if (order.payment_method === 'cash' || order.payment_method === 'cod') {
-            driver.wallet_balance_lyd = (driver.wallet_balance_lyd || 0) + (order.total_amount_lyd || 0);
+          if (order.payment_method === 'cash' || order.payment_method === 'cod' || order.payment_method === 'cash_on_delivery') {
+            driver.cash_in_hand_lyd = (driver.cash_in_hand_lyd || 0) + (order.total_amount_lyd || 0);
           }
 
           const driverEarnings = order.delivery_fee_lyd * 0.80;

@@ -171,7 +171,7 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
 
     final orders = _orders;
 
@@ -345,9 +345,9 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
               margin: const EdgeInsets.only(bottom: AppSpacing.sm),
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.darkCard : AppColors.lightCard,
+                color: colorScheme.surface,
                 borderRadius: AppRadius.radiusLg,
-                border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,7 +379,7 @@ class _OrdersHistoryScreenState extends State<OrdersHistoryScreen> {
                   const SizedBox(height: 4),
                   Text(
                     '${order.date} • ${order.itemsCount} أصناف • ${order.totalAmount.toStringAsFixed(2)} د.ل',
-                    style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary),
+                    style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
                   ),
                   const Divider(height: 20),
                   Row(

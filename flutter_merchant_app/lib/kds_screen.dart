@@ -101,6 +101,18 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
   }
 
   void _markOrderHandedOver(KdsOrder order) {
+    final hasCourier = order.courierName != null &&
+        order.courierName!.trim().isNotEmpty &&
+        order.courierName != 'كابتن قيد التعيين';
+    if (!hasCourier || !order.driverArrived) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('⚠️ لا يمكن تأكيد التسليم: يجب أن يقبل الكابتن الطلب ويصل إلى المطعم أولاً.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
     setState(() {
       order.status = KdsTicketStatus.completed;
     });
@@ -154,12 +166,14 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final bool isTabletLandscape = MediaQuery.of(context).size.width >= 720;
+
     return Scaffold(
       backgroundColor: MerchantColors.lightBg,
       appBar: AppBar(
-        title: const Text(
-          'شاشة تحضير الطلبات 🍳',
-          style: TextStyle(
+        title: Text(
+          isTabletLandscape ? 'لوحة المطبخ البانورامية (Wasel Kitchen KDS) 🍳' : 'شاشة تحضير الطلبات 🍳',
+          style: const TextStyle(
             color: MerchantColors.lightTextPrimary,
             fontWeight: FontWeight.w900,
             fontSize: 18,
@@ -184,141 +198,145 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
               tooltip: 'تحديث الطلبات',
             ),
         ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(50),
-          child: Container(
-            decoration: const BoxDecoration(
-              border: Border(
-                bottom: BorderSide(color: MerchantColors.lightBorder, width: 1),
+        bottom: isTabletLandscape
+            ? null
+            : PreferredSize(
+                preferredSize: const Size.fromHeight(50),
+                child: Container(
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      bottom: BorderSide(color: MerchantColors.lightBorder, width: 1),
+                    ),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorColor: MerchantColors.primary,
+                    indicatorWeight: 3,
+                    labelColor: MerchantColors.primaryDark,
+                    unselectedLabelColor: MerchantColors.lightTextSecondary,
+                    tabs: [
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('جديدة', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _newOrders.isNotEmpty ? MerchantColors.statusNewBg : MerchantColors.statusCompletedBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _newOrders.isNotEmpty ? MerchantColors.statusNewBorder : MerchantColors.statusCompletedBorder,
+                                ),
+                              ),
+                              child: Text(
+                                '${_newOrders.length}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _newOrders.isNotEmpty ? MerchantColors.statusNewText : MerchantColors.lightTextMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('قيد التحضير', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _prepOrders.isNotEmpty ? MerchantColors.statusPrepBg : MerchantColors.statusCompletedBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _prepOrders.isNotEmpty ? MerchantColors.statusPrepBorder : MerchantColors.statusCompletedBorder,
+                                ),
+                              ),
+                              child: Text(
+                                '${_prepOrders.length}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _prepOrders.isNotEmpty ? MerchantColors.statusPrepText : MerchantColors.lightTextMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('جاهز للتسليم', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _readyOrders.isNotEmpty ? MerchantColors.statusReadyBg : MerchantColors.statusCompletedBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: _readyOrders.isNotEmpty ? MerchantColors.statusReadyBorder : MerchantColors.statusCompletedBorder,
+                                ),
+                              ),
+                              child: Text(
+                                '${_readyOrders.length}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: _readyOrders.isNotEmpty ? MerchantColors.statusReadyText : MerchantColors.lightTextMuted,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Tab(
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text('المكتملة', style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: MerchantColors.statusCompletedBg,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: MerchantColors.statusCompletedBorder),
+                              ),
+                              child: Text(
+                                '${_completedOrders.length}',
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: MerchantColors.lightTextSecondary,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            child: TabBar(
+      ),
+      body: isTabletLandscape
+          ? _buildTabletLandscapeKanbanView()
+          : TabBarView(
               controller: _tabController,
-              indicatorColor: MerchantColors.primary,
-              indicatorWeight: 3,
-              labelColor: MerchantColors.primaryDark,
-              unselectedLabelColor: MerchantColors.lightTextSecondary,
-              tabs: [
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('جديدة', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _newOrders.isNotEmpty ? MerchantColors.statusNewBg : MerchantColors.statusCompletedBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: _newOrders.isNotEmpty ? MerchantColors.statusNewBorder : MerchantColors.statusCompletedBorder,
-                          ),
-                        ),
-                        child: Text(
-                          '${_newOrders.length}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _newOrders.isNotEmpty ? MerchantColors.statusNewText : MerchantColors.lightTextMuted,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('قيد التحضير', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _prepOrders.isNotEmpty ? MerchantColors.statusPrepBg : MerchantColors.statusCompletedBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: _prepOrders.isNotEmpty ? MerchantColors.statusPrepBorder : MerchantColors.statusCompletedBorder,
-                          ),
-                        ),
-                        child: Text(
-                          '${_prepOrders.length}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _prepOrders.isNotEmpty ? MerchantColors.statusPrepText : MerchantColors.lightTextMuted,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('جاهز للاستلام', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: _readyOrders.isNotEmpty ? MerchantColors.statusReadyBg : MerchantColors.statusCompletedBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
-                            color: _readyOrders.isNotEmpty ? MerchantColors.statusReadyBorder : MerchantColors.statusCompletedBorder,
-                          ),
-                        ),
-                        child: Text(
-                          '${_readyOrders.length}',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: _readyOrders.isNotEmpty ? MerchantColors.statusReadyText : MerchantColors.lightTextMuted,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Tab(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text('المكتملة', style: TextStyle(fontWeight: FontWeight.bold)),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: MerchantColors.statusCompletedBg,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: MerchantColors.statusCompletedBorder),
-                        ),
-                        child: Text(
-                          '${_completedOrders.length}',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: MerchantColors.lightTextSecondary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              children: [
+                _buildOrderList(_newOrders, isNew: true),
+                _buildOrderList(_prepOrders, isPrep: true),
+                _buildOrderList(_readyOrders, isReady: true),
+                _buildOrderList(_completedOrders, isCompleted: true),
               ],
             ),
-          ),
-        ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildOrderList(_newOrders, isNew: true),
-          _buildOrderList(_prepOrders, isPrep: true),
-          _buildOrderList(_readyOrders, isReady: true),
-          _buildOrderList(_completedOrders, isCompleted: true),
-        ],
-      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _simulateNewIncomingOrder,
         backgroundColor: MerchantColors.primary,
@@ -326,6 +344,117 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
         elevation: 3,
         icon: const Icon(Icons.add_alert_rounded),
         label: const Text('طلب تجريبي للمطبخ 🔔', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  /// ---------------------------------------------------------------------------
+  /// TABLET / LANDSCAPE KANBAN BOARD VIEW
+  /// ---------------------------------------------------------------------------
+  Widget _buildTabletLandscapeKanbanView() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Column 1: New Orders
+        Expanded(
+          child: _buildKanbanColumn(
+            title: 'طلبات جديدة',
+            count: _newOrders.length,
+            badgeColor: MerchantColors.statusNewBg,
+            borderColor: MerchantColors.statusNewBorder,
+            textColor: MerchantColors.statusNewText,
+            icon: Icons.notifications_active_rounded,
+            content: _buildOrderList(_newOrders, isNew: true),
+          ),
+        ),
+        const VerticalDivider(width: 1, thickness: 1, color: MerchantColors.lightBorder),
+
+        // Column 2: In Preparation
+        Expanded(
+          child: _buildKanbanColumn(
+            title: 'قيد الطهي والتحضير 🍳',
+            count: _prepOrders.length,
+            badgeColor: MerchantColors.statusPrepBg,
+            borderColor: MerchantColors.statusPrepBorder,
+            textColor: MerchantColors.statusPrepText,
+            icon: Icons.outdoor_grill_rounded,
+            content: _buildOrderList(_prepOrders, isPrep: true),
+          ),
+        ),
+        const VerticalDivider(width: 1, thickness: 1, color: MerchantColors.lightBorder),
+
+        // Column 3: Ready for Pickup
+        Expanded(
+          child: _buildKanbanColumn(
+            title: 'جاهز للتسليم للكابتن 🛵',
+            count: _readyOrders.length,
+            badgeColor: MerchantColors.statusReadyBg,
+            borderColor: MerchantColors.statusReadyBorder,
+            textColor: MerchantColors.statusReadyText,
+            icon: Icons.check_circle_rounded,
+            content: _buildOrderList(_readyOrders, isReady: true),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildKanbanColumn({
+    required String title,
+    required int count,
+    required Color badgeColor,
+    required Color borderColor,
+    required Color textColor,
+    required IconData icon,
+    required Widget content,
+  }) {
+    return Container(
+      color: MerchantColors.lightBg,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: MerchantColors.lightSurface,
+              border: Border(
+                bottom: BorderSide(color: borderColor, width: 2.5),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: textColor),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: MerchantColors.lightTextPrimary,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: badgeColor,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(child: content),
+        ],
       ),
     );
   }
@@ -758,48 +887,58 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                               width: 1,
                             ),
                           ),
-                          child: Column(
+                          child: Row(
                             children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        isOverdue ? Icons.warning_amber_rounded : Icons.timer_outlined,
-                                        color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
-                                        size: 18,
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        isOverdue ? '⚠️ متأخر عن وقت التحضير:' : '⏳ العد التنازلي للطهي:',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                          color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    isOverdue ? '+$timeFormatted د' : '$timeFormatted د',
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w900,
-                                      color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
-                                      fontFamily: 'monospace',
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  backgroundColor: Colors.black12,
+                              CountdownRing.fromDuration(
+                                total: Duration(minutes: order.prepTimeMinutes > 0 ? order.prepTimeMinutes : 15),
+                                remaining: isOverdue ? Duration.zero : remaining,
+                                size: 38,
+                                strokeWidth: 3.5,
+                                showText: false,
+                                centerChild: Icon(
+                                  isOverdue ? Icons.warning_amber_rounded : Icons.outdoor_grill_rounded,
+                                  size: 16,
                                   color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
-                                  minHeight: 6,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          isOverdue ? '⚠️ متأخر عن وقت التحضير:' : '⏳ العد التنازلي للطهي:',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
+                                          ),
+                                        ),
+                                        Text(
+                                          isOverdue ? '+$timeFormatted د' : '$timeFormatted د',
+                                          style: TextStyle(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w900,
+                                            color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: progress,
+                                        backgroundColor: Colors.black12,
+                                        color: isOverdue ? MerchantColors.rejectedRed : MerchantColors.statusPrepText,
+                                        minHeight: 5,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
@@ -918,62 +1057,130 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                         ],
                       ),
                     ),
-                    if (order.courierName != null) ...[
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        margin: const EdgeInsets.only(bottom: 10),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF8FAFC),
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: order.driverArrived ? MerchantColors.statusReadyBorder : MerchantColors.lightBorder),
-                        ),
-                        child: Row(
+                    Builder(
+                      builder: (context) {
+                        final hasCourier = order.courierName != null &&
+                            order.courierName!.trim().isNotEmpty &&
+                            order.courierName != 'كابتن قيد التعيين';
+                        final canHandover = hasCourier && order.driverArrived;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Icon(
-                              order.driverArrived ? Icons.pin_drop_rounded : Icons.delivery_dining_rounded,
-                              color: order.driverArrived ? MerchantColors.readyGreen : MerchantColors.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                order.driverArrived
-                                    ? '📍 الكابتن ${order.courierName} (${order.courierVehicle ?? "سيارة"}) متواجد بالمطعم!'
-                                    : 'الكابتن: ${order.courierName} (${order.courierVehicle ?? "سيارة"})',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.bold,
-                                  color: order.driverArrived ? MerchantColors.statusReadyText : MerchantColors.lightTextPrimary,
+                            if (!hasCourier)
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFFBEB),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: const Color(0xFFFDE68A)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'جاري البحث عن كابتن متاح في نالوت 🛵 (بانتظار قبول الكابتن للطلب)',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFFB45309),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                margin: const EdgeInsets.only(bottom: 10),
+                                decoration: BoxDecoration(
+                                  color: order.driverArrived ? const Color(0xFFF0FDF4) : const Color(0xFFF8FAFC),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: order.driverArrived ? MerchantColors.statusReadyBorder : MerchantColors.lightBorder,
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      order.driverArrived ? Icons.pin_drop_rounded : Icons.delivery_dining_rounded,
+                                      color: order.driverArrived ? MerchantColors.readyGreen : MerchantColors.primary,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        order.driverArrived
+                                            ? '📍 الكابتن ${order.courierName} (${order.courierVehicle ?? "سيارة"}) متواجد بالمطعم!'
+                                            : 'الكابتن: ${order.courierName} (${order.courierVehicle ?? "سيارة"}) - في الطريق للمطعم 🛵',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: order.driverArrived ? MerchantColors.statusReadyText : MerchantColors.lightTextPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    icon: Icon(
+                                      canHandover ? Icons.handshake_rounded : Icons.lock_clock_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      canHandover
+                                          ? 'تأكيد تسليم الوجبة للكابتن 🤝'
+                                          : (hasCourier
+                                              ? 'الكابتن في الطريق للمطعم 🛵'
+                                              : 'في انتظار قبول كابتن للطلب ⏳'),
+                                      style: const TextStyle(fontWeight: FontWeight.bold),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: canHandover ? MerchantColors.revenueGreen : const Color(0xFF94A3B8),
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                      elevation: 0,
+                                    ),
+                                    onPressed: canHandover
+                                        ? () => _markOrderHandedOver(order)
+                                        : () {
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              SnackBar(
+                                                content: Text(
+                                                  hasCourier
+                                                      ? '⚠️ الكابتن ${order.courierName} لم يصل بعد للمطعم للاستلام.'
+                                                      : '⚠️ جاري البحث عن كابتن، لا يمكن تسليم الطلب حتى يتم قبوله ووصول الكابتن للمطعم.',
+                                                ),
+                                                backgroundColor: const Color(0xFFD97706),
+                                              ),
+                                            );
+                                          },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton.filledTonal(
+                                  icon: const Icon(Icons.print_rounded, color: MerchantColors.lightTextPrimary),
+                                  style: IconButton.styleFrom(backgroundColor: const Color(0xFFF1F5F9)),
+                                  onPressed: () => ThermalReceiptDialog.show(context, order),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                      ),
-                    ],
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            icon: const Icon(Icons.handshake_rounded, size: 18),
-                            label: const Text('تأكيد تسليم الوجبة للكابتن 🤝', style: TextStyle(fontWeight: FontWeight.bold)),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: MerchantColors.revenueGreen,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              elevation: 0,
-                            ),
-                            onPressed: () => _markOrderHandedOver(order),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton.filledTonal(
-                          icon: const Icon(Icons.print_rounded, color: MerchantColors.lightTextPrimary),
-                          style: IconButton.styleFrom(backgroundColor: const Color(0xFFF1F5F9)),
-                          onPressed: () => ThermalReceiptDialog.show(context, order),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ] else if (isCompleted) ...[
                     Container(

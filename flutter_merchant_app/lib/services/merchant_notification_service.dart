@@ -19,11 +19,12 @@ class MerchantNotificationService {
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
   static const AndroidNotificationChannel _kitchenAlertChannel = AndroidNotificationChannel(
-    'wasel_partner_alerts_channel',
-    '🔔 تنبيهات طلبات شريك واصل (نالوت)',
-    description: 'رنين واهتزاز فوري عالي الأهمية لإشعار المتجر بالطلبات الجديدة',
+    'wasel_kitchen_alerts_channel',
+    '🔔 تنبيهات مطبخ شريك واصل (نالوت)',
+    description: 'رنين واهتزاز فوري عالي الأهمية لإشعار المطبخ بالطلبات الجديدة',
     importance: Importance.max,
     playSound: true,
+    sound: RawResourceAndroidNotificationSound('kitchen_bell'),
     enableVibration: true,
     showBadge: true,
   );
@@ -121,6 +122,7 @@ class MerchantNotificationService {
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
+      sound: const RawResourceAndroidNotificationSound('kitchen_bell'),
       enableVibration: true,
       fullScreenIntent: true,
       category: AndroidNotificationCategory.alarm,
@@ -128,6 +130,14 @@ class MerchantNotificationService {
       ticker: '🚨 طلب جديد وارد - واصل نالوت',
       icon: '@mipmap/ic_launcher',
       styleInformation: BigTextStyleInformation(body),
+      actions: <AndroidNotificationAction>[
+        const AndroidNotificationAction(
+          'open_kds',
+          '📋 عرض الطلب في KDS',
+          showsUserInterface: true,
+          cancelNotification: true,
+        ),
+      ],
     );
 
     final NotificationDetails platformDetails = NotificationDetails(android: androidDetails);

@@ -153,6 +153,35 @@ class ApiService {
     }
   }
 
+  /// Login or register seamlessly using a phone number verified by Firebase SMS or WhatsApp OTP.
+  static Future<ApiResult> loginWithVerifiedPhone(
+    String phone, {
+    String? fullName,
+    String? firebaseUid,
+    String? authMethod,
+  }) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/auth/phone-login'),
+        headers: _headers,
+        body: jsonEncode({
+          'phone': phone,
+          'full_name': fullName ?? 'زبون واصل نالوت',
+          'firebase_uid': firebaseUid,
+          'auth_method': authMethod ?? 'firebase_sms',
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200 && data['data'] != null) {
+        return ApiResult.success(data['data']);
+      }
+      return ApiResult.error(data['error'] ?? 'فشل تسجيل الدخول بالهاتف');
+    } catch (e) {
+      return ApiResult.error('تعذر الاتصال بالخادم. سيتم المتابعة محلياً.');
+    }
+  }
+
   // -------------------------------------------------------------------------
   // STORES & CATALOG
   // -------------------------------------------------------------------------
@@ -177,7 +206,7 @@ class ApiService {
       'phone': '0912345001',
       'logo_url': 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=400&q=80',
       'banner_url': 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80',
-      'is_open': false,
+      'is_open': true,
       'is_featured': true,
       'badge': 'صيدلية معتمدة',
     },
@@ -199,7 +228,7 @@ class ApiService {
       'phone': '0912345002',
       'logo_url': 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=400&q=80',
       'banner_url': 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-      'is_open': false,
+      'is_open': true,
       'is_featured': true,
       'badge': 'الأكثر طلباً بنالوت',
     },
@@ -221,7 +250,7 @@ class ApiService {
       'phone': '0912345003',
       'logo_url': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80',
       'banner_url': 'https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=800&q=80',
-      'is_open': false,
+      'is_open': true,
       'is_featured': true,
       'badge': 'بيتزا إيطالية على الحطب',
     },
@@ -243,7 +272,7 @@ class ApiService {
       'phone': '0912345004',
       'logo_url': 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
       'banner_url': 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
-      'is_open': false,
+      'is_open': true,
       'is_featured': true,
       'badge': 'سوبرماركت متكامل',
     },
@@ -308,6 +337,26 @@ class ApiService {
         'products': <Map<String, dynamic>>[],
       }
     });
+  }
+
+  /// Get accurate server dynamic delivery quote (5.00 - 7.00+ LYD curve for Nalut).
+  static Future<double> getPricingQuote({
+    required String storeId,
+    required double lat,
+    required double lng,
+  }) async {
+    try {
+      final uri = Uri.parse('$_baseUrl/pricing/quote?store_id=$storeId&delivery_lat=$lat&delivery_lng=$lng');
+      final res = await http.get(uri, headers: _headers).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data['success'] == true && data['pricing'] != null) {
+          final fee = (data['pricing']['delivery_fee_lyd'] as num?)?.toDouble();
+          if (fee != null && fee > 0) return fee;
+        }
+      }
+    } catch (_) {}
+    return 5.00; // Realistic Nalut baseline
   }
 
   // -------------------------------------------------------------------------
@@ -512,14 +561,46 @@ class ApiService {
     },
   ];
 
-  static Map<String, dynamic> activeAddress = {
-    'id': 'addr_demo_01',
-    'tag': 'home',
-    'title': 'المنزل (الحوش)',
-    'details': 'نالوت - وسط المدينة، الشارع الرئيسي قرب القلعة',
-    'latitude': 31.8687,
-    'longitude': 10.9818,
-  };
+  static final List<Map<String, dynamic>> _userAddresses = [
+    {
+      'id': 'addr_demo_01',
+      'tag': 'home',
+      'title': 'المنزل - وسط المدينة',
+      'details': 'نالوت - وسط المدينة، الشارع الرئيسي، الباب الأبيض',
+      'latitude': 31.8687,
+      'longitude': 10.9818,
+      'is_default': true,
+    },
+    {
+      'id': 'addr_demo_02',
+      'tag': 'home',
+      'title': 'حي سيدي خليفة',
+      'details': 'نالوت - حي سيدي خليفة، بجانب المسجد والمحطة',
+      'latitude': 31.8650,
+      'longitude': 10.9780,
+      'is_default': false,
+    },
+    {
+      'id': 'addr_demo_03',
+      'tag': 'work',
+      'title': 'طريق القلعة الأثرية',
+      'details': 'نالوت - طريق القلعة، مستشفى نالوت المركزي / البلدية',
+      'latitude': 31.8695,
+      'longitude': 10.9835,
+      'is_default': false,
+    },
+    {
+      'id': 'addr_demo_04',
+      'tag': 'chalet',
+      'title': 'الاستراحة - الحوامد/كاباو',
+      'details': 'طريق الحوامد / كاباو، مزارع الزيتون والسور الأخضر',
+      'latitude': 31.8820,
+      'longitude': 10.9950,
+      'is_default': false,
+    },
+  ];
+
+  static Map<String, dynamic> activeAddress = _userAddresses.first;
 
   static Future<List<Map<String, dynamic>>> getUserAddresses() async {
     try {
@@ -535,52 +616,38 @@ class ApiService {
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
         if (list.isNotEmpty) {
-          return List<Map<String, dynamic>>.from(list);
+          final fetched = List<Map<String, dynamic>>.from(list);
+          _userAddresses.clear();
+          _userAddresses.addAll(fetched);
+          return List<Map<String, dynamic>>.from(_userAddresses);
         }
       }
     } catch (_) {}
 
-    return [
-      {
-        'id': 'addr_demo_01',
-        'tag': 'home',
-        'title': 'المنزل - وسط المدينة',
-        'details': 'نالوت - وسط المدينة، الشارع الرئيسي، الباب الأبيض',
-        'latitude': 31.8687,
-        'longitude': 10.9818,
-        'is_default': true,
-      },
-      {
-        'id': 'addr_demo_02',
-        'tag': 'home',
-        'title': 'حي سيدي خليفة',
-        'details': 'نالوت - حي سيدي خليفة، بجانب المسجد والمحطة',
-        'latitude': 31.8650,
-        'longitude': 10.9780,
-        'is_default': false,
-      },
-      {
-        'id': 'addr_demo_03',
-        'tag': 'work',
-        'title': 'طريق القلعة الأثرية',
-        'details': 'نالوت - طريق القلعة، مستشفى نالوت المركزي / البلدية',
-        'latitude': 31.8695,
-        'longitude': 10.9835,
-        'is_default': false,
-      },
-      {
-        'id': 'addr_demo_04',
-        'tag': 'chalet',
-        'title': 'الاستراحة - الحوامد/كاباو',
-        'details': 'طريق الحوامد / كاباو، مزارع الزيتون والسور الأخضر',
-        'latitude': 31.8820,
-        'longitude': 10.9950,
-        'is_default': false,
-      },
-    ];
+    return List<Map<String, dynamic>>.from(_userAddresses);
   }
 
   static Future<bool> saveUserAddress(Map<String, dynamic> address) async {
+    final Map<String, dynamic> mutableAddress = Map<String, dynamic>.from(address);
+    if (!mutableAddress.containsKey('id') || mutableAddress['id'] == null) {
+      mutableAddress['id'] = 'addr_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    // Update in-memory cache
+    final existingIdx = _userAddresses.indexWhere((a) => a['id'] == mutableAddress['id']);
+    if (existingIdx >= 0) {
+      _userAddresses[existingIdx] = mutableAddress;
+    } else {
+      _userAddresses.insert(0, mutableAddress);
+    }
+
+    if (mutableAddress['is_default'] == true || _userAddresses.length == 1) {
+      for (var a in _userAddresses) {
+        if (a['id'] != mutableAddress['id']) a['is_default'] = false;
+      }
+      activeAddress = mutableAddress;
+    }
+
     try {
       final res = await http.post(
         Uri.parse('$_supabaseUrl/user_addresses'),
@@ -590,12 +657,29 @@ class ApiService {
           'Content-Type': 'application/json',
           'Prefer': 'return=representation',
         },
-        body: jsonEncode(address),
+        body: jsonEncode(mutableAddress),
       ).timeout(const Duration(seconds: 4));
       return res.statusCode == 200 || res.statusCode == 201;
     } catch (_) {
       return true;
     }
+  }
+
+  static Future<bool> deleteUserAddress(String addressId) async {
+    _userAddresses.removeWhere((a) => a['id'] == addressId);
+    if (activeAddress['id'] == addressId && _userAddresses.isNotEmpty) {
+      activeAddress = _userAddresses.first;
+    }
+    try {
+      await http.delete(
+        Uri.parse('$_supabaseUrl/user_addresses?id=eq.$addressId'),
+        headers: {
+          'apikey': _supabaseApiKey,
+          'Authorization': 'Bearer $_supabaseApiKey',
+        },
+      ).timeout(const Duration(seconds: 3));
+    } catch (_) {}
+    return true;
   }
 
   // -------------------------------------------------------------------------
@@ -667,6 +751,67 @@ class ApiService {
     return code;
   }
 
+  /// Cancel order by customer (valid if placed/pending)
+  static Future<ApiResult> cancelOrder(String orderId, {String? reason}) async {
+    // 1. Try Live Unified Backend Server
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/orders/$orderId/cancel'),
+        headers: _headers,
+        body: jsonEncode({
+          'reason': reason ?? 'إلغاء من قبل الزبون',
+          'role': 'customer',
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200) {
+        return ApiResult.success(data);
+      } else {
+        final errMsg = data['error'] ?? data['message'] ?? 'تعذر إلغاء الطلب';
+        return ApiResult.error(errMsg.toString());
+      }
+    } catch (_) {}
+
+    // Fallback: try status endpoint
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/orders/$orderId/status'),
+        headers: _headers,
+        body: jsonEncode({
+          'status': 'cancelled',
+          'notes': reason ?? 'إلغاء من قبل الزبون',
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      final data = jsonDecode(res.body);
+      if (res.statusCode == 200) {
+        return ApiResult.success(data);
+      }
+    } catch (_) {}
+
+    // Fallback 3: try Supabase patch
+    try {
+      final res = await http.patch(
+        Uri.parse('$_supabaseUrl/orders?id=eq.$orderId'),
+        headers: {
+          'apikey': _supabaseApiKey,
+          'Authorization': 'Bearer $_supabaseApiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'status': 'cancelled',
+          'notes': 'ملغى: ${reason ?? "إلغاء من قبل الزبون"}',
+        }),
+      ).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        return ApiResult.success({'status': 'cancelled'});
+      }
+    } catch (_) {}
+
+    return ApiResult.error('تعذر الاتصال بالخادم لإلغاء الطلب');
+  }
+
   /// Submit fair dual review (Restaurant Food Quality + Captain Delivery Performance)
   static Future<bool> submitOrderReview({
     required String orderId,
@@ -676,6 +821,26 @@ class ApiService {
     required double deliveryScore,
     required String comment,
   }) async {
+    // 1. Try Live Backend Real Rating API
+    try {
+      final res = await http.post(
+        Uri.parse('$_baseUrl/orders/$orderId/rate'),
+        headers: _headers,
+        body: jsonEncode({
+          'rating': foodScore,
+          'driver_rating': deliveryScore,
+          'comment': comment,
+          'store_id': storeId,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        await addLoyaltyPoints(20);
+        return true;
+      }
+    } catch (_) {}
+
+    // 2. Fallback: Supabase update
     try {
       final reviewData = {
         'food_score': foodScore,
@@ -684,7 +849,6 @@ class ApiService {
         'rated_at': DateTime.now().toIso8601String(),
       };
 
-      // 1. Update Order Notes with Review JSON
       await http.patch(
         Uri.parse('$_supabaseUrl/orders?id=eq.$orderId'),
         headers: {
@@ -697,9 +861,7 @@ class ApiService {
         }),
       ).timeout(const Duration(seconds: 4));
 
-      // 2. Add bonus loyalty points for writing a constructive review!
       await addLoyaltyPoints(20);
-
       return true;
     } catch (_) {
       return true;

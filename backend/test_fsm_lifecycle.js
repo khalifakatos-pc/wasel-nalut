@@ -12,8 +12,42 @@
 
 const { app, server, db, io } = require('./server.js');
 const http = require('http');
+const path = require('path');
+
+let ioClient = null;
+try {
+  ioClient = require('socket.io-client');
+} catch (_) {
+  try {
+    const altPath = path.join(__dirname, '..', '.agents', 'teamwork', 'teamwork_preview_challenger_m2_2', 'node_modules', 'socket.io-client');
+    ioClient = require(altPath);
+  } catch (e2) {}
+}
 
 const PORT = process.env.PORT || 3000;
+
+function createSocketClient(auth) {
+  if (!ioClient) return Promise.resolve(null);
+  return new Promise((resolve, reject) => {
+    const socket = ioClient(`http://127.0.0.1:${PORT}`, {
+      transports: ['websocket', 'polling'],
+      forceNew: true,
+      auth
+    });
+    const timer = setTimeout(() => {
+      socket.disconnect();
+      reject(new Error('Socket connection timed out'));
+    }, 5000);
+    socket.on('connect', () => {
+      clearTimeout(timer);
+      resolve(socket);
+    });
+    socket.on('connect_error', (err) => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
 
 function request(path, options = {}) {
   return new Promise((resolve, reject) => {
@@ -47,17 +81,38 @@ async function runTest() {
   console.log(`\n🧪 Testing FSM & Radar against port ${PORT}`);
   
   let radarEventsReceived = [];
-  const originalIoEmit = io.emit.bind(io);
-  io.emit = function(event, data) {
-    if (event === 'radar:incoming_order') {
-      radarEventsReceived.push(data);
-    }
-    return originalIoEmit(event, data);
+  const activeSockets = [];
+
+  // Hook room emissions on io for direct room tracking
+  const originalTo = io.to.bind(io);
+  io.to = function(room) {
+    const broadcaster = originalTo(room);
+    const origEmit = broadcaster.emit.bind(broadcaster);
+    broadcaster.emit = function(event, ...args) {
+      if (event === 'radar:incoming_order' && room === 'role:driver') {
+        if (!radarEventsReceived.some(e => e.id === args[0]?.id)) {
+          radarEventsReceived.push(args[0]);
+        }
+      }
+      return origEmit(event, ...args);
+    };
+    return broadcaster;
   };
 
-    try {
-      console.log('\n--- Step 1: Customer Checkout ---');
-      const store = db.stores.find(s => s.city === 'nalut') || db.stores[0];
+  // Connect driver socket into role:driver room
+  const driverSocket = await createSocketClient({ role: 'driver', driverId: 'driver_nalut_01' });
+  if (driverSocket) {
+    activeSockets.push(driverSocket);
+    driverSocket.on('radar:incoming_order', (data) => {
+      if (!radarEventsReceived.some(e => e.id === data.id)) {
+        radarEventsReceived.push(data);
+      }
+    });
+  }
+
+  try {
+    console.log('\n--- Step 1: Customer Checkout ---');
+    const store = db.stores.find(s => s.city === 'nalut') || db.stores[0];
       const product = db.products.find(p => p.store_id === store.id) || db.products[0];
 
       // Login customer
@@ -104,6 +159,16 @@ async function runTest() {
       console.log('✅ CHECKOUT PASSED: Order created as "placed", driver_id is null, captain radar is SILENT.');
 
       console.log('\n--- Step 2: Merchant accepts and starts preparing ---');
+      const acceptRes = await request(`/api/v1/orders/${orderData.id}/status`, {
+        method: 'POST',
+        body: { status: 'accepted' }
+      });
+      console.log('Accept response status:', acceptRes.status);
+      console.log('Order status after accept:', acceptRes.body?.data?.status);
+      if (acceptRes.status !== 200 || acceptRes.body?.data?.status !== 'accepted') {
+        throw new Error(`Merchant acceptance failed: status ${acceptRes.status}`);
+      }
+
       const prepRes = await request(`/api/v1/orders/${orderData.id}/status`, {
         method: 'POST',
         body: { status: 'preparing' }
@@ -172,6 +237,9 @@ async function runTest() {
       console.error('❌ TEST FAILED:', err.message);
       process.exitCode = 1;
     } finally {
+      activeSockets.forEach(s => {
+        try { s.disconnect(); } catch (_) {}
+      });
       server.close();
       process.exit(process.exitCode || 0);
     }

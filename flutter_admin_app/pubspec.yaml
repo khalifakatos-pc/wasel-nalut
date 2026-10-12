@@ -30,10 +30,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  wasel_ui:
+    path: ../packages/wasel_ui
 
   cupertino_icons: ^1.0.8
   http: ^1.2.1
   intl: ^0.19.0
+  google_maps_flutter: ^2.18.2
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  socket_io_client: ^2.0.3+1
 
 dev_dependencies:
   flutter_test:

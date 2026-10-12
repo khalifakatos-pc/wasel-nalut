@@ -6,6 +6,7 @@ import 'order_radar_dialog.dart';
 import 'driver_wallet_screen.dart';
 import 'services/driver_supabase_service.dart';
 import 'services/driver_notification_service.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 
 /// ============================================================================
 /// CAPTAIN WASEL (كابتن واصل) DRIVER HOME SCREEN - NALUT
@@ -244,8 +245,11 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
       customerArea: 'نالوت',
       tripDistanceKm: 2.8,
       tripEtaMinutes: 12,
-      basePayoutLyd: 6.0,
-      surgeBonusLyd: 1.5,
+      basePayoutLyd: ((ord['delivery_fee_lyd'] is num)
+              ? (ord['delivery_fee_lyd'] as num).toDouble()
+              : 5.0) *
+          0.80,
+      surgeBonusLyd: 0.0,
       tipLyd: 0.0,
       paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
       codCollectAmountLyd: totalAmount,
@@ -554,60 +558,76 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           ],
 
           // 2. Online / Offline Switch Big Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: isOnline ? DriverColors.darkCardElevated : DriverColors.darkCard,
-              borderRadius: DriverRadius.radiusLg,
-              border: Border.all(
-                color: isOnline ? DriverColors.onlineGreen : DriverColors.darkBorder,
-                width: isOnline ? 1.5 : 1.0,
+          WaselBouncyPressable(
+            onTap: _toggleOnlineStatus,
+            child: AnimatedContainer(
+              duration: WaselMotion.standard,
+              curve: WaselMotion.signature,
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: isOnline ? DriverColors.darkCardElevated : DriverColors.darkCard,
+                borderRadius: DriverRadius.radiusLg,
+                border: Border.all(
+                  color: isOnline ? DriverColors.onlineGreen : DriverColors.darkBorder,
+                  width: isOnline ? 1.5 : 1.0,
+                ),
+                boxShadow: isOnline
+                    ? [
+                        BoxShadow(
+                          color: DriverColors.onlineGreen.withValues(alpha: 0.35),
+                          blurRadius: 14,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
               ),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: isOnline ? DriverColors.onlineGreen : DriverColors.offlineGrey,
-                        shape: BoxShape.circle,
-                        boxShadow: isOnline
-                            ? [
-                                BoxShadow(
-                                  color: DriverColors.onlineGreen.withValues(alpha: 0.6),
-                                  blurRadius: 10,
-                                  spreadRadius: 2,
-                                )
-                              ]
-                            : null,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      WaselPulseGlow(
+                        isPulsing: isOnline,
+                        glowColor: DriverColors.onlineGreen,
+                        child: Container(
+                          width: 18,
+                          height: 18,
+                          decoration: BoxDecoration(
+                            color: isOnline ? DriverColors.onlineGreen : DriverColors.offlineGrey,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          isOnline ? 'أنت متصل بالرادار 🟢' : 'غير متصل (استراحة) ⚪',
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white),
-                        ),
-                        Text(
-                          isOnline ? 'مستعد لاستقبال طلبات نالوت وجبل نفوسة' : 'اضغط للاتصال وبدء العمل',
-                          style: const TextStyle(fontSize: 12, color: DriverColors.darkTextMuted),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Switch(
-                  value: isOnline,
-                  activeThumbColor: DriverColors.onlineGreen,
-                  onChanged: (val) => _toggleOnlineStatus(),
-                ),
-              ],
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isOnline ? 'أنت متصل بالرادار 🟢' : 'غير متصل (استراحة) ⚪',
+                            style: WaselTypography.cairo(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            isOnline ? 'مستعد لاستقبال طلبات نالوت وجبل نفوسة' : 'اضغط للاتصال وبدء العمل',
+                            style: WaselTypography.cairo(
+                              fontSize: 12,
+                              color: DriverColors.darkTextMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                  Switch(
+                    value: isOnline,
+                    activeThumbColor: DriverColors.onlineGreen,
+                    onChanged: (val) => _toggleOnlineStatus(),
+                  ),
+                ],
+              ),
             ),
           ),
 

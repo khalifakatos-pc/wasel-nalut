@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:audioplayers/audioplayers.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 import 'driver_theme.dart';
 import 'driver_models.dart';
 
@@ -47,6 +50,7 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
   late int _remainingSeconds;
   Timer? _timer;
   late AnimationController _pulseController;
+  AudioPlayer? _alarmPlayer;
 
   @override
   void initState() {
@@ -58,7 +62,26 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
       duration: const Duration(milliseconds: 900),
     )..repeat(reverse: true);
 
+    _initAudioAlarm();
     _startCountdown();
+  }
+
+  void _initAudioAlarm() {
+    try {
+      _alarmPlayer = AudioPlayer();
+      _alarmPlayer?.setReleaseMode(ReleaseMode.loop);
+      _alarmPlayer?.play(AssetSource('sounds/captain_radar_alarm.wav'), volume: 1.0);
+    } catch (e) {
+      debugPrint('[OrderRadarDialog] AudioPlayer init error: $e');
+    }
+  }
+
+  void _stopAudioAlarm() {
+    try {
+      _alarmPlayer?.stop();
+      _alarmPlayer?.dispose();
+      _alarmPlayer = null;
+    } catch (_) {}
   }
 
   void _startCountdown() {
@@ -67,6 +90,11 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
         setState(() {
           _remainingSeconds--;
         });
+        if (_remainingSeconds <= 5) {
+          try {
+            HapticFeedback.heavyImpact();
+          } catch (_) {}
+        }
       } else {
         timer.cancel();
         _handleDecline();
@@ -76,18 +104,21 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
 
   @override
   void dispose() {
+    _stopAudioAlarm();
     _timer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
 
   void _handleAccept() {
+    _stopAudioAlarm();
     _timer?.cancel();
     Navigator.of(context).pop(true);
     widget.onAccept(widget.order);
   }
 
   void _handleDecline() {
+    _stopAudioAlarm();
     _timer?.cancel();
     Navigator.of(context).pop(false);
     widget.onDecline();
@@ -255,32 +286,12 @@ class _OrderRadarDialogState extends State<OrderRadarDialog> with SingleTickerPr
   }
 
   Widget _buildCircularTimer(double progress, bool isUrgent) {
-    final timerColor = isUrgent
-        ? DriverColors.urgentRed
-        : (_remainingSeconds <= 8 ? DriverColors.busyOrange : DriverColors.onlineGreen);
-
-    return SizedBox(
-      width: 46,
-      height: 46,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          CircularProgressIndicator(
-            value: progress,
-            strokeWidth: 4.0,
-            backgroundColor: timerColor.withValues(alpha: 0.18),
-            valueColor: AlwaysStoppedAnimation<Color>(timerColor),
-          ),
-          Text(
-            '$_remainingSecondsث',
-            style: TextStyle(
-              color: timerColor,
-              fontWeight: FontWeight.w900,
-              fontSize: 13,
-            ),
-          ),
-        ],
-      ),
+    return CountdownRing(
+      progress: progress,
+      remainingSeconds: _remainingSeconds,
+      totalSeconds: widget.order.countdownSeconds,
+      size: 48,
+      strokeWidth: 4.5,
     );
   }
 

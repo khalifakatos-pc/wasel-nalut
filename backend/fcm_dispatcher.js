@@ -37,8 +37,9 @@ class WaselFcmDispatcher {
           priority: 'high',
           notification: {
             channel_id: 'wasel_driver_alerts_channel',
-            sound: 'default',
-            default_vibrate_timings: true,
+            sound: 'driver_order_alert',
+            default_vibrate_timings: false,
+            vibrate_timings_millis: [0, 800, 300, 800, 300, 800],
             notification_priority: 'PRIORITY_MAX'
           }
         }
@@ -71,7 +72,7 @@ class WaselFcmDispatcher {
           priority: 'high',
           notification: {
             channel_id: 'wasel_kitchen_alerts_channel',
-            sound: 'default',
+            sound: 'kitchen_bell',
             default_vibrate_timings: true,
             notification_priority: 'PRIORITY_MAX'
           }
@@ -123,7 +124,7 @@ class WaselFcmDispatcher {
           priority: 'high',
           notification: {
             channel_id: 'wasel_customer_orders_channel',
-            sound: 'default'
+            sound: 'order_status_chime'
           }
         }
       }

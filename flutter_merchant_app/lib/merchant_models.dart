@@ -121,6 +121,17 @@ class PartnerStore {
 
   static const List<PartnerStore> nalutStores = [
     PartnerStore(
+      id: 'store_nalut_qasr',
+      name: 'قصر نالوت للمشويات',
+      nameEn: 'Qasr Nalut Grills (NAL-01)',
+      type: 'restaurant',
+      district: 'وسط نالوت - بجانب القلعة',
+      phone: '0918207786',
+      mode: PartnerAppMode.kitchen,
+      icon: Icons.outdoor_grill_rounded,
+      isOpen: true,
+    ),
+    PartnerStore(
       id: 'store_nalut_ranchello',
       name: 'مطعم ومقهى رانشيلو',
       nameEn: 'Ranchello Restaurant & Cafe',

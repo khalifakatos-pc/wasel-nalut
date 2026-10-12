@@ -3,6 +3,7 @@ import 'design_system.dart';
 import 'services/api_service.dart';
 import 'login_screen.dart';
 import 'satellite_location_picker.dart';
+import 'address_management_sheet.dart';
 
 class ProfileScreen extends StatelessWidget {
   final VoidCallback? onToggleTheme;
@@ -16,6 +17,7 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final bool isGuest = ApiService.isGuest;
     final String displayName = isGuest ? 'حساب زائر (Guest)' : (ApiService.userName.isNotEmpty ? ApiService.userName : 'خليفة محمد');
     final String displayPhone = isGuest ? 'تصفح بدون تسجيل دخول' : (ApiService.userPhone.isNotEmpty ? ApiService.userPhone : '+218 91 234 5678');
@@ -32,9 +34,9 @@ class ProfileScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: isDark ? AppColors.darkCard : AppColors.lightCard,
+              color: colorScheme.surface,
               borderRadius: AppRadius.radiusXl,
-              border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Column(
               children: [
@@ -83,7 +85,7 @@ class ProfileScreen extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             displayPhone,
-                            style: const TextStyle(fontSize: 12, color: AppColors.darkTextSecondary, fontFamily: 'monospace'),
+                            style: TextStyle(fontSize: 12, color: colorScheme.onSurfaceVariant, fontFamily: 'monospace'),
                           ),
                           const SizedBox(height: 4),
                           Container(
@@ -146,24 +148,19 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _buildSettingsTile(
-            icon: Icons.home_rounded,
-            title: 'المنزل (الحوش)',
-            subtitle: 'نالوت - حي الشهداء، بالقرب من قصر نالوت الأثري',
-            isDark: isDark,
-            trailing: const Icon(Icons.satellite_alt_rounded, color: AppColors.waselPrimary, size: 18),
+            icon: Icons.location_on_rounded,
+            title: 'إدارة العناوين وأماكن التوصيل',
+            subtitle: 'عرض واختيار وحذف العناوين المحفوظة في نالوت',
+            trailing: const Icon(Icons.chevron_left_rounded, color: AppColors.waselPrimary),
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const SatelliteLocationPicker()),
-              );
+              AddressManagementSheet.show(context);
             },
           ),
           _buildSettingsTile(
-            icon: Icons.work_rounded,
-            title: 'العمل / المتجر',
-            subtitle: 'نالوت - وسط المدينة، طريق وازن الرئيسي',
-            isDark: isDark,
-            trailing: const Icon(Icons.satellite_alt_rounded, color: AppColors.waselPrimary, size: 18),
+            icon: Icons.satellite_alt_rounded,
+            title: 'تحديد موقع جديد بالقمر الصناعي 🛰️',
+            subtitle: 'تثبيت إحداثيات GPS دقيقة لحوشك أو استراحتك',
+            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: AppColors.waselPrimary),
             onTap: () {
               Navigator.push(
                 context,
@@ -182,10 +179,10 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
 
           Material(
-            color: isDark ? AppColors.darkCard : AppColors.lightCard,
+            color: colorScheme.surface,
             shape: RoundedRectangleBorder(
               borderRadius: AppRadius.radiusLg,
-              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+              side: BorderSide(color: colorScheme.outlineVariant),
             ),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
@@ -232,7 +229,6 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.headset_mic_rounded,
             title: 'خدمة العملاء المباشرة (24/7)',
             subtitle: 'محادثة فورية مع فريق دعم واصل',
-            isDark: isDark,
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('جاري توصيلك بممثل خدمة العملاء...')),
@@ -243,7 +239,6 @@ class ProfileScreen extends StatelessWidget {
             icon: Icons.policy_outlined,
             title: 'شروط الاستخدام والخصوصية',
             subtitle: 'سياسة حماية البيانات والضمان المالي',
-            isDark: isDark,
           ),
 
           const SizedBox(height: AppSpacing.lg),
@@ -264,10 +259,10 @@ class ProfileScreen extends StatelessWidget {
           ),
 
           const SizedBox(height: 16),
-          const Center(
+          Center(
             child: Text(
               'تطبيق واصل نالوت الموحد v1.0.0 (إصدار 2026)',
-              style: TextStyle(fontSize: 10, color: AppColors.darkTextSecondary),
+              style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
             ),
           ),
           const SizedBox(height: 20),
@@ -323,27 +318,30 @@ class ProfileScreen extends StatelessWidget {
     required IconData icon,
     required String title,
     required String subtitle,
-    required bool isDark,
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-      child: Material(
-        color: isDark ? AppColors.darkCard : AppColors.lightCard,
-        shape: RoundedRectangleBorder(
-          borderRadius: AppRadius.radiusLg,
-          side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+    return Builder(builder: (context) {
+      final colorScheme = Theme.of(context).colorScheme;
+
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+        child: Material(
+          color: colorScheme.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: AppRadius.radiusLg,
+            side: BorderSide(color: colorScheme.outlineVariant),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: ListTile(
+            leading: Icon(icon, color: AppColors.waselPrimary),
+            title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+            subtitle: Text(subtitle, style: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant)),
+            trailing: trailing ?? const Icon(Icons.chevron_left_rounded),
+            onTap: onTap,
+          ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: ListTile(
-          leading: Icon(icon, color: AppColors.waselPrimary),
-          title: Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-          subtitle: Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.darkTextSecondary)),
-          trailing: trailing ?? const Icon(Icons.chevron_left_rounded),
-          onTap: onTap,
-        ),
-      ),
-    );
+      );
+    });
   }
 }

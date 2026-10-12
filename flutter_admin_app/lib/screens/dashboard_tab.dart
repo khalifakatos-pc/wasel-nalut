@@ -2,7 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
+import '../services/admin_socket_service.dart';
 import '../widgets/admin_motion_widgets.dart';
+import '../widgets/admin_fleet_map.dart';
 
 class DashboardTab extends StatefulWidget {
   const DashboardTab({super.key});
@@ -15,13 +17,24 @@ class _DashboardTabState extends State<DashboardTab> {
   Map<String, dynamic>? _kpiData;
   List<Map<String, dynamic>> _stores = [];
   bool _isLoading = true;
-  Timer? _refreshTimer;
+  StreamSubscription<Map<String, dynamic>>? _orderStatusSub;
+  StreamSubscription<Map<String, dynamic>>? _driverMovedSub;
 
   @override
   void initState() {
     super.initState();
     _loadKpis();
-    _refreshTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+
+    // Connect to Socket.io on port 3000 and listen to fleet room events dynamically
+    AdminSocketService.instance.connect();
+
+    _orderStatusSub = AdminSocketService.instance.onOrderStatusChanged.listen((_) {
+      if (mounted) {
+        _loadKpisSilently();
+      }
+    });
+
+    _driverMovedSub = AdminSocketService.instance.onDriverMoved.listen((_) {
       if (mounted) {
         _loadKpisSilently();
       }
@@ -30,7 +43,8 @@ class _DashboardTabState extends State<DashboardTab> {
 
   @override
   void dispose() {
-    _refreshTimer?.cancel();
+    _orderStatusSub?.cancel();
+    _driverMovedSub?.cancel();
     super.dispose();
   }
 
@@ -212,6 +226,10 @@ class _DashboardTabState extends State<DashboardTab> {
                         ],
                       ),
                     ),
+                    const SizedBox(height: 12),
+
+                    // Embedded Live GIS Fleet Map (Nalut Live Telemetry)
+                    const AdminFleetMap(height: 290),
                     const SizedBox(height: 16),
 
                     // Primary Revenue Card

@@ -84,177 +84,213 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Top Action Row
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: _enterMainApp,
-                      child: const Text(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top Action Row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  WaselBouncyPressable(
+                    onTap: _enterMainApp,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
                         'دخول مباشر (تخطي)',
-                        style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: WaselTypography.cairo(
+                          color: isDark
+                              ? WaselColors.textSecondaryDark
+                              : WaselColors.textSecondaryLight,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: _goToLogin,
-                      child: const Text(
+                  ),
+                  WaselBouncyPressable(
+                    onTap: _goToLogin,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Text(
                         'تسجيل الدخول',
-                        style: TextStyle(color: AppColors.waselPrimary, fontSize: 14, fontWeight: FontWeight.bold),
+                        style: WaselTypography.cairo(
+                          color: colorScheme.primary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
 
-              // Page content
-              Expanded(
-                child: PageView.builder(
-                  controller: _pageController,
-                  itemCount: _slides.length,
-                  onPageChanged: (i) => setState(() => _currentPage = i),
-                  itemBuilder: (context, index) {
-                    final slide = _slides[index];
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 32),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Icon circle with gradient
-                          Container(
-                            width: 140,
-                            height: 140,
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: slide.gradientColors,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: slide.iconColor.withValues(alpha: 0.3),
-                                  blurRadius: 30,
-                                  spreadRadius: 5,
+            // Page content with multi-plane parallax
+            Expanded(
+              child: PageView.builder(
+                controller: _pageController,
+                itemCount: _slides.length,
+                onPageChanged: (i) => setState(() => _currentPage = i),
+                itemBuilder: (context, index) {
+                  final slide = _slides[index];
+                  return AnimatedBuilder(
+                    animation: _pageController,
+                    builder: (context, child) {
+                      double pageOffset = 0.0;
+                      if (_pageController.position.haveDimensions) {
+                        pageOffset = (_pageController.page ?? _currentPage.toDouble()) - index;
+                      }
+                      final bool disableAnim = WaselMotion.isAnimationDisabled(context);
+                      final iconOffset = disableAnim ? Offset.zero : Offset(pageOffset * -40.0, 0.0);
+                      final textOffset = disableAnim ? Offset.zero : Offset(pageOffset * -18.0, 0.0);
+                      final opacity = disableAnim ? 1.0 : (1.0 - (pageOffset.abs() * 0.5)).clamp(0.0, 1.0);
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 32),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            // Icon circle with parallax offset
+                            Transform.translate(
+                              offset: iconOffset,
+                              child: Container(
+                                width: 140,
+                                height: 140,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: slide.gradientColors,
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: slide.iconColor.withValues(alpha: 0.3),
+                                      blurRadius: 30,
+                                      spreadRadius: 5,
+                                    ),
+                                  ],
                                 ),
-                              ],
+                                child: Icon(
+                                  slide.icon,
+                                  size: 64,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
-                            child: Icon(
-                              slide.icon,
-                              size: 64,
-                              color: Colors.white,
-                            ),
-                          ),
-                          const SizedBox(height: 48),
+                            const SizedBox(height: 48),
 
-                          // Title
-                          Text(
-                            slide.title,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                              height: 1.3,
+                            // Title & Subtitle with secondary parallax offset
+                            Transform.translate(
+                              offset: textOffset,
+                              child: Opacity(
+                                opacity: opacity,
+                                child: Column(
+                                  children: [
+                                    Text(
+                                      slide.title,
+                                      textAlign: TextAlign.center,
+                                      style: WaselTypography.cairo(
+                                        fontSize: 26,
+                                        fontWeight: FontWeight.w800,
+                                        color: isDark
+                                            ? WaselColors.textPrimaryDark
+                                            : WaselColors.textPrimaryLight,
+                                        height: 1.3,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                    Text(
+                                      slide.subtitle,
+                                      textAlign: TextAlign.center,
+                                      style: WaselTypography.cairo(
+                                        fontSize: 16,
+                                        color: isDark
+                                            ? WaselColors.textSecondaryDark
+                                            : WaselColors.textSecondaryLight,
+                                        height: 1.6,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Subtitle
-                          Text(
-                            slide.subtitle,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              color: Colors.white60,
-                              height: 1.6,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
+            ),
 
-              // Dots indicator + action button
-              Padding(
-                padding: const EdgeInsets.only(bottom: 32, left: 28, right: 28),
-                child: Column(
-                  children: [
-                    // Dots
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(
-                        _slides.length,
-                        (i) => AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          width: _currentPage == i ? 28 : 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _currentPage == i
-                                ? AppColors.waselPrimary
-                                : Colors.white24,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
+            // Dots indicator + bouncy action button
+            Padding(
+              padding: const EdgeInsets.only(bottom: 32, left: 28, right: 28),
+              child: Column(
+                children: [
+                  // Dots
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(
+                      _slides.length,
+                      (i) => AnimatedContainer(
+                        duration: WaselMotion.standard,
+                        curve: WaselMotion.signature,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: _currentPage == i ? 28 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _currentPage == i
+                              ? colorScheme.primary
+                              : (isDark ? WaselColors.borderDark : WaselColors.borderLight),
+                          borderRadius: BorderRadius.circular(4),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
+                  ),
+                  const SizedBox(height: 24),
 
-                    // Primary Button (ابدأ تجربة واصل)
-                    SizedBox(
-                      width: double.infinity,
-                      height: 54,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          if (_currentPage == _slides.length - 1) {
-                            _enterMainApp();
-                          } else {
-                            _pageController.nextPage(
-                              duration: const Duration(milliseconds: 400),
-                              curve: Curves.easeInOut,
-                            );
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.waselPrimary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: AppRadius.radiusLg,
-                          ),
-                          elevation: 4,
-                        ),
-                        child: Text(
-                          _currentPage == _slides.length - 1
-                              ? 'ابدأ تجربة واصل 🚀'
-                              : 'التالي',
-                          style: const TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.bold,
-                          ),
+                  // Primary Bouncy Button (ابدأ تجربة واصل)
+                  SizedBox(
+                    width: double.infinity,
+                    height: 54,
+                    child: WaselBouncyButton(
+                      backgroundColor: colorScheme.primary,
+                      borderRadius: WaselRadius.radiusLg,
+                      onPressed: () {
+                        if (_currentPage == _slides.length - 1) {
+                          _enterMainApp();
+                        } else {
+                          _pageController.nextPage(
+                            duration: WaselMotion.standard,
+                            curve: WaselMotion.signature,
+                          );
+                        }
+                      },
+                      child: Text(
+                        _currentPage == _slides.length - 1
+                            ? 'ابدأ تجربة واصل 🚀'
+                            : 'التالي',
+                        style: WaselTypography.cairo(
+                          fontSize: 17,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

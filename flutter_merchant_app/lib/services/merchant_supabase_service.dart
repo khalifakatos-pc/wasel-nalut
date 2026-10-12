@@ -314,144 +314,159 @@ class MerchantSupabaseService {
 
       for (final raw in list) {
         final o = Map<String, dynamic>.from(raw);
-        final String statusStr = o['status']?.toString() ?? 'placed';
-
-        KdsTicketStatus ticketStatus;
-        switch (statusStr) {
-          case 'placed':
-          case 'pending':
-          case 'accepted':
-            ticketStatus = KdsTicketStatus.newOrder;
-            break;
-          case 'preparing':
-            ticketStatus = KdsTicketStatus.preparing;
-            break;
-          case 'ready_for_pickup':
-            ticketStatus = KdsTicketStatus.readyForPickup;
-            break;
-          case 'out_for_delivery':
-          case 'delivered':
-          case 'picked_up':
-            ticketStatus = KdsTicketStatus.completed;
-            break;
-          case 'cancelled':
-            ticketStatus = KdsTicketStatus.cancelled;
-            break;
-          default:
-            ticketStatus = KdsTicketStatus.newOrder;
-        }
-
-        DateTime placedTime = DateTime.now();
-        if (o['created_at'] != null) {
-          try {
-            placedTime = DateTime.parse(o['created_at'].toString());
-          } catch (_) {}
-        }
-
-        final double totalAmt = (o['total_amount_lyd'] is num)
-            ? (o['total_amount_lyd'] as num).toDouble()
-            : ((o['total_amount'] is num) ? (o['total_amount'] as num).toDouble() : 35.0);
-
-        final String payMethod = o['payment_method']?.toString() == 'cod' ||
-                o['payment_method']?.toString() == 'cash' ||
-                o['payment_method']?.toString() == 'cash_on_delivery'
-            ? 'كاش عند الاستلام (COD)'
-            : 'دفع إلكتروني (سداد / تداول)';
-
-        final courierName = o['driver_id'] == 'drv_01'
-            ? 'كابتن طارق النالوتي'
-            : (o['driver_id'] != null ? 'كابتن واصل نالوت' : null);
-
-        List<KdsOrderItem> orderItems = [];
-        if (o['items'] is List && (o['items'] as List).isNotEmpty) {
-          orderItems = (o['items'] as List).map((it) {
-            final itMap = Map<String, dynamic>.from(it);
-            String itemNotes = 'طلب طازج';
-            final rawMod = itMap['modifiers'];
-            if (rawMod is List && rawMod.isNotEmpty) {
-              itemNotes = rawMod.map((m) => m is Map ? (m['name_ar'] ?? m['name'] ?? '') : m.toString()).where((s) => s.isNotEmpty).join(', ');
-              if (itemNotes.isEmpty) itemNotes = 'طلب طازج';
-            } else if (rawMod is String && rawMod.trim().isNotEmpty) {
-              itemNotes = rawMod.trim();
-            }
-
-            return KdsOrderItem(
-              name: itMap['name_ar']?.toString() ?? itMap['name']?.toString() ?? 'صنف نالوت',
-              quantity: (itMap['quantity'] as num?)?.toInt() ?? 1,
-              priceLyd: (itMap['unit_price_lyd'] as num?)?.toDouble() ??
-                  (itMap['price'] as num?)?.toDouble() ??
-                  (itMap['item_total_lyd'] as num?)?.toDouble() ??
-                  20.0,
-              notes: itemNotes,
-            );
-          }).toList();
-        } else {
-          orderItems = [
-            KdsOrderItem(
-              name: 'وجبة / مشتريات نالوت الطازجة',
-              quantity: 1,
-              priceLyd: totalAmt,
-              notes: 'طلب مؤكد من السوبر آب',
-            ),
-          ];
-        }
-
-        final String? handoverCode = o['handover_code']?.toString() ?? o['pickup_code']?.toString();
-        final int prepMins = (o['prep_time_minutes'] as num?)?.toInt() ?? 15;
-        final bool isDriverArrived = o['driver_arrived_at'] != null || o['driver_status'] == 'arrived';
-
-        result.add(
-          KdsOrder(
-            id: o['id']?.toString() ?? '',
-            orderNumber: o['order_number']?.toString() ?? '#W-100',
-            customerName: o['customer_name']?.toString() ?? 'زبون نالوت',
-            customerPhone: o['customer_phone']?.toString() ?? '091-5550000',
-            deliveryAddress: o['delivery_address']?.toString() ?? 'نالوت - وسط المدينة',
-            customerNotes: o['notes']?.toString() ?? 'طلب مباشر عبر تطبيق واصل',
-            status: ticketStatus,
-            timePlaced: placedTime,
-            prepTimeMinutes: prepMins,
-            items: orderItems,
-            totalAmountLyd: totalAmt,
-            paymentMethod: payMethod,
-            courierName: courierName,
-            courierVehicle: courierName != null ? 'سيارة نالوت' : null,
-            courierPhone: courierName != null ? '091-5544332' : null,
-            handoverCode: handoverCode,
-            driverArrived: isDriverArrived,
-            driverStatus: isDriverArrived ? 'وصل المطعم' : (courierName != null ? 'في الطريق للمتجر' : null),
-          ),
-        );
+        result.add(parseOrder(o));
       }
 
       return result;
   }
 
+  /// Parse an order JSON map into a KdsOrder model
+  static KdsOrder parseOrder(Map<String, dynamic> o) {
+    final String statusStr = o['status']?.toString() ?? 'placed';
+
+    KdsTicketStatus ticketStatus;
+    switch (statusStr) {
+      case 'placed':
+      case 'pending':
+      case 'accepted':
+        ticketStatus = KdsTicketStatus.newOrder;
+        break;
+      case 'preparing':
+        ticketStatus = KdsTicketStatus.preparing;
+        break;
+      case 'ready_for_pickup':
+        ticketStatus = KdsTicketStatus.readyForPickup;
+        break;
+      case 'out_for_delivery':
+      case 'delivered':
+      case 'picked_up':
+        ticketStatus = KdsTicketStatus.completed;
+        break;
+      case 'cancelled':
+        ticketStatus = KdsTicketStatus.cancelled;
+        break;
+      default:
+        ticketStatus = KdsTicketStatus.newOrder;
+    }
+
+    DateTime placedTime = DateTime.now();
+    if (o['created_at'] != null) {
+      try {
+        placedTime = DateTime.parse(o['created_at'].toString());
+      } catch (_) {}
+    }
+
+    final double totalAmt = (o['total_amount_lyd'] is num)
+        ? (o['total_amount_lyd'] as num).toDouble()
+        : ((o['total_amount'] is num) ? (o['total_amount'] as num).toDouble() : 35.0);
+
+    final String payMethod = o['payment_method']?.toString() == 'cod' ||
+            o['payment_method']?.toString() == 'cash' ||
+            o['payment_method']?.toString() == 'cash_on_delivery'
+        ? 'كاش عند الاستلام (COD)'
+        : 'دفع إلكتروني (سداد / تداول)';
+
+    final courierName = o['driver_id'] == 'drv_01'
+        ? 'كابتن طارق النالوتي'
+        : (o['driver_id'] != null ? 'كابتن واصل نالوت' : null);
+
+    List<KdsOrderItem> orderItems = [];
+    if (o['items'] is List && (o['items'] as List).isNotEmpty) {
+      orderItems = (o['items'] as List).map((it) {
+        final itMap = Map<String, dynamic>.from(it);
+        String itemNotes = 'طلب طازج';
+        final rawMod = itMap['modifiers'];
+        if (rawMod is List && rawMod.isNotEmpty) {
+          itemNotes = rawMod.map((m) => m is Map ? (m['name_ar'] ?? m['name'] ?? '') : m.toString()).where((s) => s.isNotEmpty).join(', ');
+          if (itemNotes.isEmpty) itemNotes = 'طلب طازج';
+        } else if (rawMod is String && rawMod.trim().isNotEmpty) {
+          itemNotes = rawMod.trim();
+        }
+
+        return KdsOrderItem(
+          name: itMap['name_ar']?.toString() ?? itMap['name']?.toString() ?? 'صنف نالوت',
+          quantity: (itMap['quantity'] as num?)?.toInt() ?? 1,
+          priceLyd: (itMap['unit_price_lyd'] as num?)?.toDouble() ??
+              (itMap['price'] as num?)?.toDouble() ??
+              (itMap['item_total_lyd'] as num?)?.toDouble() ??
+              20.0,
+          notes: itemNotes,
+        );
+      }).toList();
+    } else {
+      orderItems = [
+        KdsOrderItem(
+          name: 'وجبة / مشتريات نالوت الطازجة',
+          quantity: 1,
+          priceLyd: totalAmt,
+          notes: 'طلب مؤكد من السوبر آب',
+        ),
+      ];
+    }
+
+    final String? handoverCode = o['handover_code']?.toString() ?? o['pickup_code']?.toString();
+    final int prepMins = (o['prep_time_minutes'] as num?)?.toInt() ?? 15;
+    final bool isDriverArrived = o['driver_arrived_at'] != null || o['driver_status'] == 'arrived';
+
+    return KdsOrder(
+      id: o['id']?.toString() ?? '',
+      orderNumber: o['order_number']?.toString() ?? '#W-100',
+      customerName: o['customer_name']?.toString() ?? 'زبون نالوت',
+      customerPhone: o['customer_phone']?.toString() ?? '091-5550000',
+      deliveryAddress: o['delivery_address']?.toString() ?? 'نالوت - وسط المدينة',
+      customerNotes: o['notes']?.toString() ?? 'طلب مباشر عبر تطبيق واصل',
+      status: ticketStatus,
+      timePlaced: placedTime,
+      prepTimeMinutes: prepMins,
+      items: orderItems,
+      totalAmountLyd: totalAmt,
+      paymentMethod: payMethod,
+      courierName: courierName,
+      courierVehicle: courierName != null ? 'سيارة نالوت' : null,
+      courierPhone: courierName != null ? '091-5544332' : null,
+      handoverCode: handoverCode,
+      driverArrived: isDriverArrived,
+      driverStatus: isDriverArrived ? 'وصل المطعم' : (courierName != null ? 'في الطريق للمتجر' : null),
+    );
+  }
+
   /// Update order status (KDS Kitchen Display System)
+  /// Dispatches immediate status transitions without 10-second timeout loops.
   static Future<bool> updateOrderStatus(String orderId, String newStatus, {int? prepTimeMinutes}) async {
     final Map<String, dynamic> body = {'status': newStatus};
     if (prepTimeMinutes != null) {
       body['prep_time_minutes'] = prepTimeMinutes;
     }
 
-    // 1. Try Live Unified Backend First
-    for (int attempt = 0; attempt < 2; attempt++) {
+    // If transitioning to preparing, ensure acceptance is recorded first if order was in placed
+    if (newStatus == 'preparing') {
       try {
-        final res = await http
-            .post(
-              Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode(body),
-            )
-            .timeout(const Duration(seconds: 10));
-
-        if (res.statusCode == 200 || res.statusCode == 201) {
-          return true;
-        }
-      } catch (_) {
-        if (attempt == 1) break;
-      }
+        await http.post(
+          Uri.parse('$backendBaseUrl/orders/$orderId/status'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'status': 'accepted',
+            // ignore: use_null_aware_elements
+            if (prepTimeMinutes != null) 'prep_time_minutes': prepTimeMinutes,
+          }),
+        ).timeout(const Duration(seconds: 3));
+      } catch (_) {}
     }
+
+    // 1. Try Live Unified Backend (fast single dispatch)
+    try {
+      final res = await http
+          .post(
+            Uri.parse('$backendBaseUrl/orders/$orderId/status'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        return true;
+      }
+    } catch (_) {}
 
     // 2. Fallback to Supabase Cloud
     try {

@@ -90,11 +90,26 @@ class _LoginScreenState extends State<LoginScreen> {
             smsCode: credential.smsCode ?? '',
           );
           final uid = userCred.user?.uid ?? 'firebase-user';
-          await ApiService.saveToken(
-            'wasel-firebase-token-$uid',
-            phone: normalized,
-            name: 'زبون واصل نالوت',
+          final apiRes = await ApiService.loginWithVerifiedPhone(
+            normalized,
+            firebaseUid: uid,
+            authMethod: 'firebase_sms_auto',
           );
+          if (apiRes.isSuccess && apiRes.data != null) {
+            final token = apiRes.data['token']?.toString() ?? 'wasel-firebase-token-$uid';
+            final userName = apiRes.data['user']?['full_name']?.toString() ?? 'زبون واصل نالوت';
+            await ApiService.saveToken(
+              token,
+              phone: normalized,
+              name: userName,
+            );
+          } else {
+            await ApiService.saveToken(
+              'wasel-firebase-token-$uid',
+              phone: normalized,
+              name: 'زبون واصل نالوت',
+            );
+          }
           if (!mounted) return;
           Navigator.pushAndRemoveUntil(
             context,

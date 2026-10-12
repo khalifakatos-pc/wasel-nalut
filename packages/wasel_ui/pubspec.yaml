@@ -1,0 +1,43 @@
+name: wasel_ui
+description: "Shared design system, typography, motion physics, and UI components for Wasel Nalut applications."
+version: 1.0.0
+publish_to: 'none'
+
+environment:
+  sdk: ^3.13.1
+  flutter: ">=3.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  fonts:
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-400.ttf
+          weight: 400
+        - asset: assets/fonts/Cairo-500.ttf
+          weight: 500
+        - asset: assets/fonts/Cairo-600.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-700.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-800.ttf
+          weight: 800
+    - family: Outfit
+      fonts:
+        - asset: assets/fonts/Outfit-500.ttf
+          weight: 500
+        - asset: assets/fonts/Outfit-600.ttf
+          weight: 600
+        - asset: assets/fonts/Outfit-700.ttf
+          weight: 700
+        - asset: assets/fonts/Outfit-800.ttf
+          weight: 800

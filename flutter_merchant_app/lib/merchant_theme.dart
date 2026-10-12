@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 
 /// ============================================================================
 /// WASEL MERCHANT & KITCHEN (تاجر ومطبخ واصل) DESIGN TOKENS & THEME
@@ -128,75 +129,8 @@ class MerchantRadius {
 }
 
 class MerchantTheme {
-  static ThemeData get darkTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: MerchantColors.darkBg,
-      primaryColor: MerchantColors.primary,
-      colorScheme: const ColorScheme.dark(
-        primary: MerchantColors.primary,
-        secondary: MerchantColors.secondary,
-        surface: MerchantColors.darkSurface,
-        error: MerchantColors.rejectedRed,
-        onPrimary: Colors.white,
-        onSurface: MerchantColors.darkTextPrimary,
-      ),
-      cardTheme: const CardThemeData(
-        color: MerchantColors.darkCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: MerchantRadius.lg,
-          side: BorderSide(color: MerchantColors.darkBorder, width: 1),
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: MerchantColors.darkSurface,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          color: MerchantColors.darkTextPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-
-  static ThemeData get lightTheme {
-    return ThemeData(
-      useMaterial3: true,
-      brightness: Brightness.light,
-      scaffoldBackgroundColor: MerchantColors.lightBg,
-      primaryColor: MerchantColors.primary,
-      colorScheme: const ColorScheme.light(
-        primary: MerchantColors.primary,
-        secondary: MerchantColors.secondary,
-        surface: MerchantColors.lightSurface,
-        error: MerchantColors.rejectedRed,
-        onPrimary: Colors.white,
-        onSurface: MerchantColors.lightTextPrimary,
-      ),
-      cardTheme: const CardThemeData(
-        color: MerchantColors.lightCard,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: MerchantRadius.lg,
-          side: BorderSide(color: MerchantColors.lightBorder, width: 1),
-        ),
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: MerchantColors.lightSurface,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          color: MerchantColors.lightTextPrimary,
-          fontSize: 18,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
+  static ThemeData get darkTheme => WaselTheme.darkTheme;
+  static ThemeData get lightTheme => WaselTheme.lightTheme;
 }
 
 /// ---------------------------------------------------------------------------

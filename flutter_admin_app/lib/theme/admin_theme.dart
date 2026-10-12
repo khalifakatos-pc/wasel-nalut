@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 
 class AdminColors {
   static const Color background = Color(0xFF0F172A);      // Slate Charcoal
@@ -15,38 +16,8 @@ class AdminColors {
 }
 
 class AdminTheme {
-  static ThemeData get darkTheme {
-    return ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: AdminColors.background,
-      primaryColor: AdminColors.primaryGold,
-      fontFamily: 'sans-serif',
-      colorScheme: const ColorScheme.dark(
-        primary: AdminColors.primaryGold,
-        surface: AdminColors.surface,
-        secondary: AdminColors.emeraldGreen,
-        error: AdminColors.alertRed,
-      ),
-      appBarTheme: const AppBarTheme(
-        backgroundColor: AdminColors.surface,
-        elevation: 0,
-        centerTitle: true,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: AdminColors.textPrimary,
-        ),
-      ),
-      cardTheme: CardThemeData(
-        color: AdminColors.surfaceElevated,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: AdminColors.divider, width: 1),
-        ),
-      ),
-    );
-  }
+  static ThemeData get darkTheme => WaselTheme.darkTheme;
+  static ThemeData get lightTheme => WaselTheme.lightTheme;
 }
 
 /// ---------------------------------------------------------------------------

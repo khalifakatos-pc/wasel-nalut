@@ -93,11 +93,27 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         );
 
         final uid = userCred.user?.uid ?? 'firebase-user';
-        await ApiService.saveToken(
-          'wasel-firebase-token-$uid',
-          phone: widget.phoneNumber,
-          name: 'زبون واصل نالوت',
+        final apiRes = await ApiService.loginWithVerifiedPhone(
+          widget.phoneNumber,
+          firebaseUid: uid,
+          authMethod: 'firebase_sms',
         );
+
+        if (apiRes.isSuccess && apiRes.data != null) {
+          final token = apiRes.data['token']?.toString() ?? 'wasel-token-$uid';
+          final userName = apiRes.data['user']?['full_name']?.toString() ?? 'زبون واصل نالوت';
+          await ApiService.saveToken(
+            token,
+            phone: widget.phoneNumber,
+            name: userName,
+          );
+        } else {
+          await ApiService.saveToken(
+            'wasel-firebase-token-$uid',
+            phone: widget.phoneNumber,
+            name: 'زبون واصل نالوت',
+          );
+        }
 
         if (!mounted) return;
         _navigateToHome();
@@ -111,11 +127,26 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         if (!mounted) return;
 
         if (verified) {
-          await ApiService.saveToken(
-            'wasel-wa-token-${DateTime.now().millisecondsSinceEpoch}',
-            phone: widget.phoneNumber,
-            name: 'زبون واصل نالوت',
+          final apiRes = await ApiService.loginWithVerifiedPhone(
+            widget.phoneNumber,
+            authMethod: 'whatsapp_otp',
           );
+
+          if (apiRes.isSuccess && apiRes.data != null) {
+            final token = apiRes.data['token']?.toString() ?? 'wasel-wa-token-${DateTime.now().millisecondsSinceEpoch}';
+            final userName = apiRes.data['user']?['full_name']?.toString() ?? 'زبون واصل نالوت';
+            await ApiService.saveToken(
+              token,
+              phone: widget.phoneNumber,
+              name: userName,
+            );
+          } else {
+            await ApiService.saveToken(
+              'wasel-wa-token-${DateTime.now().millisecondsSinceEpoch}',
+              phone: widget.phoneNumber,
+              name: 'زبون واصل نالوت',
+            );
+          }
           if (!mounted) return;
           _navigateToHome();
         } else {
