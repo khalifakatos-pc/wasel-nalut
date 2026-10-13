@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "تسلسل التسوية المالية وتصفير عهدة الكابتن - واصل نالوت",
+    "output": "wasel-captain-settlement.sequence.html",
+    "viewBox": [860, 840],
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "verify-balance",
+        "label": "طلب التسوية والتحقق",
+        "focus": ["admin", "api", "ledger"],
+        "note": "تحقق الإدارة من الرصيد النقدي المتراكم لدى الكابتن."
+      },
+      {
+        "id": "voucher-ledger",
+        "label": "سند القبض والقيد المحاسبي",
+        "focus": ["api", "ledger"],
+        "note": "إصدار سند قبض رسمي وتصفير رصيد الكابتن في دفتر الأستاذ."
+      },
+      {
+        "id": "realtime-settle",
+        "label": "البث اللحظي وإبراء الذمة",
+        "focus": ["api", "socket", "driver", "admin"],
+        "note": "إشعار الكابتن بتصفير العهدة وإظهار السند الرقمي للإدارة."
+      }
+    ]
+  },
+  "participants": [
+    { "id": "admin", "type": "frontend", "label": "لوحة الإدارة", "sublabel": "Admin Flutter" },
+    { "id": "api", "type": "backend", "label": "خادم واصل", "sublabel": "Node.js REST" },
+    { "id": "ledger", "type": "database", "label": "دفتر الأستاذ", "sublabel": "Supabase Ledger" },
+    { "id": "socket", "type": "messagebus", "label": "بث الأحداث", "sublabel": "Socket.io" },
+    { "id": "driver", "type": "frontend", "label": "محفظة الكابتن", "sublabel": "Driver Flutter" }
+  ],
+  "segments": [
+    { "from": 140, "to": 280, "label": "1. طلب التسوية وفحص رصيد العهدة" },
+    { "from": 300, "to": 530, "label": "2. إصدار سند القبض وتصفير الرصيد" },
+    { "from": 550, "to": 740, "label": "3. البث اللحظي وإبراء الذمة" }
+  ],
+  "messages": [
+    { "from": "admin", "to": "api", "y": 170, "label": "POST /api/v1/drivers/:id/settle", "variant": "emphasis" },
+    { "from": "api", "to": "ledger", "y": 210, "label": "SELECT wallet_balance_lyd", "variant": "default" },
+    { "from": "ledger", "to": "api", "y": 250, "label": "45.00 د.ل (رصيد عهدة نشط)", "variant": "return" },
+    { "from": "api", "to": "ledger", "y": 330, "label": "INSERT INTO vouchers (REC-2026-XXXX)", "variant": "emphasis" },
+    { "from": "ledger", "to": "api", "y": 370, "label": "سند قبض رسمي موثق", "variant": "return" },
+    { "from": "api", "to": "ledger", "y": 420, "label": "UPDATE driver_balances SET balance = 0", "variant": "emphasis" },
+    { "from": "ledger", "to": "api", "y": 460, "label": "تم تصفير الرصيد في السجل", "variant": "return" },
+    { "from": "api", "to": "socket", "y": 570, "label": "emit(\"driver:settled\", payload)", "variant": "emphasis" },
+    { "from": "socket", "to": "driver", "y": 615, "label": "إشعار إبراء الذمة وتحديث الرصيد", "variant": "emphasis" },
+    { "from": "api", "to": "admin", "y": 670, "label": "200 OK + DigitalVoucherDialog", "variant": "return" }
+  ],
+  "activations": [
+    { "participant": "admin", "from": 165, "to": 675, "type": "frontend" },
+    { "participant": "api", "from": 165, "to": 675, "type": "backend" },
+    { "participant": "ledger", "from": 205, "to": 465, "type": "database" },
+    { "participant": "socket", "from": 565, "to": 620, "type": "messagebus" },
+    { "participant": "driver", "from": 610, "to": 640, "type": "frontend" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "إبراء الذمة والتوثيق المالي",
+      "items": [
+        "إصدار سند قبض رقمي رسمي غير قابل للتعديل (REC-2026-XXXX)",
+        "تسجيل المبلغ وتفقيطه كتابة بالدينار الليبي لمنع النزاعات"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "التزامن الفوري عبر الشبكة",
+      "items": [
+        "تصفير عهدة الكابتن فور استلام النقدية في الخزينة الإدارية",
+        "تحديث شاشة محفظة الكابتن لحظياً عبر WebSocket بدون إعادة تشغيل"
+      ]
+    }
+  ]
+}

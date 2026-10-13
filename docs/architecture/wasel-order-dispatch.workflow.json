@@ -1,0 +1,106 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "دورة حياة الطلب والتوجيه اللوجستي الذكي - واصل نالوت",
+    "output": "wasel-order-dispatch.workflow.html",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-flow",
+        "label": "المسار الكامل للطلب",
+        "focus": [
+          "cust_checkout",
+          "escrow_hold",
+          "merchant_accept",
+          "dispatch_opt",
+          "captain_accept",
+          "pickup_confirm",
+          "transit_nav",
+          "otp_verify"
+        ],
+        "note": "التدفق الشامل للطلب من إنشاء السلة حتى التسليم النهائي والتحقق."
+      },
+      {
+        "id": "logistics-radar",
+        "label": "الجدولة وبث الرادار",
+        "focus": [
+          "merchant_accept",
+          "dispatch_opt",
+          "captain_accept",
+          "pickup_confirm"
+        ],
+        "note": "تجهيز الطلب في المطبخ وخوارزمية التجميع وبث الرادار للكابتن."
+      },
+      {
+        "id": "delivery-settlement",
+        "label": "الملاحة والتسوية النهائية",
+        "focus": [
+          "pickup_confirm",
+          "transit_nav",
+          "otp_verify"
+        ],
+        "note": "تتبع خط السير والمطابقة برمز OTP والإفراج المالي الفوري."
+      }
+    ]
+  },
+  "lanes": [
+    { "id": "customer", "label": "تطبيق الزبون (Customer App)" },
+    { "id": "merchant", "label": "لوحة التاجر (Merchant Kitchen)" },
+    { "id": "engine", "label": "محرك الخادم اللوجستي (Backend & Dispatch)" },
+    { "id": "captain", "label": "تطبيق الكابتن (Captain Radar)" }
+  ],
+  "phases": [
+    { "id": "placement", "label": "الطلب وحجز الضمان", "fromCol": 0, "toCol": 1 },
+    { "id": "fulfillment", "label": "التجهيز والجدولة الذكية", "fromCol": 2, "toCol": 3, "variant": "emphasis" },
+    { "id": "delivery", "label": "الملاحة والتسليم النهائي", "fromCol": 4, "toCol": 5, "variant": "dashed" }
+  ],
+  "mainPath": [
+    "cust_checkout",
+    "escrow_hold",
+    "merchant_accept",
+    "dispatch_opt",
+    "captain_accept",
+    "pickup_confirm",
+    "transit_nav",
+    "otp_verify"
+  ],
+  "nodes": [
+    { "id": "cust_checkout", "lane": "customer", "col": 0, "type": "frontend", "label": "إنشاء الطلب", "sublabel": "اختيار السلة والعنوان", "width": 140 },
+    { "id": "escrow_hold", "lane": "engine", "col": 1, "type": "security", "label": "حجز الضمان", "sublabel": "تجميد الرصيد أو COD", "tag": "Escrow Hold", "width": 140 },
+    { "id": "merchant_accept", "lane": "merchant", "col": 2, "type": "frontend", "label": "تجهيز المطبخ", "sublabel": "قبول وإعداد الوجبة", "tag": "KDS Screen", "width": 140 },
+    { "id": "dispatch_opt", "lane": "engine", "col": 2, "type": "backend", "label": "محرك التجميع", "sublabel": "Batching & Clustering", "tag": "Dispatch AI", "width": 140 },
+    { "id": "captain_accept", "lane": "captain", "col": 3, "type": "frontend", "label": "رادار الكباتن", "sublabel": "بث الطلب وقبول الكابتن", "tag": "Radar Broadcast", "width": 140 },
+    { "id": "pickup_confirm", "lane": "captain", "col": 4, "type": "backend", "label": "استلام الطلب", "sublabel": "فحص الطرد من التاجر", "tag": "Pickup Confirmed", "width": 140 },
+    { "id": "transit_nav", "lane": "captain", "col": 5, "type": "messagebus", "label": "الملاحة والتتبع", "sublabel": "بث إحداثيات GPS الحية", "tag": "Live Telemetry", "width": 140 },
+    { "id": "otp_verify", "lane": "customer", "col": 5, "type": "security", "label": "رمز OTP والتسليم", "sublabel": "مطابقة الرمز والإفراج", "tag": "Delivery & Settlement", "width": 140 }
+  ],
+  "edges": [
+    { "id": "edge-checkout-escrow", "from": "cust_checkout", "to": "escrow_hold", "label": "تأكيد الطلب", "variant": "default" },
+    { "id": "edge-escrow-merchant", "from": "escrow_hold", "to": "merchant_accept", "label": "إشعار التاجر", "variant": "emphasis" },
+    { "id": "edge-merchant-dispatch", "from": "merchant_accept", "to": "dispatch_opt", "label": "جاهز للاستلام", "variant": "default" },
+    { "id": "edge-dispatch-captain", "from": "dispatch_opt", "to": "captain_accept", "label": "بث الرادار", "variant": "emphasis" },
+    { "id": "edge-captain-pickup", "from": "captain_accept", "to": "pickup_confirm", "label": "توجه للمتجر", "variant": "default" },
+    { "id": "edge-pickup-transit", "from": "pickup_confirm", "to": "transit_nav", "label": "الانطلاق للزبون", "variant": "emphasis" },
+    { "id": "edge-transit-otp", "from": "transit_nav", "to": "otp_verify", "label": "التحقق والتسليم", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "الأمان والضمان المالي",
+      "items": [
+        "حجز أموال الطلب مسبقاً في حساب الضمان لمنع الاحتيال",
+        "إغلاق الطلب حصرياً عبر رمز OTP المولد على هاتف الزبون"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "اللوجستيات والجدولة الذكية",
+      "items": [
+        "خوارزمية تجميع الطلبات المتجاورة جغرافياً لتقليل وقت التوصيل",
+        "بث راداري متدرج للكباتن مع متابعة GPS حية عبر WebSocket"
+      ]
+    }
+  ]
+}

@@ -1243,28 +1243,64 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
   }
 
   /// ---------------------------------------------------------------------------
-  /// RECIPIENT PUBLIC TRACKING SHARE BUTTON
-  /// ---------------------------------------------------------------------------
-  /// ---------------------------------------------------------------------------
-  /// RECIPIENT PUBLIC TRACKING SHARE BUTTON
+  /// RECIPIENT PUBLIC TRACKING SHARE CARD (GIFT / MEAL FOR OTHERS)
   /// ---------------------------------------------------------------------------
   Widget _buildRecipientShareButton() {
     return Container(
-      margin: const EdgeInsets.only(top: 8),
-      width: double.infinity,
-      child: OutlinedButton.icon(
-        onPressed: _shareTrackingWithRecipient,
-        icon: const Icon(Icons.share_rounded, size: 18, color: Color(0xFF25D366)),
-        label: const Text(
-          'هل طلبت لشخص آخر؟ شارك معه تفاصيل التتبع وكود الاستلام 💬',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12, color: Color(0xFF25D366)),
-        ),
-        style: OutlinedButton.styleFrom(
-          side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
-          backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.08),
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-          padding: const EdgeInsets.symmetric(vertical: 12),
-        ),
+      margin: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF25D366).withValues(alpha: 0.08),
+        borderRadius: AppRadius.radiusLg,
+        border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: const BoxDecoration(
+              color: Color(0xFF25D366),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '🎁 هل طلبت الوجبة لشخص آخر أو عائلتك؟',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5, color: Color(0xFF1E8E42)),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'أرسل له رابط التتبع المباشر وكود الاستلام (OTP) بنقرة واحدة عبر واتساب',
+                  style: TextStyle(fontSize: 10.5, color: Color(0xFF2E7D32)),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton(
+            onPressed: _shareTrackingWithRecipient,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF25D366),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+              elevation: 0,
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.share_rounded, size: 14),
+                SizedBox(width: 4),
+                Text('إرسال', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

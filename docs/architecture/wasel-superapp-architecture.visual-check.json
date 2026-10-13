@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "visual-check",
+  "evidenceKind": "automated-browser",
+  "status": "fail",
+  "visualReview": "pending",
+  "artifact": {
+    "path": "C:\\Users\\kalifa\\Desktop\\wasel-app\\docs\\architecture\\wasel-superapp-architecture.html",
+    "sha256": "45d958ed33b055d498e70b5128b33dc90fa283b625e5f4951bcf3dce2a492253",
+    "bytes": 821557
+  },
+  "state": {
+    "detail": "read",
+    "motion": "still"
+  },
+  "chrome": {
+    "status": "available",
+    "executable": "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+  },
+  "diagnostics": [
+    {
+      "code": "viewer/visual-check-runtime",
+      "severity": "error",
+      "message": "visual-check could not complete its Chrome inspection.",
+      "subject": {
+        "artifact": "C:\\Users\\kalifa\\Desktop\\wasel-app\\docs\\architecture\\wasel-superapp-architecture.html"
+      },
+      "evidence": {
+        "reason": "Chrome DevTools process launch failed: spawn C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe EACCES [EACCES]\nChrome process: exit code -4092."
+      },
+      "supportedFixes": [
+        "resolve the reported Chrome inspection error, then rerun visual-check"
+      ]
+    }
+  ],
+  "containment": {
+    "status": "fail",
+    "viewports": []
+  },
+  "readability": {
+    "status": "fail",
+    "minimumProjectedNodeTextPx": 6,
+    "viewports": []
+  },
+  "viewerChrome": {
+    "status": "fail",
+    "viewports": []
+  },
+  "captures": {
+    "status": "fail",
+    "screenshots": [],
+    "contactSheet": null
+  },
+  "sidecars": {
+    "receipt": "wasel-superapp-architecture.visual-check.json",
+    "contactSheet": "wasel-superapp-architecture.visual-check.html"
+  },
+  "error": "Chrome DevTools process launch failed: spawn C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe EACCES [EACCES]\nChrome process: exit code -4092."
+}

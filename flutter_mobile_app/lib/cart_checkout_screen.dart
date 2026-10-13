@@ -935,50 +935,12 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
 
           const SizedBox(height: AppSpacing.md),
 
-          // 3. DELIVERY ADDRESS
+          // 3. DELIVERY & CONTACT DETAILS (UNIFIED CARD)
           const Text(
-            'عنوان التوصيل',
+            'بيانات التوصيل والتواصل',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            decoration: BoxDecoration(
-              color: colorScheme.surface,
-              borderRadius: AppRadius.radiusLg,
-              border: Border.all(color: colorScheme.outlineVariant),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.location_on_rounded, color: colorScheme.primary),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedAddress,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-                      ),
-                      const Text(
-                        'موقع دقيق ومحدد على الخريطة',
-                        style: TextStyle(fontSize: 10, color: AppColors.success),
-                      ),
-                    ],
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => _openAddressPicker(context),
-                  icon: const Icon(Icons.satellite_alt, size: 16),
-                  label: const Text('تغيير / قمر صناعي'),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: AppSpacing.md),
-
-          // 3.1 ALTERNATE BACKUP PHONE (FOR NALUT COVERAGE)
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
@@ -991,18 +953,51 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.phone_in_talk_rounded, color: colorScheme.primary, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
-                      'رقم هاتف بديل (احتياطي للطوارئ)',
-                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                    Icon(Icons.location_on_rounded, color: colorScheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _selectedAddress,
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                          const Text(
+                            'موقع دقيق ومحدد على الخريطة',
+                            style: TextStyle(fontSize: 10, color: AppColors.success),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _openAddressPicker(context),
+                      icon: const Icon(Icons.satellite_alt, size: 16),
+                      label: const Text('تغيير / قمر صناعي'),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'لضمان وصول الكابتن في حال ضعف تغطية المدار أو ليبيانا في الجبل',
-                  style: TextStyle(fontSize: 10, color: colorScheme.onSurfaceVariant),
+                const Divider(height: 24),
+                Row(
+                  children: [
+                    Icon(Icons.phone_in_talk_rounded, color: colorScheme.primary, size: 18),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'رقم هاتف بديل (اختياري للطوارئ في نالوت)',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                          ),
+                          Text(
+                            'لضمان وصول الكابتن عند ضعف تغطية المدار أو ليبيانا في الجبل',
+                            style: TextStyle(fontSize: 10, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 10),
                 TextField(
@@ -1027,197 +1022,191 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
 
           const SizedBox(height: AppSpacing.md),
 
-          // 4. PROMO CODE
+          // 4. DISCOUNTS & REWARDS (CONSOLIDATED CARD)
           const Text(
-            'كوبون الخصم',
+            'العروض والخصومات والمكافآت',
             style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _couponController,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    hintText: 'أدخل كود الخصم (مثال: WASEL2026)',
-                    hintStyle: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
-                    filled: true,
-                    fillColor: colorScheme.surfaceContainerHighest,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.radiusMd,
-                      borderSide: BorderSide(color: colorScheme.outlineVariant),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              ElevatedButton(
-                onPressed: _applyCoupon,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: colorScheme.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-                ),
-                child: const Text('تطبيق'),
-              ),
-            ],
-          ),
-          if (_couponMessage != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              _couponMessage!,
-              style: TextStyle(
-                fontSize: 11,
-                color: _isCouponApplied ? AppColors.success : AppColors.error,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-
-          const SizedBox(height: AppSpacing.md),
-
-          // 4.5 LOYALTY POINTS REDEMPTION
           Container(
             padding: const EdgeInsets.all(AppSpacing.md),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFFFFBEB), Color(0xFFFEF3C7)],
-              ),
-              borderRadius: AppRadius.radiusMd,
-              border: Border.all(color: const Color(0xFFFDE68A)),
+              color: colorScheme.surface,
+              borderRadius: AppRadius.radiusLg,
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFF59E0B),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'نقاط واصل للمكافآت',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF92400E)),
+                // 4.1 Promo Code Input
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _couponController,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: InputDecoration(
+                          hintText: 'أدخل كود الخصم (مثال: WASEL2026)',
+                          hintStyle: TextStyle(fontSize: 11, color: colorScheme.onSurfaceVariant),
+                          filled: true,
+                          fillColor: colorScheme.surfaceContainerHighest,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: AppRadius.radiusMd,
+                            borderSide: BorderSide(color: colorScheme.outlineVariant),
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFD97706),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              '$_userLoyaltyPoints نقطة',
-                              style: const TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.bold),
-                            ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    ElevatedButton(
+                      onPressed: _applyCoupon,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: colorScheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                      ),
+                      child: const Text('تطبيق'),
+                    ),
+                  ],
+                ),
+                if (_couponMessage != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _couponMessage!,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _isCouponApplied ? AppColors.success : AppColors.error,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+
+                const Divider(height: 24),
+
+                // 4.2 Loyalty Points Row
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFF59E0B),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 18),
+                    ),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'نقاط واصل للمكافآت',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD97706),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '$_userLoyaltyPoints نقطة',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _userLoyaltyPoints >= 100
+                                ? 'استبدل 100 نقطة بخصم 5.00 د.ل مباشر'
+                                : 'اجمع 100 نقطة لتحصل على خصم 5 د.ل',
+                            style: TextStyle(fontSize: 10.5, color: colorScheme.onSurfaceVariant),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        _userLoyaltyPoints >= 100
-                            ? 'استبدل 100 نقطة بخصم 5.00 د.ل مباشر من الفاتورة'
-                            : 'اجمع 100 نقطة لتحصل على خصم 5 د.ل على طلباتك',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFFB45309)),
+                    ),
+                    if (_userLoyaltyPoints >= 100)
+                      Switch(
+                        value: _usePointsDiscount,
+                        activeTrackColor: const Color(0xFFD97706),
+                        onChanged: (val) {
+                          setState(() {
+                            _usePointsDiscount = val;
+                          });
+                        },
+                      ),
+                  ],
+                ),
+
+                // 4.3 Free Delivery Vouchers Row (if available)
+                if (_availableFreeDeliveryVouchers.isNotEmpty) ...[
+                  const Divider(height: 24),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF10B981),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.electric_moped_rounded, color: Colors.white, size: 18),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Text(
+                                  'كوبون توصيل مجاني 🛵',
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12.5),
+                                ),
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF059669),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Text(
+                                    'هدية الإحالة 🎁',
+                                    style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'لديك ${_availableFreeDeliveryVouchers.length} كوبون توصيل مجاني متاح للاستخدام',
+                              style: TextStyle(fontSize: 10.5, color: colorScheme.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Switch(
+                        value: _useFreeDeliveryVoucher,
+                        activeTrackColor: const Color(0xFF059669),
+                        onChanged: (val) {
+                          setState(() {
+                            _useFreeDeliveryVoucher = val;
+                          });
+                        },
                       ),
                     ],
                   ),
-                ),
-                if (_userLoyaltyPoints >= 100)
-                  Switch(
-                    value: _usePointsDiscount,
-                    activeTrackColor: const Color(0xFFD97706),
-                    onChanged: (val) {
-                      setState(() {
-                        _usePointsDiscount = val;
-                      });
-                    },
-                  ),
+                ],
               ],
             ),
           ),
 
           const SizedBox(height: AppSpacing.md),
-
-          // 4.6 FREE DELIVERY VOUCHERS (EARNED FROM REFERRALS)
-          if (_availableFreeDeliveryVouchers.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFECFDF5), Color(0xFFD1FAE5)],
-                ),
-                borderRadius: AppRadius.radiusMd,
-                border: Border.all(color: const Color(0xFFA7F3D0)),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.electric_moped_rounded, color: Colors.white, size: 22),
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'كوبون توصيل مجاني 🛵',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF065F46)),
-                            ),
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF059669),
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Text(
-                                'هدية الإحالة 🎁',
-                                style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'لديك ${_availableFreeDeliveryVouchers.length} كوبون توصيل مجاني متاح للاستخدام!',
-                          style: const TextStyle(fontSize: 11, color: Color(0xFF047857)),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch(
-                    value: _useFreeDeliveryVoucher,
-                    activeTrackColor: const Color(0xFF059669),
-                    onChanged: (val) {
-                      setState(() {
-                        _useFreeDeliveryVoucher = val;
-                      });
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-          ],
 
           // 5. PAYMENT METHODS (UNIFIED STREAMLINED CARDS)
           Row(
@@ -1480,6 +1469,89 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
                       isSelected ? Icons.radio_button_checked_rounded : Icons.radio_button_off_rounded,
                       color: isSelected ? colorScheme.primary : colorScheme.onSurfaceVariant,
                       size: 20,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            // 1-Tap Quick Select Libyan Bank Chips
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    ..._libyanBanks.take(4).map((b) {
+                      final isThisBank = _selectedBankId == b['id'] && isSelected;
+                      final bColor = b['color'] as Color? ?? colorScheme.primary;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: InkWell(
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            setState(() {
+                              _selectedBankId = b['id'] as String;
+                              _selectedPaymentMethod = b['id'] as String;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(20),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isThisBank ? bColor.withValues(alpha: 0.15) : colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: isThisBank ? bColor : colorScheme.outlineVariant,
+                                width: isThisBank ? 1.5 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  b['icon'] as IconData? ?? Icons.account_balance_rounded,
+                                  size: 14,
+                                  color: isThisBank ? bColor : colorScheme.onSurfaceVariant,
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  (b['title'] as String).split(' (').first,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: isThisBank ? FontWeight.bold : FontWeight.w500,
+                                    color: isThisBank ? bColor : colorScheme.onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    InkWell(
+                      onTap: _openBankSelectionSheet,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: colorScheme.outlineVariant),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.more_horiz_rounded, size: 14, color: colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              'المزيد...',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
                   ],
                 ),

@@ -343,7 +343,7 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
           setState(() {});
           FlyToCartOverlay.run(
             context: context,
-            startOffset: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2),
+            startOffset: Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height * 0.75),
             targetKey: _cartBarKey,
           );
           ScaffoldMessenger.of(context).showSnackBar(
@@ -366,6 +366,60 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _quickAddToCart(Map<String, dynamic> product, Offset startOffset) {
+    if (!_isProductInStock(product)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('عذراً، هذا الصنف غير متوفر حالياً'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final title = product['name_ar'] ?? product['name'] ?? 'صنف';
+    final price = (product['price_lyd'] as num?)?.toDouble() ?? (product['price'] as num?)?.toDouble() ?? 10.0;
+    final stableId = product['id']?.toString() ?? 'prod_${title.trim().replaceAll(' ', '_')}';
+
+    final item = CartItem(
+      id: stableId,
+      title: title,
+      storeName: widget.store['name'] ?? 'متجر واصل',
+      price: price,
+      quantity: 1,
+    );
+
+    CartService.addItem(item);
+    setState(() {});
+
+    FlyToCartOverlay.run(
+      context: context,
+      startOffset: startOffset,
+      targetKey: _cartBarKey,
+    );
+
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.waselPrimary,
+        duration: const Duration(seconds: 2),
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'تمت إضافة $title إلى السلة!',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -862,17 +916,27 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
                     ),
                   )
                 else if (inStock)
-                  ElevatedButton.icon(
-                    onPressed: () => _addToCart(product),
-                    icon: const Icon(Icons.add_rounded, size: 16),
-                    label: const Text('إضافة'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-                      elevation: 0,
-                    ),
+                  Builder(
+                    builder: (btnCtx) {
+                      return ElevatedButton.icon(
+                        onPressed: () {
+                          final box = btnCtx.findRenderObject() as RenderBox?;
+                          final offset = box != null
+                              ? box.localToGlobal(box.size.center(Offset.zero))
+                              : Offset(MediaQuery.of(context).size.width / 2, MediaQuery.of(context).size.height / 2);
+                          _quickAddToCart(product, offset);
+                        },
+                        icon: const Icon(Icons.add_rounded, size: 16),
+                        label: const Text('إضافة'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: colorScheme.primary,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                          elevation: 0,
+                        ),
+                      );
+                    },
                   )
                 else
                   Container(
