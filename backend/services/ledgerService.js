@@ -9,6 +9,7 @@
  */
 
 const { v4: uuidv4 } = require('uuid');
+const accountingEngine = require('./accountingEngine');
 
 const SYSTEM_WALLETS = {
   ESCROW: '00000000-0000-0000-0000-000000000001',
@@ -44,7 +45,17 @@ class LedgerService {
 
     const deliveryFee = this.round(order.delivery_fee_lyd || 0);
     const subtotal = this.round(order.subtotal_lyd || (order.total_amount_lyd - deliveryFee) || 0);
-    const totalAmount = this.round(order.total_amount_lyd || (subtotal + deliveryFee));
+    const discountLyd = this.round(order.discount_amount_lyd || 0);
+    const pointsDiscountLyd = this.round(order.loyalty_points_discount_lyd || 0);
+    const freeDeliveryDiscountLyd = this.round(order.free_delivery_discount_lyd || 0);
+    const totalPromotions = this.round(discountLyd + pointsDiscountLyd + freeDeliveryDiscountLyd);
+
+    const grossOrderValue = this.round(subtotal + deliveryFee + (order.service_fee_lyd || 0));
+    let customerBilledAmount = this.round(order.total_amount_lyd !== undefined ? order.total_amount_lyd : (grossOrderValue - totalPromotions));
+    // If order.total_amount_lyd was passed as gross, reduce it by promotions:
+    if (Math.abs(customerBilledAmount - grossOrderValue) < 0.01 && totalPromotions > 0) {
+      customerBilledAmount = this.round(grossOrderValue - totalPromotions);
+    }
 
     const isCod = ['cash_on_delivery', 'cash', 'cod'].includes(String(order.payment_method || '').toLowerCase());
 
@@ -66,11 +77,10 @@ class LedgerService {
     const platformRevenue = this.round(platformDeliveryShare + commissionLyd + serviceFee);
 
     // Mathematical balance assertion check:
-    // Debits = totalAmount
-    // Credits = merchantNet + driverEarnings + platformRevenue
-    // (subtotal - commission) + (0.80 * fee) + (0.20 * fee + commission + serviceFee) = subtotal + fee + serviceFee = totalAmount
+    // Total Debits = Customer Payment (Cash or Bank) + Marketing/Loyalty Discounts Absorbed by Platform
+    // Total Credits = Merchant Net + Driver Earnings + Platform Revenue
+    const totalDebits = this.round(customerBilledAmount + totalPromotions);
     const totalCredits = this.round(merchantNet + driverEarnings + platformRevenue);
-    const totalDebits = totalAmount;
     const discrepancy = this.round(Math.abs(totalDebits - totalCredits));
 
     if (discrepancy > 0.01) {
@@ -88,11 +98,10 @@ class LedgerService {
         // Driver Net Earnings: credit Driver's wallet_balance_lyd with exactly 80% of delivery fee
         driver.wallet_balance_lyd = this.round((driver.wallet_balance_lyd || 0) + driverEarnings);
 
-        // Driver Cash Custody Liability: record 100% of order total as cash_in_hand_lyd if COD
-        // CRITICAL: Do NOT add total_amount_lyd to driver.wallet_balance_lyd!
+        // Driver Cash Custody Liability: record customerBilledAmount as cash_in_hand_lyd if COD
         if (isCod) {
-          driver.cash_in_hand_lyd = this.round((driver.cash_in_hand_lyd || 0) + totalAmount);
-          driver.cod_balance_lyd = this.round((driver.cod_balance_lyd || 0) + totalAmount);
+          driver.cash_in_hand_lyd = this.round((driver.cash_in_hand_lyd || 0) + customerBilledAmount);
+          driver.cod_balance_lyd = this.round((driver.cod_balance_lyd || 0) + customerBilledAmount);
         }
 
         // Driver wallet record
@@ -175,7 +184,7 @@ class LedgerService {
         account_type: 'cash_in_hand',
         entity_type: 'driver',
         entity_id: order.driver_id,
-        amount: totalAmount,
+        amount: customerBilledAmount,
         currency: 'LYD',
         status: 'completed',
         description: `استلام نقد من الزبون عند التوصيل (COD) لطلب رقم ${order.order_number || order.id}`,
@@ -192,10 +201,64 @@ class LedgerService {
         account_type: 'customer_escrow',
         entity_type: 'customer',
         entity_id: order.customer_id,
-        amount: totalAmount,
+        amount: customerBilledAmount,
         currency: 'LYD',
         status: 'completed',
         description: `تسوية الضمان المالي المودع لطلب رقم ${order.order_number || order.id}`,
+        created_at: nowIso
+      });
+    }
+
+    if (discountLyd > 0) {
+      txRows.push({
+        id: `txn_${uuidv4().substring(0, 8)}`,
+        batch_id: batchId,
+        order_id: order.id,
+        wallet_id: SYSTEM_WALLETS.REVENUE,
+        entry_type: 'DEBIT',
+        account_type: 'marketing_discount',
+        entity_type: 'platform',
+        entity_id: 'marketing',
+        amount: discountLyd,
+        currency: 'LYD',
+        status: 'completed',
+        description: `كوبون خصم ترويجي للمنصة لطلب رقم ${order.order_number || order.id}`,
+        created_at: nowIso
+      });
+    }
+
+    if (pointsDiscountLyd > 0) {
+      txRows.push({
+        id: `txn_${uuidv4().substring(0, 8)}`,
+        batch_id: batchId,
+        order_id: order.id,
+        wallet_id: SYSTEM_WALLETS.REVENUE,
+        entry_type: 'DEBIT',
+        account_type: 'loyalty_redemption',
+        entity_type: 'customer',
+        entity_id: order.customer_id,
+        amount: pointsDiscountLyd,
+        currency: 'LYD',
+        status: 'completed',
+        description: `خصم استبدال نقاط ولاء لطلب رقم ${order.order_number || order.id}`,
+        created_at: nowIso
+      });
+    }
+
+    if (freeDeliveryDiscountLyd > 0) {
+      txRows.push({
+        id: `txn_${uuidv4().substring(0, 8)}`,
+        batch_id: batchId,
+        order_id: order.id,
+        wallet_id: SYSTEM_WALLETS.REVENUE,
+        entry_type: 'DEBIT',
+        account_type: 'free_delivery_subsidy',
+        entity_type: 'platform',
+        entity_id: 'marketing',
+        amount: freeDeliveryDiscountLyd,
+        currency: 'LYD',
+        status: 'completed',
+        description: `دعم التوصيل المجاني لطلب رقم ${order.order_number || order.id}`,
         created_at: nowIso
       });
     }
@@ -253,6 +316,129 @@ class LedgerService {
       description: `إيرادات المنصة من طلب رقم ${order.order_number || order.id} (عمولة متجر + 20% توصيل)`,
       created_at: nowIso
     });
+
+    // 5. Official Standard General Ledger Journal Entry (COA)
+    const journalLines = [];
+
+    if (isCod) {
+      journalLines.push({
+        accountCode: '1040',
+        debit: customerBilledAmount,
+        credit: 0,
+        entityType: 'driver',
+        entityId: order.driver_id,
+        note: `تحصيل كاش من الزبون (COD) لطلب #${order.order_number || order.id}`
+      });
+    } else {
+      const pMethod = String(order.payment_method || '').toLowerCase();
+      let bankCode = '1033';
+      if (pMethod.includes('sadad')) bankCode = '1031';
+      else if (pMethod.includes('lypay')) bankCode = '1032';
+      else if (pMethod.includes('wallet')) bankCode = '2040';
+
+      journalLines.push({
+        accountCode: bankCode,
+        debit: customerBilledAmount,
+        credit: 0,
+        entityType: pMethod.includes('wallet') ? 'customer' : 'bank',
+        entityId: pMethod.includes('wallet') ? order.customer_id : pMethod,
+        note: `دفع إلكتروني لطلب #${order.order_number || order.id}`
+      });
+    }
+
+    if (discountLyd > 0) {
+      journalLines.push({
+        accountCode: '5010',
+        debit: discountLyd,
+        credit: 0,
+        entityType: 'platform',
+        entityId: 'marketing',
+        note: `كوبون خصم ترويجي للمنصة لطلب #${order.order_number || order.id}`
+      });
+    }
+
+    if (pointsDiscountLyd > 0) {
+      journalLines.push({
+        accountCode: '5020',
+        debit: pointsDiscountLyd,
+        credit: 0,
+        entityType: 'customer',
+        entityId: order.customer_id,
+        note: `خصم استبدال نقاط ولاء لطلب #${order.order_number || order.id}`
+      });
+    }
+
+    if (freeDeliveryDiscountLyd > 0) {
+      journalLines.push({
+        accountCode: '5030',
+        debit: freeDeliveryDiscountLyd,
+        credit: 0,
+        entityType: 'platform',
+        entityId: 'marketing',
+        note: `دعم التوصيل المجاني لطلب #${order.order_number || order.id}`
+      });
+    }
+
+    // Credits
+    journalLines.push({
+      accountCode: '2020',
+      debit: 0,
+      credit: merchantNet,
+      entityType: 'store',
+      entityId: merchantId,
+      note: `صافي مستحق المتجر بعد خصم العمولة (${subtotal} - ${commissionLyd})`
+    });
+
+    journalLines.push({
+      accountCode: '2030',
+      debit: 0,
+      credit: driverEarnings,
+      entityType: 'driver',
+      entityId: order.driver_id,
+      note: `أرباح الكابتن من التوصيل (${deliveryFee} * 80%)`
+    });
+
+    journalLines.push({
+      accountCode: '4010',
+      debit: 0,
+      credit: commissionLyd,
+      entityType: 'platform',
+      entityId: 'platform',
+      note: `إيراد عمولة بيع الوجبات (${(commissionPct * 100).toFixed(0)}%)`
+    });
+
+    journalLines.push({
+      accountCode: '4020',
+      debit: 0,
+      credit: platformDeliveryShare,
+      entityType: 'platform',
+      entityId: 'platform',
+      note: `حصة المنصة من رسوم التوصيل (${deliveryFee} * 20%)`
+    });
+
+    if (serviceFee > 0) {
+      journalLines.push({
+        accountCode: '4030',
+        debit: 0,
+        credit: serviceFee,
+        entityType: 'platform',
+        entityId: 'platform',
+        note: 'رسوم خدمات تشغيلية وتقنية'
+      });
+    }
+
+    let journalEntry = null;
+    try {
+      journalEntry = await accountingEngine.recordJournalEntry(db, {
+        referenceId: order.id,
+        transactionType: 'order_settlement',
+        narration: `تسوية حسابات طلب رقم ${order.order_number || order.id} في نالوت`,
+        lines: journalLines,
+        pgPool
+      });
+    } catch (jErr) {
+      console.warn('[AccountingEngine Entry Warning]:', jErr.message);
+    }
 
     // Commit to in-memory ledger
     db.wallet_transactions.push(...txRows);
@@ -408,6 +594,39 @@ class LedgerService {
     if (!db.wallet_transactions) db.wallet_transactions = [];
     db.wallet_transactions.push(...txRows);
 
+    // Record official Journal Entry in General Ledger:
+    // Debit 1010 (Vault), Credit 1040 (Driver Custody)
+    let journalEntry = null;
+    try {
+      journalEntry = await accountingEngine.recordJournalEntry(db, {
+        entryNumber: `JRN-REC-${voucherNumber}`,
+        referenceId: voucher.id,
+        transactionType: 'cod_vault_deposit',
+        narration: `توريد عهدة نقدية لخزينة المنصة من الكابتن ${driver.full_name || driver.id} بموجب سند قبض رقم ${voucherNumber}`,
+        lines: [
+          {
+            accountCode: '1010',
+            debit: settledAmount,
+            credit: 0,
+            entityType: 'platform',
+            entityId: 'central_vault_nalut',
+            note: `إيداع نقدي بالخزينة الرئيسية بسند ${voucherNumber}`
+          },
+          {
+            accountCode: '1040',
+            debit: 0,
+            credit: settledAmount,
+            entityType: 'driver',
+            entityId: driver.id,
+            note: `إبراء ذمة الكابتن من العهدة النقدية بسند ${voucherNumber}`
+          }
+        ],
+        pgPool
+      });
+    } catch (jErr) {
+      console.warn('[AccountingEngine Settle Warning]:', jErr.message);
+    }
+
     // PostgreSQL sync if available
     if (pgPool) {
       try {
@@ -442,8 +661,93 @@ class LedgerService {
       remaining_cash_in_hand: driver.cash_in_hand_lyd,
       net_earnings_preserved: driver.wallet_balance_lyd,
       voucher,
+      journal_entry: journalEntry,
       is_balanced: true,
       discrepancy: 0.00
+    };
+  }
+
+  /**
+   * Disburses a merchant's payout request, issuing an official Payment Voucher (PAY-YYYY-XXXX)
+   * and generating the corresponding double-entry Journal Entry (Debit 2020, Credit 1021/1010).
+   */
+  async disburseMerchantPayout(db, { storeId, amount, paymentMethod = 'مصرف الجمهورية', destinationAccount = '', notes = '', pgPool = null }) {
+    const payoutAmount = this.round(amount);
+    if (payoutAmount <= 0) throw new Error('مبلغ الصرف يجب أن يكون أكبر من صفر');
+
+    const year = new Date().getFullYear();
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const voucherNumber = `PAY-${year}-${suffix}`;
+
+    const store = (db.stores || []).find(s => s.id === storeId);
+    const storeName = store ? store.name : 'متجر نالوت';
+
+    // Deduct from merchant wallet
+    const merchantId = store ? (store.merchant_id || store.owner_user_id || store.id) : storeId;
+    let merchantWallet = db.wallets ? db.wallets.find(w => w.user_id === merchantId || w.id === `wallet_${merchantId}`) : null;
+    if (merchantWallet) {
+      merchantWallet.balance = Math.max(0, this.round((merchantWallet.balance || 0) - payoutAmount));
+    }
+
+    const voucher = {
+      id: `vouch_pay_${Date.now()}`,
+      voucher_number: voucherNumber,
+      type: 'payment',
+      beneficiary_name: storeName,
+      beneficiary_role: 'merchant',
+      beneficiary_id: merchantId,
+      amount_lyd: payoutAmount,
+      payment_method: paymentMethod,
+      destination_account: destinationAccount,
+      notes: notes || `صرف مستحقات أرباح لـ ${storeName}`,
+      created_by: 'إدارة واصل - نالوت',
+      created_at: new Date().toISOString()
+    };
+
+    if (!db.vouchers) db.vouchers = [];
+    db.vouchers.unshift(voucher);
+
+    // Journal Entry: Debit 2020 (Merchants Payable), Credit 1021 (Bank) or 1010 (Vault)
+    const isCashOrVault = String(paymentMethod).includes('كاش') || String(paymentMethod).includes('خزينة');
+    const creditAccount = isCashOrVault ? '1010' : '1021';
+    let journalEntry = null;
+    try {
+      journalEntry = await accountingEngine.recordJournalEntry(db, {
+        entryNumber: `JRN-PAY-${voucherNumber}`,
+        referenceId: voucher.id,
+        transactionType: 'merchant_payout',
+        narration: `صرف مستحقات متجر ${storeName} بموجب سند صرف رقم ${voucherNumber}`,
+        lines: [
+          {
+            accountCode: '2020',
+            debit: payoutAmount,
+            credit: 0,
+            entityType: 'store',
+            entityId: merchantId,
+            note: `تخفيض التزام مستحقات ${storeName} بسند صرف ${voucherNumber}`
+          },
+          {
+            accountCode: creditAccount,
+            debit: 0,
+            credit: payoutAmount,
+            entityType: 'bank',
+            entityId: creditAccount === '1010' ? 'vault' : 'bank_jumhouria',
+            note: `صرف القيمة عبر ${paymentMethod} بسند ${voucherNumber}`
+          }
+        ],
+        pgPool
+      });
+    } catch (jErr) {
+      console.warn('[AccountingEngine Payout Warning]:', jErr.message);
+    }
+
+    return {
+      success: true,
+      voucher,
+      journal_entry: journalEntry,
+      store_name: storeName,
+      payout_amount: payoutAmount,
+      remaining_wallet_balance: merchantWallet ? merchantWallet.balance : 0
     };
   }
 

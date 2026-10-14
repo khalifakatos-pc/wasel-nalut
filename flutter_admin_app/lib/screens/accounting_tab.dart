@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import '../theme/admin_theme.dart';
 import '../services/admin_supabase_service.dart';
 import '../widgets/digital_voucher_dialog.dart';
+import 'general_ledger_tab.dart';
 
 class AccountingTab extends StatefulWidget {
   const AccountingTab({super.key});
@@ -38,7 +39,7 @@ class _AccountingTabState extends State<AccountingTab> with SingleTickerProvider
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
+    _tabController = TabController(length: 5, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         _loadAllAccountingData();
@@ -163,6 +164,7 @@ class _AccountingTabState extends State<AccountingTab> with SingleTickerProvider
             const Tab(icon: Icon(Icons.receipt_long), text: 'سندات العمليات'),
             const Tab(icon: Icon(Icons.inventory), text: 'محضر الجرد Z'),
             const Tab(icon: Icon(Icons.assignment), text: 'كشوفات الحساب'),
+            const Tab(icon: Icon(Icons.account_balance_wallet_outlined), text: 'دفتر الأستاذ والميزان'),
           ],
         ),
       ),
@@ -175,6 +177,7 @@ class _AccountingTabState extends State<AccountingTab> with SingleTickerProvider
                 _buildVouchersView(),
                 _buildDailyAuditView(),
                 _buildStatementsView(),
+                const GeneralLedgerTab(),
               ],
             ),
     );
@@ -542,6 +545,15 @@ class _AccountingTabState extends State<AccountingTab> with SingleTickerProvider
               Navigator.pop(ctx);
               final ok = await AdminSupabaseService.approvePayoutRequest(
                 req['id'],
+                notes: 'مرجع التحويل: ${refController.text.trim()}',
+              );
+
+              // Post official double-entry journal entry to General Ledger
+              await AdminSupabaseService.disbursePayout(
+                storeId: req['beneficiary_id'] ?? req['store_id'] ?? '',
+                amount: amount,
+                paymentMethod: method,
+                destinationAccount: accountNumber,
                 notes: 'مرجع التحويل: ${refController.text.trim()}',
               );
 

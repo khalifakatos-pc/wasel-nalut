@@ -2111,8 +2111,11 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
     const feeCalculation = calculateDynamicDeliveryFee(store, destLat, destLng, totalWeight);
     const deliveryFee = feeCalculation.delivery_fee_lyd;
     const serviceFee = 0.00; // Customer should not see app commission
-    const discount = req.body.discount_lyd ? parseFloat(req.body.discount_lyd) : 0.00;
-    const totalAmount = subtotal + deliveryFee + serviceFee - discount;
+    const discount = req.body.discount_amount_lyd ? parseFloat(req.body.discount_amount_lyd) : (req.body.discount_lyd ? parseFloat(req.body.discount_lyd) : 0.00);
+    const pointsDiscount = req.body.loyalty_points_discount_lyd ? parseFloat(req.body.loyalty_points_discount_lyd) : 0.00;
+    const freeDeliveryDiscount = req.body.free_delivery_discount_lyd ? parseFloat(req.body.free_delivery_discount_lyd) : 0.00;
+    const totalPromotions = discount + pointsDiscount + freeDeliveryDiscount;
+    const totalAmount = Math.max(0, subtotal + deliveryFee + serviceFee - totalPromotions);
 
     // Escrow Reservation if wallet payment
     let customerWallet = db.wallets.find(w => w.user_id === customer.id);
@@ -2190,7 +2193,10 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
       subtotal_lyd: subtotal,
       delivery_fee_lyd: deliveryFee,
       service_fee_lyd: serviceFee,
-      discount_lyd: discount,
+      discount_amount_lyd: discount,
+      loyalty_points_discount_lyd: pointsDiscount,
+      free_delivery_discount_lyd: freeDeliveryDiscount,
+      discount_lyd: totalPromotions,
       total_amount_lyd: totalAmount,
       delivery_address: destAddress,
       delivery_latitude: destLat,
@@ -3364,6 +3370,112 @@ app.post('/api/v1/audit', (req, res) => {
   res.status(201).json({ success: true, data: entry });
 });
 
+// ----------------------------------------------------------------------------
+// UNIFIED ACCOUNTING & GENERAL LEDGER API (COA, TRIAL BALANCE, Z-REPORT)
+// ----------------------------------------------------------------------------
+const accountingEngine = require('./services/accountingEngine');
+
+// 1. Chart of Accounts (دليل وشجرة الحسابات)
+app.get('/api/v1/accounting/chart-of-accounts', (req, res) => {
+  res.json({
+    success: true,
+    data: Object.values(accountingEngine.CHART_OF_ACCOUNTS)
+  });
+});
+
+// 2. Trial Balance (ميزان المراجعة الحي بالأرصدة والمجاميع)
+app.get('/api/v1/accounting/trial-balance', (req, res) => {
+  try {
+    const trialBalance = accountingEngine.getTrialBalance(db);
+    res.json(trialBalance);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 3. General Ledger & Journal Entries Feed (دفتر الأستاذ والقيود اليومية)
+app.get('/api/v1/accounting/journal-entries', (req, res) => {
+  try {
+    const { account_code, limit = 50, page = 1 } = req.query;
+    const ledger = accountingEngine.getGeneralLedger(db, {
+      accountCode: account_code,
+      limit: parseInt(limit, 10),
+      page: parseInt(page, 10)
+    });
+    res.json(ledger);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Exact Daily Z-Report computed strictly from posted Journal Entries
+app.get('/api/v1/accounting/daily-audit', (req, res) => {
+  try {
+    const { date } = req.query;
+    const zReport = accountingEngine.getDailyZReport(db, date);
+    res.json(zReport);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Partner Account Statement (Store or Driver) from General Ledger
+app.get('/api/v1/accounting/statement/:type/:id', (req, res) => {
+  try {
+    const { type, id } = req.params;
+    const statement = accountingEngine.getPartnerStatement(db, {
+      entityType: type,
+      entityId: id
+    });
+    res.json(statement);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6. Approve & Disburse Merchant Payout Request (صرف مستحقات متجر بسند وقيد)
+app.post('/api/v1/accounting/payouts/disburse', async (req, res) => {
+  try {
+    const { store_id, amount, payment_method, destination_account, notes } = req.body;
+    if (!store_id || !amount) {
+      return res.status(400).json({ success: false, error: 'store_id and amount are required' });
+    }
+    const result = await ledgerService.disburseMerchantPayout(db, {
+      storeId: store_id,
+      amount: parseFloat(amount),
+      paymentMethod: payment_method || 'مصرف الجمهورية',
+      destinationAccount: destination_account || '',
+      notes: notes || '',
+      pgPool
+    });
+    saveSeedData();
+    res.json({ success: true, message: 'تم صرف المستحقات وتوليد سند الصرف والقيد المحاسبي بنجاح', data: result });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Manual Balanced Adjustment Journal Entry (قيد تسوية وتعديل يدوي متوازن)
+app.post('/api/v1/accounting/journal-entries', async (req, res) => {
+  try {
+    const { reference_id, narration, lines } = req.body;
+    if (!Array.isArray(lines) || lines.length < 2) {
+      return res.status(400).json({ success: false, error: 'A minimum of 2 balanced lines is required.' });
+    }
+    const entry = await accountingEngine.recordJournalEntry(db, {
+      referenceId: reference_id || `manual_${Date.now()}`,
+      transactionType: 'adjustment',
+      narration: narration || 'قيد تسوية وتعديل محاسبي يدوي',
+      lines: lines,
+      pgPool
+    });
+    saveSeedData();
+    res.status(201).json({ success: true, data: entry });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/v1/admin/seed', async (req, res) => {
   const { admin_pin } = req.body || {};
   const masterPin = process.env.ADMIN_DEFAULT_PIN || '9832';
@@ -4007,4 +4119,4 @@ server.listen(PORT, () => {
   console.log(`================================================================`);
 });
 
-module.exports = { app, server, io, db, pricingService, ledgerService, calculateDynamicDeliveryFee };
+module.exports = { app, server, io, db, pricingService, ledgerService, accountingEngine, calculateDynamicDeliveryFee };

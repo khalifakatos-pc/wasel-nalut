@@ -370,6 +370,9 @@ class ApiService {
     required Map<String, double> deliveryLocation,
     required String paymentMethod,
     String? couponCode,
+    double? discountAmountLyd,
+    double? pointsDiscountAmountLyd,
+    double? freeDeliveryDiscountLyd,
   }) async {
     final effectivePhone = _userPhone?.trim().isNotEmpty == true ? _userPhone!.trim() : '0910000000';
     final effectiveName = _userName?.trim().isNotEmpty == true ? _userName!.trim() : (_isGuest ? 'زائر واصل نالوت' : 'زبون نالوت');
@@ -387,7 +390,10 @@ class ApiService {
               'items': items,
               'delivery_location': deliveryLocation,
               'payment_method': paymentMethod,
-              if (couponCode != null) ...{'coupon_code': couponCode},
+              if (couponCode != null && couponCode.isNotEmpty) 'coupon_code': couponCode,
+              if (discountAmountLyd != null && discountAmountLyd > 0) 'discount_amount_lyd': discountAmountLyd,
+              if (pointsDiscountAmountLyd != null && pointsDiscountAmountLyd > 0) 'loyalty_points_discount_lyd': pointsDiscountAmountLyd,
+              if (freeDeliveryDiscountLyd != null && freeDeliveryDiscountLyd > 0) 'free_delivery_discount_lyd': freeDeliveryDiscountLyd,
             }),
           )
           .timeout(const Duration(seconds: 4));

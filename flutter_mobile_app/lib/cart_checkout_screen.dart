@@ -582,7 +582,10 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
         'longitude': (ApiService.activeAddress['longitude'] as num?)?.toDouble() ?? 10.9818,
       },
       paymentMethod: _selectedPaymentMethod,
-      couponCode: null,
+      couponCode: _isCouponApplied ? _couponController.text.trim() : null,
+      discountAmountLyd: _discountAmount,
+      pointsDiscountAmountLyd: _pointsDiscountAmount,
+      freeDeliveryDiscountLyd: _useFreeDeliveryVoucher ? _deliveryFee : 0.0,
     );
 
     if (mounted) {
