@@ -11,7 +11,7 @@ import 'design_system.dart';
 import 'services/api_service.dart';
 import 'services/customer_notification_service.dart';
 import 'services/socket_service.dart';
-import 'fair_rating_dialog.dart';
+import 'screens/order_rating_screen.dart';
 
 /// ============================================================================
 /// WASEL REAL-TIME ORDER TRACKING SCREEN (شاشة تتبع الطلب الحية - نالوت)
@@ -598,20 +598,23 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
                                 height: 44,
                                 child: ElevatedButton.icon(
                                   onPressed: () {
-                                    showDialog(
-                                      context: context,
-                                      builder: (_) => FairRatingDialog(
-                                        orderId: widget.orderId ?? 'ord_test',
-                                        orderNumber: _orderNum,
-                                        storeName: _storeName,
-                                        storeId: 'store_nalut_01',
-                                        driverId: 'drv_01',
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => OrderRatingScreen(
+                                          orderId: widget.orderId ?? 'ord_test',
+                                          orderNumber: _orderNum,
+                                          storeName: _storeName,
+                                          storeId: 'store_nalut_01',
+                                          driverId: 'drv_01',
+                                          driverName: _driverName.isNotEmpty ? _driverName : 'كابتن واصل نالوت',
+                                        ),
                                       ),
                                     );
                                   },
-                                  icon: const Icon(Icons.rate_review, color: Colors.white, size: 18),
+                                  icon: const Icon(Icons.stars_rounded, color: Colors.white, size: 20),
                                   label: const Text(
-                                    'تقييم المطعم والكابتن بأمانة ⭐',
+                                    'تقييم المطعم والكابتن بأمانة (+20 نقطة 🎁)',
                                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
                                   ),
                                   style: ElevatedButton.styleFrom(

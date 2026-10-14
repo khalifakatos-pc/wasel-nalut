@@ -9,6 +9,7 @@ import 'order_tracking_screen.dart';
 import 'satellite_location_picker.dart';
 import 'store_menu_screen.dart';
 import 'cart_checkout_screen.dart';
+import 'widgets/no_network_screen.dart';
 import 'services/api_service.dart';
 import 'services/customer_notification_service.dart';
 
@@ -34,6 +35,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Map<String, dynamic>? _activeOrder;
   List<Map<String, dynamic>> _liveStores = [];
   bool _isLoadingStores = false;
+  bool _hasNetworkError = false;
   int _userLoyaltyPoints = 140;
   Timer? _orderWatchTimer;
   Timer? _storeWatchTimer;
@@ -92,13 +94,24 @@ class _HomeScreenState extends State<HomeScreen> {
         final List<dynamic> list = res.data['data'];
         setState(() {
           _liveStores = List<Map<String, dynamic>>.from(list);
+          _hasNetworkError = false;
           if (!silent) _isLoadingStores = false;
         });
       } else {
-        if (!silent && mounted) setState(() => _isLoadingStores = false);
+        if (!silent && mounted) {
+          setState(() {
+            _isLoadingStores = false;
+            if (_liveStores.isEmpty) _hasNetworkError = true;
+          });
+        }
       }
     } catch (_) {
-      if (!silent && mounted) setState(() => _isLoadingStores = false);
+      if (!silent && mounted) {
+        setState(() {
+          _isLoadingStores = false;
+          if (_liveStores.isEmpty) _hasNetworkError = true;
+        });
+      }
     }
   }
 
@@ -1378,6 +1391,11 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           if (_isLoadingStores)
             _buildShimmerStoreLoading(isDark)
+          else if (_hasNetworkError && _liveStores.isEmpty)
+            NoNetworkScreen(
+              isFullScreen: false,
+              onRetry: () => _fetchLiveStores(silent: false),
+            )
           else if (foodStores.isEmpty)
             _buildEmptyStoresCard(isDark, 'لا توجد مطاعم مسجلة حالياً في نالوت', Icons.restaurant_rounded)
           else
