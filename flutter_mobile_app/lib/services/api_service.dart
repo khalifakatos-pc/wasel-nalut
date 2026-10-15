@@ -694,9 +694,24 @@ class ApiService {
 
   /// Fetch global dynamic settings (referral reward, loyalty rate, ratings toggle)
   static Future<Map<String, dynamic>> fetchSystemConfigurations() async {
+    // 1. Try Backend API first
+    try {
+      final bRes = await http.get(
+        Uri.parse('$_baseUrl/config/system'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+      if (bRes.statusCode == 200) {
+        final Map<String, dynamic> body = jsonDecode(bRes.body);
+        if (body['success'] == true && body['data'] is Map) {
+          return Map<String, dynamic>.from(body['data']);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Try Supabase system_config table
     try {
       final res = await http.get(
-        Uri.parse('$_supabaseUrl/vouchers?voucher_number=eq.CFG-SYSTEM-SETTINGS&select=*'),
+        Uri.parse('$_supabaseUrl/system_config?key=eq.core_platform_rules&select=*'),
         headers: {
           'apikey': _supabaseApiKey,
           'Authorization': 'Bearer $_supabaseApiKey',
@@ -705,11 +720,10 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty && list.first['notes'] != null) {
-          final dynamic parsed = jsonDecode(list.first['notes']);
-          if (parsed is Map<String, dynamic>) {
-            return Map<String, dynamic>.from(parsed);
-          }
+        if (list.isNotEmpty && list.first['value'] != null) {
+          final dynamic val = list.first['value'];
+          if (val is Map) return Map<String, dynamic>.from(val);
+          if (val is String) return Map<String, dynamic>.from(jsonDecode(val));
         }
       }
     } catch (_) {}
@@ -725,29 +739,109 @@ class ApiService {
     };
   }
 
-  /// Get current loyalty points from local storage
+  /// Get current loyalty points from persistent database with local cache fallback
   static Future<int> getLoyaltyPoints() async {
+    final phone = _userPhone;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt('wasel_loyalty_points') ?? 140; // Default baseline 140 points
+
+    if (phone != null && phone.isNotEmpty) {
+      // 1. Try Backend API
+      try {
+        final res = await http.get(
+          Uri.parse('$_baseUrl/loyalty/$phone'),
+          headers: _headers,
+        ).timeout(const Duration(seconds: 4));
+
+        if (res.statusCode == 200) {
+          final Map<String, dynamic> body = jsonDecode(res.body);
+          if (body['success'] == true && body['data'] != null) {
+            final int balance = (body['data']['points_balance'] as num?)?.toInt() ?? 0;
+            await prefs.setInt('wasel_loyalty_points', balance);
+            return balance;
+          }
+        }
+      } catch (_) {}
+
+      // 2. Try Supabase direct query
+      try {
+        final sRes = await http.get(
+          Uri.parse('$_supabaseUrl/loyalty_points?user_phone=eq.$phone&select=*'),
+          headers: {
+            'apikey': _supabaseApiKey,
+            'Authorization': 'Bearer $_supabaseApiKey',
+          },
+        ).timeout(const Duration(seconds: 4));
+
+        if (sRes.statusCode == 200) {
+          final List<dynamic> list = jsonDecode(sRes.body);
+          if (list.isNotEmpty) {
+            final int balance = (list.first['points_balance'] as num?)?.toInt() ?? 0;
+            await prefs.setInt('wasel_loyalty_points', balance);
+            return balance;
+          }
+        }
+      } catch (_) {}
+    }
+
+    // Return cached balance or 0 if brand-new
+    return prefs.getInt('wasel_loyalty_points') ?? 0;
   }
 
-  /// Add loyalty points after an order
-  static Future<void> addLoyaltyPoints(int points) async {
+  /// Add loyalty points after an order to persistent database
+  static Future<void> addLoyaltyPoints(int points, {String? orderId}) async {
+    final phone = _userPhone;
     final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt('wasel_loyalty_points') ?? 140;
-    await prefs.setInt('wasel_loyalty_points', current + points);
+    final current = prefs.getInt('wasel_loyalty_points') ?? 0;
+    final newBalance = current + points;
+    await prefs.setInt('wasel_loyalty_points', newBalance);
+
+    if (phone != null && phone.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse('$_baseUrl/loyalty/earn'),
+          headers: _headers,
+          body: jsonEncode({
+            'phone': phone,
+            'order_id': orderId,
+            'points': points,
+            'description': 'نقاط ولاء مكتسبة من طلب واصل نالوت',
+          }),
+        ).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+    }
   }
 
-  /// Deduct redeemed loyalty points
-  static Future<void> deductLoyaltyPoints(int points) async {
+  /// Deduct redeemed loyalty points from persistent database
+  static Future<void> deductLoyaltyPoints(int points, {String? orderId}) async {
+    final phone = _userPhone;
     final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt('wasel_loyalty_points') ?? 140;
+    final current = prefs.getInt('wasel_loyalty_points') ?? 0;
     final newBalance = (current - points) > 0 ? (current - points) : 0;
     await prefs.setInt('wasel_loyalty_points', newBalance);
+
+    if (phone != null && phone.isNotEmpty) {
+      try {
+        await http.post(
+          Uri.parse('$_baseUrl/loyalty/redeem'),
+          headers: _headers,
+          body: jsonEncode({
+            'phone': phone,
+            'order_id': orderId,
+            'points': points,
+            'description': 'استبدال نقاط لخصم الطلب',
+          }),
+        ).timeout(const Duration(seconds: 4));
+      } catch (_) {}
+    }
   }
 
-  /// Get user referral code
+  /// Get user referral code (deterministic from user phone)
   static Future<String> getUserReferralCode() async {
+    final phone = _userPhone;
+    if (phone != null && phone.length >= 4) {
+      final clean = phone.replaceAll(RegExp(r'\D'), '');
+      return 'WAS-${clean.substring(clean.length - 4)}';
+    }
     final prefs = await SharedPreferences.getInstance();
     var code = prefs.getString('wasel_referral_code');
     if (code == null || code.isEmpty) {
@@ -827,47 +921,52 @@ class ApiService {
     required double deliveryScore,
     required String comment,
   }) async {
-    // 1. Try Live Backend Real Rating API
+    // 1. Try Live Backend Real Reviews API
     try {
       final res = await http.post(
-        Uri.parse('$_baseUrl/orders/$orderId/rate'),
+        Uri.parse('$_baseUrl/reviews'),
         headers: _headers,
         body: jsonEncode({
-          'rating': foodScore,
+          'order_id': orderId,
+          'customer_phone': _userPhone ?? '0910000000',
+          'store_id': storeId,
+          'driver_id': driverId,
+          'store_rating': foodScore,
           'driver_rating': deliveryScore,
           'comment': comment,
-          'store_id': storeId,
         }),
       ).timeout(const Duration(seconds: 4));
 
-      if (res.statusCode == 200) {
-        await addLoyaltyPoints(20);
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        await addLoyaltyPoints(20, orderId: orderId);
         return true;
       }
     } catch (_) {}
 
-    // 2. Fallback: Supabase update
+    // 2. Fallback: Supabase direct reviews table insert
     try {
-      final reviewData = {
-        'food_score': foodScore,
-        'delivery_score': deliveryScore,
-        'comment': comment,
-        'rated_at': DateTime.now().toIso8601String(),
-      };
-
-      await http.patch(
-        Uri.parse('$_supabaseUrl/orders?id=eq.$orderId'),
+      await http.post(
+        Uri.parse('$_supabaseUrl/reviews'),
         headers: {
           'apikey': _supabaseApiKey,
           'Authorization': 'Bearer $_supabaseApiKey',
           'Content-Type': 'application/json',
+          'Prefer': 'return=minimal',
         },
         body: jsonEncode({
-          'notes': 'rating: ${jsonEncode(reviewData)}',
+          'id': 'rev_${DateTime.now().millisecondsSinceEpoch}',
+          'order_id': orderId,
+          'customer_phone': _userPhone ?? '0910000000',
+          'store_id': storeId,
+          'driver_id': driverId,
+          'store_rating': foodScore,
+          'driver_rating': deliveryScore,
+          'comment': comment,
+          'created_at': DateTime.now().toIso8601String(),
         }),
       ).timeout(const Duration(seconds: 4));
 
-      await addLoyaltyPoints(20);
+      await addLoyaltyPoints(20, orderId: orderId);
       return true;
     } catch (_) {
       return true;

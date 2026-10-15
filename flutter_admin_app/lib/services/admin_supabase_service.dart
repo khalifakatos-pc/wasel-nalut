@@ -37,7 +37,7 @@ class AdminSupabaseService {
     for (final base in candidateUrls) {
       try {
         final res = await http
-            .get(Uri.parse('$base/admin/overview?admin_key=9832'))
+            .get(Uri.parse('$base/admin/overview?admin_key=7788'))
             .timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
@@ -443,6 +443,36 @@ class AdminSupabaseService {
   ];
 
   static Future<List<Map<String, dynamic>>> fetchDeliveryZones() async {
+    // 1. Try Backend API
+    try {
+      final res = await http.get(
+        Uri.parse('$backendBaseUrl/delivery-zones'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> body = jsonDecode(res.body);
+        if (body['success'] == true && body['data'] is List) {
+          final List<dynamic> list = body['data'];
+          if (list.isNotEmpty) {
+            final zones = list.map((item) {
+              final m = Map<String, dynamic>.from(item);
+              return {
+                'id': m['id'] ?? '',
+                'name': m['name_ar'] ?? m['name'] ?? '',
+                'fee_lyd': (m['base_fee_lyd'] as num?)?.toDouble() ?? 5.0,
+                'min_minutes': (m['min_delivery_time'] as num?)?.toInt() ?? 20,
+                'max_minutes': (m['max_delivery_time'] as num?)?.toInt() ?? 35,
+                'is_active': m['is_active'] != false,
+              };
+            }).toList();
+            return zones;
+          }
+        }
+      }
+    } catch (_) {}
+
+    // 2. Fallback to local default zones
     return _deliveryZones;
   }
 
@@ -457,16 +487,30 @@ class AdminSupabaseService {
       _deliveryZones[idx]['fee_lyd'] = newFee;
       _deliveryZones[idx]['min_minutes'] = minMinutes;
       _deliveryZones[idx]['max_minutes'] = maxMinutes;
-      return true;
     }
-    return false;
+
+    // Persist to Backend PostgreSQL
+    try {
+      final res = await http.patch(
+        Uri.parse('$backendBaseUrl/delivery-zones/$zoneId'),
+        headers: _headers,
+        body: jsonEncode({
+          'base_fee_lyd': newFee,
+          'min_delivery_time': minMinutes,
+          'max_delivery_time': maxMinutes,
+        }),
+      ).timeout(const Duration(seconds: 4));
+      return res.statusCode == 200;
+    } catch (_) {
+      return idx != -1;
+    }
   }
 
   // --------------------------------------------------------------------------
   // PURGE TEST DATA & PRODUCTION LIVE SLATE (تطهير البيانات الوهمية وتفعيل النمط الحي)
   // --------------------------------------------------------------------------
   static Future<Map<String, dynamic>> purgeTestData(String adminPin) async {
-    if (adminPin.trim() != '9832') {
+    if (adminPin.trim() != '7788') {
       return {'success': false, 'message': 'رمز الـ PIN الإداري غير صحيح'};
     }
 
@@ -532,54 +576,7 @@ class AdminSupabaseService {
     final dynamicFiltered = (type != null && type.isNotEmpty && type != 'all')
         ? _dynamicVouchers.where((v) => v['type'] == type).toList()
         : List<Map<String, dynamic>>.from(_dynamicVouchers);
-
-    // Offline / fallback vouchers
-    final fallbacks = [
-      {
-        'id': 'v_1',
-        'voucher_number': 'REC-2026-0001',
-        'type': 'receipt',
-        'beneficiary_name': 'طارق النالوتي',
-        'beneficiary_role': 'captain',
-        'beneficiary_id': 'drv_01',
-        'amount_lyd': 140.00,
-        'payment_method': 'cash',
-        'notes': 'توريد عهدة نقدية COD واستلام كاش وإبراء ذمة',
-        'created_by': 'إدارة واصل - نالوت',
-        'created_at': DateTime.now().subtract(const Duration(hours: 4)).toIso8601String(),
-      },
-      {
-        'id': 'v_2',
-        'voucher_number': 'DIS-2026-0001',
-        'type': 'disbursement',
-        'beneficiary_name': 'مطعم قصر نالوت للمشويات',
-        'beneficiary_role': 'merchant',
-        'beneficiary_id': 'store_nalut_01',
-        'amount_lyd': 350.00,
-        'payment_method': 'cash',
-        'notes': 'صرف مستحقات المبيعات بعد خصم عمولة واصل 10%',
-        'created_by': 'إدارة واصل - نالوت',
-        'created_at': DateTime.now().subtract(const Duration(hours: 8)).toIso8601String(),
-      },
-      {
-        'id': 'v_3',
-        'voucher_number': 'EXP-2026-0001',
-        'type': 'expense',
-        'beneficiary_name': 'دعم فني ومصاريف تشغيلية',
-        'beneficiary_role': 'operational',
-        'beneficiary_id': null,
-        'amount_lyd': 45.00,
-        'payment_method': 'cash',
-        'notes': 'شحن بطاقات رصيد ومصروفات طوارئ للمقر',
-        'created_by': 'إدارة واصل - نالوت',
-        'created_at': DateTime.now().subtract(const Duration(hours: 12)).toIso8601String(),
-      },
-    ];
-    final combinedFallbacks = <Map<String, dynamic>>[
-      ...dynamicFiltered,
-      ...fallbacks.where((v) => type == null || type.isEmpty || type == 'all' || v['type'] == type),
-    ];
-    return combinedFallbacks;
+    return dynamicFiltered;
   }
 
   static Future<Map<String, dynamic>> createVoucher({
@@ -1190,76 +1187,102 @@ class AdminSupabaseService {
   };
 
   static Future<Map<String, dynamic>> fetchSystemConfigurations() async {
+    // 1. Try Live Unified Backend config endpoint
+    for (final base in [backendBaseUrl, 'http://localhost:3000/api/v1', localBackendUrl]) {
+      try {
+        final res = await http.get(Uri.parse('$base/config/system')).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200) {
+          final dynamic body = jsonDecode(res.body);
+          if (body is Map && body['success'] == true && body['data'] is Map) {
+            return Map<String, dynamic>.from(body['data']);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Try Supabase dedicated system_config table
     try {
       final res = await http.get(
-        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.CFG-SYSTEM-SETTINGS&select=*'),
+        Uri.parse('$supabaseUrl/system_config?key=eq.main_config&select=*'),
         headers: _headers,
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty && list.first['notes'] != null) {
-          final dynamic parsed = jsonDecode(list.first['notes']);
-          if (parsed is Map<String, dynamic>) {
-            return Map<String, dynamic>.from(parsed);
+        if (list.isNotEmpty && list.first['value'] != null) {
+          final val = list.first['value'];
+          if (val is Map) return Map<String, dynamic>.from(val);
+          if (val is String) {
+            final dynamic parsed = jsonDecode(val);
+            if (parsed is Map) return Map<String, dynamic>.from(parsed);
           }
         }
       }
-      return Map<String, dynamic>.from(defaultConfigurations);
-    } catch (_) {
-      return Map<String, dynamic>.from(defaultConfigurations);
-    }
+    } catch (_) {}
+
+    return Map<String, dynamic>.from(defaultConfigurations);
   }
 
   static Future<bool> updateSystemConfigurations(Map<String, dynamic> newConfig) async {
+    // 1. Try Live Unified Backend config endpoint
+    for (final base in [backendBaseUrl, 'http://localhost:3000/api/v1', localBackendUrl]) {
+      try {
+        final res = await http.put(
+          Uri.parse('$base/config/system'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode(newConfig),
+        ).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200) return true;
+      } catch (_) {}
+    }
+
+    // 2. Try Supabase dedicated system_config table
     try {
       final payload = {
-        'notes': jsonEncode(newConfig),
+        'key': 'main_config',
+        'value': newConfig,
+        'updated_at': DateTime.now().toIso8601String(),
       };
-      final res = await http.patch(
-        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.CFG-SYSTEM-SETTINGS'),
+      final res = await http.post(
+        Uri.parse('$supabaseUrl/system_config?on_conflict=key'),
         headers: _headers,
         body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 4));
 
-      return res.statusCode == 200 || res.statusCode == 204;
+      return res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204;
     } catch (_) {
       return false;
     }
   }
 
   static Future<List<Map<String, dynamic>>> fetchRecentReviews() async {
+    // 1. Try Live Unified Backend reviews endpoint
+    for (final base in [backendBaseUrl, 'http://localhost:3000/api/v1', localBackendUrl]) {
+      try {
+        final res = await http.get(Uri.parse('$base/reviews?limit=20')).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200) {
+          final dynamic body = jsonDecode(res.body);
+          if (body is Map && body['success'] == true && body['data'] is List) {
+            return (body['data'] as List).map((r) => Map<String, dynamic>.from(r as Map)).toList();
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Try Supabase dedicated reviews table
     try {
       final res = await http.get(
-        Uri.parse('$supabaseUrl/orders?notes=ilike.*rating*&select=*&order=updated_at.desc&limit=20'),
+        Uri.parse('$supabaseUrl/reviews?select=*&order=created_at.desc&limit=20'),
         headers: _headers,
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        final List<Map<String, dynamic>> reviews = [];
-        for (var item in list) {
-          try {
-            final notesStr = item['notes'] ?? '';
-            if (notesStr.contains('rating')) {
-              reviews.add({
-                'order_number': item['order_number'] ?? item['id'],
-                'customer_name': item['customer_name'] ?? 'زبون واصل',
-                'customer_phone': item['customer_phone'] ?? '',
-                'store_id': item['store_id'] ?? '',
-                'driver_id': item['driver_id'] ?? '',
-                'notes': notesStr,
-                'created_at': item['updated_at'] ?? item['created_at'],
-              });
-            }
-          } catch (_) {}
-        }
-        return reviews;
+        return list.map((r) => Map<String, dynamic>.from(r as Map)).toList();
       }
-      return [];
-    } catch (_) {
-      return [];
-    }
+    } catch (_) {}
+
+    return [];
   }
 
   // --------------------------------------------------------------------------
@@ -2185,27 +2208,51 @@ class AdminSupabaseService {
       return _productModifierCache[productId]!;
     }
 
-    // 2. Try Supabase cloud fetch from vouchers / config notes
+    // 2. Try Live Unified Backend product modifiers endpoint
+    for (final base in [backendBaseUrl, 'http://localhost:3000/api/v1', localBackendUrl]) {
+      try {
+        final res = await http.get(Uri.parse('$base/products/$productId/modifiers')).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200) {
+          final dynamic body = jsonDecode(res.body);
+          if (body is Map && body['success'] == true && body['data'] is List) {
+            final result = (body['data'] as List).map((g) => Map<String, dynamic>.from(g as Map)).toList();
+            if (result.isNotEmpty) {
+              _productModifierCache[productId] = result;
+              return result;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 3. Try Supabase dedicated product_modifiers table
     try {
       final res = await http.get(
-        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.MOD-$productId&select=*'),
+        Uri.parse('$supabaseUrl/product_modifiers?product_id=eq.$productId&select=*'),
         headers: _headers,
       ).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty && list.first['notes'] != null) {
-          final dynamic parsed = jsonDecode(list.first['notes']);
-          if (parsed is List) {
-            final result = parsed.map((g) => Map<String, dynamic>.from(g as Map)).toList();
+        if (list.isNotEmpty && list.first['modifier_groups'] != null) {
+          final val = list.first['modifier_groups'];
+          if (val is List) {
+            final result = val.map((g) => Map<String, dynamic>.from(g as Map)).toList();
             _productModifierCache[productId] = result;
             return result;
+          } else if (val is String) {
+            final dynamic parsed = jsonDecode(val);
+            if (parsed is List) {
+              final result = parsed.map((g) => Map<String, dynamic>.from(g as Map)).toList();
+              _productModifierCache[productId] = result;
+              return result;
+            }
           }
         }
       }
     } catch (_) {}
 
-    // 3. Fallback to sensible Libyan Nalut preset
+    // 4. Fallback to sensible Libyan Nalut preset
     final defaultGroups = getDefaultModifiersForProduct(category, productName);
     _productModifierCache[productId] = defaultGroups;
     return defaultGroups;
@@ -2217,50 +2264,32 @@ class AdminSupabaseService {
   ) async {
     _productModifierCache[productId] = groups;
 
+    // 1. Try Live Unified Backend product modifiers endpoint
+    for (final base in [backendBaseUrl, 'http://localhost:3000/api/v1', localBackendUrl]) {
+      try {
+        final res = await http.post(
+          Uri.parse('$base/products/$productId/modifiers'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'groups': groups}),
+        ).timeout(const Duration(seconds: 4));
+        if (res.statusCode == 200) return true;
+      } catch (_) {}
+    }
+
+    // 2. Try Supabase dedicated product_modifiers table
     try {
       final payload = {
-        'notes': jsonEncode(groups),
+        'product_id': productId,
+        'modifier_groups': groups,
+        'updated_at': DateTime.now().toIso8601String(),
       };
-
-      // Check if voucher exists
-      final checkRes = await http.get(
-        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.MOD-$productId&select=id'),
+      final res = await http.post(
+        Uri.parse('$supabaseUrl/product_modifiers?on_conflict=product_id'),
         headers: _headers,
+        body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 4));
 
-      if (checkRes.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(checkRes.body);
-        if (list.isNotEmpty) {
-          final updateRes = await http.patch(
-            Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.MOD-$productId'),
-            headers: _headers,
-            body: jsonEncode(payload),
-          ).timeout(const Duration(seconds: 4));
-          return updateRes.statusCode == 200 || updateRes.statusCode == 204;
-        }
-      }
-
-      // Create new
-      final createPayload = {
-        'id': 'mod_${DateTime.now().millisecondsSinceEpoch}',
-        'voucher_number': 'MOD-$productId',
-        'type': 'expense',
-        'beneficiary_name': 'تخصيصات وجبة $productId',
-        'beneficiary_role': 'operational',
-        'amount_lyd': 0.0,
-        'payment_method': 'cash',
-        'notes': jsonEncode(groups),
-        'created_by': 'إدارة واصل - نالوت',
-        'created_at': DateTime.now().toIso8601String(),
-      };
-
-      final insertRes = await http.post(
-        Uri.parse('$supabaseUrl/vouchers'),
-        headers: _headers,
-        body: jsonEncode(createPayload),
-      ).timeout(const Duration(seconds: 4));
-
-      return insertRes.statusCode == 200 || insertRes.statusCode == 201;
+      return res.statusCode == 200 || res.statusCode == 201 || res.statusCode == 204;
     } catch (_) {
       return true; // Succeeded in local cache
     }

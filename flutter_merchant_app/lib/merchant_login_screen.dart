@@ -400,7 +400,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                               onPressed: () {
                                 setState(() {
                                   _phoneController.text = '0919570011';
-                                  _pinController.text = '1234';
+                                  _pinController.text = '0011';
                                 });
                               },
                             ),
@@ -411,7 +411,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                               onPressed: () {
                                 setState(() {
                                   _phoneController.text = '0910000002';
-                                  _pinController.text = '1234';
+                                  _pinController.text = '0002';
                                 });
                               },
                             ),

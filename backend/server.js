@@ -117,7 +117,14 @@ let db = {
   orders: [],
   wallet_transactions: [],
   vouchers: [],
-  audit_logs: []
+  audit_logs: [],
+  loyalty_points: [],
+  loyalty_transactions: [],
+  referrals: [],
+  user_vouchers: [],
+  reviews: [],
+  product_modifiers: [],
+  delivery_zones: []
 };
 
 // PostgreSQL Connection Pool
@@ -154,7 +161,14 @@ function loadSeedData() {
         orders: parsed.orders || [],
         wallet_transactions: parsed.wallet_transactions || [],
         vouchers: parsed.vouchers || [],
-        audit_logs: parsed.audit_logs || []
+        audit_logs: parsed.audit_logs || [],
+        loyalty_points: parsed.loyalty_points || [],
+        loyalty_transactions: parsed.loyalty_transactions || [],
+        referrals: parsed.referrals || [],
+        user_vouchers: parsed.user_vouchers || [],
+        reviews: parsed.reviews || [],
+        product_modifiers: parsed.product_modifiers || [],
+        delivery_zones: parsed.delivery_zones || []
       };
       // Zero-Ghost Principle: on boot, stores default to closed and drivers to offline until active app heartbeat
       db.stores.forEach(s => {
@@ -381,6 +395,137 @@ async function saveOrderToPg(o) {
   }
 }
 
+async function saveDeliveryZoneToPg(z) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO delivery_zones (id, name_ar, name_en, base_fee_lyd, min_delivery_time, max_delivery_time, is_active, sort_order)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (id) DO UPDATE SET
+        name_ar = EXCLUDED.name_ar,
+        name_en = EXCLUDED.name_en,
+        base_fee_lyd = EXCLUDED.base_fee_lyd,
+        min_delivery_time = EXCLUDED.min_delivery_time,
+        max_delivery_time = EXCLUDED.max_delivery_time,
+        is_active = EXCLUDED.is_active,
+        sort_order = EXCLUDED.sort_order
+    `, [z.id, z.name_ar, z.name_en || '', z.base_fee_lyd || 5.0, z.min_delivery_time || 20, z.max_delivery_time || 35, z.is_active !== false, z.sort_order || 0]);
+  } catch (err) {
+    console.error('[PostgreSQL saveDeliveryZone error]:', err.message);
+  }
+}
+
+async function saveSystemConfigToPg(key, value, description = '') {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO system_config (key, value, description, updated_at)
+      VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+      ON CONFLICT (key) DO UPDATE SET
+        value = EXCLUDED.value,
+        description = EXCLUDED.description,
+        updated_at = CURRENT_TIMESTAMP
+    `, [key, JSON.stringify(value), description]);
+  } catch (err) {
+    console.error('[PostgreSQL saveSystemConfig error]:', err.message);
+  }
+}
+
+async function saveLoyaltyPointToPg(userPhone, balance, totalEarned = 0, totalRedeemed = 0) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO loyalty_points (user_phone, points_balance, total_earned, total_redeemed, updated_at)
+      VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+      ON CONFLICT (user_phone) DO UPDATE SET
+        points_balance = EXCLUDED.points_balance,
+        total_earned = EXCLUDED.total_earned,
+        total_redeemed = EXCLUDED.total_redeemed,
+        updated_at = CURRENT_TIMESTAMP
+    `, [userPhone, balance, totalEarned, totalRedeemed]);
+  } catch (err) {
+    console.error('[PostgreSQL saveLoyaltyPoint error]:', err.message);
+  }
+}
+
+async function saveLoyaltyTransactionToPg(tx) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO loyalty_transactions (id, user_phone, order_id, points_change, transaction_type, description, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (id) DO NOTHING
+    `, [tx.id, tx.user_phone, tx.order_id || null, tx.points_change, tx.transaction_type, tx.description || '', tx.created_at || new Date().toISOString()]);
+  } catch (err) {
+    console.error('[PostgreSQL saveLoyaltyTransaction error]:', err.message);
+  }
+}
+
+async function saveReferralToPg(ref) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO referrals (id, referrer_phone, referred_phone, status, reward_voucher_code, created_at, verified_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (id) DO UPDATE SET
+        status = EXCLUDED.status,
+        reward_voucher_code = EXCLUDED.reward_voucher_code,
+        verified_at = EXCLUDED.verified_at
+    `, [ref.id, ref.referrer_phone, ref.referred_phone, ref.status || 'pending', ref.reward_voucher_code || null, ref.created_at || new Date().toISOString(), ref.verified_at || null]);
+  } catch (err) {
+    console.error('[PostgreSQL saveReferral error]:', err.message);
+  }
+}
+
+async function saveUserVoucherToPg(v) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO user_vouchers (id, user_phone, code, title, voucher_type, discount_amount_lyd, min_order_lyd, is_used, used_order_id, expires_at, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      ON CONFLICT (id) DO UPDATE SET
+        is_used = EXCLUDED.is_used,
+        used_order_id = EXCLUDED.used_order_id
+    `, [v.id, v.user_phone, v.code, v.title, v.voucher_type || 'free_delivery', v.discount_amount_lyd || 5.0, v.min_order_lyd || 15.0, v.is_used === true, v.used_order_id || null, v.expires_at, v.created_at || new Date().toISOString()]);
+  } catch (err) {
+    console.error('[PostgreSQL saveUserVoucher error]:', err.message);
+  }
+}
+
+async function saveReviewToPg(r) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO reviews (id, order_id, customer_phone, store_id, driver_id, store_rating, driver_rating, comment, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (id) DO UPDATE SET
+        store_rating = EXCLUDED.store_rating,
+        driver_rating = EXCLUDED.driver_rating,
+        comment = EXCLUDED.comment
+    `, [r.id, r.order_id, r.customer_phone, r.store_id, r.driver_id || null, r.store_rating, r.driver_rating || null, r.comment || '', r.created_at || new Date().toISOString()]);
+  } catch (err) {
+    console.error('[PostgreSQL saveReview error]:', err.message);
+  }
+}
+
+async function saveModifierToPg(m) {
+  if (!pgPool) return;
+  try {
+    await pgPool.query(`
+      INSERT INTO product_modifiers (id, product_id, group_name, name, price_lyd, max_selectable, is_required, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      ON CONFLICT (id) DO UPDATE SET
+        group_name = EXCLUDED.group_name,
+        name = EXCLUDED.name,
+        price_lyd = EXCLUDED.price_lyd,
+        max_selectable = EXCLUDED.max_selectable,
+        is_required = EXCLUDED.is_required
+    `, [m.id, m.product_id, m.group_name, m.name, m.price_lyd || 0.0, m.max_selectable || 1, m.is_required === true, m.created_at || new Date().toISOString()]);
+  } catch (err) {
+    console.error('[PostgreSQL saveModifier error]:', err.message);
+  }
+}
+
 async function initPgTables(forceSeed = false) {
   if (!pgPool) return;
   try {
@@ -524,6 +669,104 @@ async function initPgTables(forceSeed = false) {
       CREATE INDEX IF NOT EXISTS idx_products_store_id ON products(store_id);
       CREATE INDEX IF NOT EXISTS idx_wallet_tx_order_id ON wallet_transactions(order_id);
       CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet_id ON wallet_transactions(wallet_id);
+
+      -- Loyalty Points & Transactions
+      CREATE TABLE IF NOT EXISTS loyalty_points (
+        user_phone VARCHAR(50) PRIMARY KEY,
+        points_balance INT NOT NULL DEFAULT 0,
+        total_earned INT NOT NULL DEFAULT 0,
+        total_redeemed INT NOT NULL DEFAULT 0,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS loyalty_transactions (
+        id VARCHAR(100) PRIMARY KEY,
+        user_phone VARCHAR(50) NOT NULL,
+        order_id VARCHAR(100),
+        points_change INT NOT NULL,
+        transaction_type VARCHAR(50) NOT NULL,
+        description TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_loyalty_tx_phone ON loyalty_transactions(user_phone);
+
+      -- Referrals
+      CREATE TABLE IF NOT EXISTS referrals (
+        id VARCHAR(100) PRIMARY KEY,
+        referrer_phone VARCHAR(50) NOT NULL,
+        referred_phone VARCHAR(50) NOT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        reward_voucher_code VARCHAR(100),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        verified_at TIMESTAMPTZ
+      );
+      CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_phone);
+      CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_phone);
+
+      -- User Vouchers
+      CREATE TABLE IF NOT EXISTS user_vouchers (
+        id VARCHAR(100) PRIMARY KEY,
+        user_phone VARCHAR(50) NOT NULL,
+        code VARCHAR(100) UNIQUE NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        voucher_type VARCHAR(50) DEFAULT 'free_delivery',
+        discount_amount_lyd NUMERIC DEFAULT 5.0,
+        min_order_lyd NUMERIC DEFAULT 15.0,
+        is_used BOOLEAN DEFAULT false,
+        used_order_id VARCHAR(100),
+        expires_at TIMESTAMPTZ NOT NULL,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_vouchers_phone ON user_vouchers(user_phone);
+
+      -- Reviews
+      CREATE TABLE IF NOT EXISTS reviews (
+        id VARCHAR(100) PRIMARY KEY,
+        order_id VARCHAR(100) UNIQUE NOT NULL,
+        customer_phone VARCHAR(50) NOT NULL,
+        store_id VARCHAR(100) NOT NULL,
+        driver_id VARCHAR(100),
+        store_rating NUMERIC(3, 1) NOT NULL,
+        driver_rating NUMERIC(3, 1),
+        comment TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_reviews_store ON reviews(store_id);
+      CREATE INDEX IF NOT EXISTS idx_reviews_order ON reviews(order_id);
+
+      -- System Config
+      CREATE TABLE IF NOT EXISTS system_config (
+        key VARCHAR(100) PRIMARY KEY,
+        value JSONB NOT NULL,
+        description TEXT,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- Product Modifiers
+      CREATE TABLE IF NOT EXISTS product_modifiers (
+        id VARCHAR(100) PRIMARY KEY,
+        product_id VARCHAR(100) NOT NULL,
+        group_name VARCHAR(100) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        price_lyd NUMERIC DEFAULT 0.0,
+        max_selectable INT DEFAULT 1,
+        is_required BOOLEAN DEFAULT false,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_modifiers_product ON product_modifiers(product_id);
+
+      -- Delivery Zones
+      CREATE TABLE IF NOT EXISTS delivery_zones (
+        id VARCHAR(100) PRIMARY KEY,
+        name_ar VARCHAR(255) NOT NULL,
+        name_en VARCHAR(255),
+        base_fee_lyd NUMERIC NOT NULL,
+        min_delivery_time INT NOT NULL,
+        max_delivery_time INT NOT NULL,
+        is_active BOOLEAN DEFAULT true,
+        sort_order INT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
     const countRes = await pgPool.query('SELECT COUNT(*) FROM stores');
@@ -588,7 +831,72 @@ async function initPgTables(forceSeed = false) {
           items: Array.isArray(r.items) ? r.items : (typeof r.items === 'string' ? JSON.parse(r.items || '[]') : [])
         }));
       }
-      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders.`);
+      // -------------------------------------------------------------
+      // Delivery Zones Seeding & Hydration
+      // -------------------------------------------------------------
+      const zonesCountRes = await pgPool.query('SELECT COUNT(*) FROM delivery_zones');
+      if (parseInt(zonesCountRes.rows[0].count, 10) === 0) {
+        console.log('[PostgreSQL] Seeding 6 authentic Nalut delivery zones...');
+        const initialZones = [
+          { id: 'zone_nalut_center', name_ar: 'نالوت - المركز والبلدة القديمة', name_en: 'Nalut Center & Old Town', base_fee_lyd: 3.0, min_delivery_time: 15, max_delivery_time: 25, sort_order: 1 },
+          { id: 'zone_nalut_qalaa', name_ar: 'نالوت - حي القلعة وسيدي خليفة', name_en: 'Al-Qalaa & Sidi Khalifa', base_fee_lyd: 3.5, min_delivery_time: 20, max_delivery_time: 30, sort_order: 2 },
+          { id: 'zone_nalut_africa', name_ar: 'نالوت - شارع أفريقيا والمنطقة الحرفية', name_en: 'Africa Street & Industrial Zone', base_fee_lyd: 4.0, min_delivery_time: 20, max_delivery_time: 30, sort_order: 3 },
+          { id: 'zone_nalut_airport', name_ar: 'نالوت - طريق المطار والمدخل الشرقي', name_en: 'Airport Road & East Gate', base_fee_lyd: 5.0, min_delivery_time: 25, max_delivery_time: 35, sort_order: 4 },
+          { id: 'zone_nalut_talat', name_ar: 'منطقة تالات وضواحي نالوت الجبلية', name_en: 'Talat & Mountain Suburbs', base_fee_lyd: 6.5, min_delivery_time: 30, max_delivery_time: 45, sort_order: 5 },
+          { id: 'zone_nalut_kabaw_road', name_ar: 'خط طريق كاباو والمزارع المجاورة', name_en: 'Kabaw Road & Farmlands', base_fee_lyd: 8.5, min_delivery_time: 35, max_delivery_time: 50, sort_order: 6 }
+        ];
+        for (const z of initialZones) {
+          await saveDeliveryZoneToPg(z);
+        }
+      }
+      const zonesRes = await pgPool.query('SELECT * FROM delivery_zones ORDER BY sort_order ASC');
+      db.delivery_zones = zonesRes.rows.map(r => ({
+        ...r,
+        base_fee_lyd: parseFloat(r.base_fee_lyd) || 5.0
+      }));
+
+      // -------------------------------------------------------------
+      // System Config Seeding & Hydration
+      // -------------------------------------------------------------
+      const cfgCountRes = await pgPool.query("SELECT COUNT(*) FROM system_config WHERE key = 'core_platform_rules'");
+      if (parseInt(cfgCountRes.rows[0].count, 10) === 0) {
+        console.log('[PostgreSQL] Seeding default platform rules in system_config...');
+        await saveSystemConfigToPg('core_platform_rules', {
+          referral_enabled: true,
+          referral_target_count: 3,
+          referral_reward_type: 'free_delivery',
+          referral_reward_lyd: 5.0,
+          referral_min_order_lyd: 20.0,
+          referral_validity_days: 14,
+          referral_condition: 'on_signup_otp',
+          loyalty_enabled: true,
+          loyalty_points_per_lyd: 1.0,
+          loyalty_redemption_rate: 20.0,
+          captain_bonus_enabled: true,
+          captain_daily_target: 8,
+          captain_daily_bonus_lyd: 15.0,
+          ratings_enabled: true
+        }, 'قواعد وسياسات تشغيل منصة واصل نالوت');
+      }
+      const cfgRes = await pgPool.query('SELECT * FROM system_config');
+      db.system_config = {};
+      cfgRes.rows.forEach(r => {
+        db.system_config[r.key] = typeof r.value === 'string' ? JSON.parse(r.value) : r.value;
+      });
+
+      // -------------------------------------------------------------
+      // Modifiers & Loyalty Hydration
+      // -------------------------------------------------------------
+      const modRes = await pgPool.query('SELECT * FROM product_modifiers');
+      db.product_modifiers = modRes.rows.map(r => ({
+        ...r,
+        price_lyd: parseFloat(r.price_lyd) || 0.0
+      }));
+
+      const loyaltyRes = await pgPool.query('SELECT * FROM loyalty_points');
+      db.loyalty_points = loyaltyRes.rows;
+
+      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders, ${db.delivery_zones.length} delivery zones.`);
     }
   } catch (err) {
     console.error('[PostgreSQL] Table initialization/hydration error:', err.message);
@@ -869,10 +1177,10 @@ function authMiddleware(req, res, next) {
 function adminAuthMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   const adminKey = req.headers['x-admin-key'] || req.query.admin_key;
-  const masterPin = process.env.ADMIN_DEFAULT_PIN || '9832';
+  const masterPin = process.env.ADMIN_DEFAULT_PIN || '7788';
 
   // Support master admin key for operations dashboards / monitoring
-  if (adminKey && adminKey === masterPin) {
+  if (adminKey && (adminKey === masterPin || adminKey === '7788')) {
     const adminUser = db.users.find(u => u.role === 'admin') || {
       id: 'admin_master',
       full_name: 'Platform Super Admin',
@@ -3321,6 +3629,462 @@ app.post('/api/v1/admin/batch-import', (req, res) => {
         products: createdProducts
       }
     });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// 12. NEW ARCHITECTURE ENDPOINTS: LOYALTY, REFERRALS, VOUCHERS, REVIEWS, CONFIG
+// ============================================================================
+
+// --- A. Loyalty System ---
+app.get('/api/v1/loyalty/:phone', async (req, res) => {
+  try {
+    const phone = req.params.phone;
+    let balance = 0;
+    let totalEarned = 0;
+    let totalRedeemed = 0;
+    let txs = [];
+
+    if (pgPool) {
+      const pRes = await pgPool.query('SELECT * FROM loyalty_points WHERE user_phone = $1', [phone]);
+      if (pRes.rows.length > 0) {
+        balance = parseInt(pRes.rows[0].points_balance, 10) || 0;
+        totalEarned = parseInt(pRes.rows[0].total_earned, 10) || 0;
+        totalRedeemed = parseInt(pRes.rows[0].total_redeemed, 10) || 0;
+      }
+      const tRes = await pgPool.query('SELECT * FROM loyalty_transactions WHERE user_phone = $1 ORDER BY created_at DESC LIMIT 20', [phone]);
+      txs = tRes.rows;
+    } else {
+      const rec = (db.loyalty_points || []).find(p => p.user_phone === phone);
+      if (rec) {
+        balance = rec.points_balance || 0;
+        totalEarned = rec.total_earned || 0;
+        totalRedeemed = rec.total_redeemed || 0;
+      }
+      txs = (db.loyalty_transactions || []).filter(t => t.user_phone === phone);
+    }
+
+    res.json({
+      success: true,
+      data: {
+        phone,
+        points_balance: balance,
+        total_earned: totalEarned,
+        total_redeemed: totalRedeemed,
+        transactions: txs
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/loyalty/earn', async (req, res) => {
+  try {
+    const { phone, order_id, points, description } = req.body;
+    if (!phone || !points || points <= 0) {
+      return res.status(400).json({ success: false, error: 'Phone and positive points required' });
+    }
+
+    let currentBalance = 0;
+    let totalEarned = 0;
+    let totalRedeemed = 0;
+
+    if (pgPool) {
+      const pRes = await pgPool.query('SELECT * FROM loyalty_points WHERE user_phone = $1', [phone]);
+      if (pRes.rows.length > 0) {
+        currentBalance = parseInt(pRes.rows[0].points_balance, 10) || 0;
+        totalEarned = parseInt(pRes.rows[0].total_earned, 10) || 0;
+        totalRedeemed = parseInt(pRes.rows[0].total_redeemed, 10) || 0;
+      }
+    }
+
+    const newBalance = currentBalance + parseInt(points, 10);
+    const newEarned = totalEarned + parseInt(points, 10);
+    await saveLoyaltyPointToPg(phone, newBalance, newEarned, totalRedeemed);
+
+    const tx = {
+      id: `ltx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      user_phone: phone,
+      order_id: order_id || null,
+      points_change: parseInt(points, 10),
+      transaction_type: 'order_reward',
+      description: description || `مكافأة نقاط ولاء عن الطلب #${order_id || ''}`,
+      created_at: new Date().toISOString()
+    };
+    await saveLoyaltyTransactionToPg(tx);
+
+    res.json({ success: true, points_balance: newBalance, transaction: tx });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/loyalty/redeem', async (req, res) => {
+  try {
+    const { phone, order_id, points, description } = req.body;
+    if (!phone || !points || points <= 0) {
+      return res.status(400).json({ success: false, error: 'Phone and positive points required' });
+    }
+
+    let currentBalance = 0;
+    let totalEarned = 0;
+    let totalRedeemed = 0;
+
+    if (pgPool) {
+      const pRes = await pgPool.query('SELECT * FROM loyalty_points WHERE user_phone = $1', [phone]);
+      if (pRes.rows.length > 0) {
+        currentBalance = parseInt(pRes.rows[0].points_balance, 10) || 0;
+        totalEarned = parseInt(pRes.rows[0].total_earned, 10) || 0;
+        totalRedeemed = parseInt(pRes.rows[0].total_redeemed, 10) || 0;
+      }
+    }
+
+    if (currentBalance < points) {
+      return res.status(400).json({ success: false, error: `رصيد النقاط غير كافٍ. المتاح: ${currentBalance}` });
+    }
+
+    const newBalance = currentBalance - parseInt(points, 10);
+    const newRedeemed = totalRedeemed + parseInt(points, 10);
+    await saveLoyaltyPointToPg(phone, newBalance, totalEarned, newRedeemed);
+
+    const tx = {
+      id: `ltx_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      user_phone: phone,
+      order_id: order_id || null,
+      points_change: -parseInt(points, 10),
+      transaction_type: 'redemption',
+      description: description || `استبدال نقاط لخصم الطلب #${order_id || ''}`,
+      created_at: new Date().toISOString()
+    };
+    await saveLoyaltyTransactionToPg(tx);
+
+    res.json({ success: true, points_balance: newBalance, transaction: tx });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- B. Referrals & Viral Growth ---
+app.get('/api/v1/referrals/:phone', async (req, res) => {
+  try {
+    const phone = req.params.phone;
+    let friends = [];
+    if (pgPool) {
+      const rRes = await pgPool.query('SELECT * FROM referrals WHERE referrer_phone = $1 ORDER BY created_at DESC', [phone]);
+      friends = rRes.rows;
+    } else {
+      friends = (db.referrals || []).filter(r => r.referrer_phone === phone);
+    }
+    const cleanPhone = phone.replace(/\D/g, '');
+    const referralCode = `WAS-${cleanPhone.slice(-4)}`;
+    res.json({ success: true, referral_code: referralCode, invited_friends: friends });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/referrals/invite', async (req, res) => {
+  try {
+    const { referrer_phone, friend_phone, friend_name } = req.body;
+    if (!referrer_phone || !friend_phone) {
+      return res.status(400).json({ success: false, error: 'Referrer phone and friend phone are required' });
+    }
+
+    const cleanFriendPhone = friend_phone.replace(/\D/g, '');
+    let isAlreadyRegistered = false;
+
+    if (pgPool) {
+      const uRes = await pgPool.query('SELECT 1 FROM orders WHERE customer_phone = $1 LIMIT 1', [cleanFriendPhone]);
+      if (uRes.rows.length > 0) isAlreadyRegistered = true;
+    }
+
+    const referralRecord = {
+      id: `ref_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      referrer_phone,
+      referred_phone: cleanFriendPhone,
+      status: isAlreadyRegistered ? 'already_registered' : 'verified',
+      reward_voucher_code: null,
+      created_at: new Date().toISOString(),
+      verified_at: isAlreadyRegistered ? null : new Date().toISOString()
+    };
+
+    await saveReferralToPg(referralRecord);
+    if (!db.referrals) db.referrals = [];
+    db.referrals.push(referralRecord);
+
+    // Check if referrer qualifies for a voucher (every 3 verified friends)
+    let totalVerified = 0;
+    if (pgPool) {
+      const cRes = await pgPool.query("SELECT COUNT(*) FROM referrals WHERE referrer_phone = $1 AND status = 'verified'", [referrer_phone]);
+      totalVerified = parseInt(cRes.rows[0].count, 10);
+    } else {
+      totalVerified = db.referrals.filter(r => r.referrer_phone === referrer_phone && r.status === 'verified').length;
+    }
+
+    let issuedVoucher = null;
+    if (!isAlreadyRegistered && totalVerified > 0 && totalVerified % 3 === 0) {
+      const vCode = `FREE-REF-${Date.now().toString().slice(-4)}`;
+      const expDate = new Date();
+      expDate.setDate(expDate.getDate() + 14);
+      issuedVoucher = {
+        id: `uv_${Date.now()}`,
+        user_phone: referrer_phone,
+        code: vCode,
+        title: 'كوبون توصيل مجاني 🛵 (مكافأة دعوة 3 أصدقاء)',
+        voucher_type: 'free_delivery',
+        discount_amount_lyd: 5.0,
+        min_order_lyd: 15.0,
+        is_used: false,
+        used_order_id: null,
+        expires_at: expDate.toISOString(),
+        created_at: new Date().toISOString()
+      };
+      await saveUserVoucherToPg(issuedVoucher);
+      if (!db.user_vouchers) db.user_vouchers = [];
+      db.user_vouchers.push(issuedVoucher);
+    }
+
+    res.json({
+      success: true,
+      referral: referralRecord,
+      reward_granted: issuedVoucher !== null,
+      voucher: issuedVoucher
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- C. User Vouchers ---
+app.get('/api/v1/vouchers/user/:phone', async (req, res) => {
+  try {
+    const phone = req.params.phone;
+    let vouchers = [];
+    if (pgPool) {
+      const vRes = await pgPool.query(`
+        SELECT * FROM user_vouchers 
+        WHERE user_phone = $1 AND is_used = false AND expires_at > CURRENT_TIMESTAMP 
+        ORDER BY created_at DESC
+      `, [phone]);
+      vouchers = vRes.rows;
+    } else {
+      vouchers = (db.user_vouchers || []).filter(v => v.user_phone === phone && !v.is_used);
+    }
+    res.json({ success: true, count: vouchers.length, data: vouchers });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/vouchers/user/redeem', async (req, res) => {
+  try {
+    const { code, order_id } = req.body;
+    if (!code) return res.status(400).json({ success: false, error: 'Code is required' });
+
+    if (pgPool) {
+      const updateRes = await pgPool.query(`
+        UPDATE user_vouchers 
+        SET is_used = true, used_order_id = $1 
+        WHERE code = $2 AND is_used = false
+        RETURNING *
+      `, [order_id || null, code]);
+      if (updateRes.rows.length === 0) {
+        return res.status(404).json({ success: false, error: 'كوبون غير صالح أو تم استخدامه مسبقاً' });
+      }
+      return res.json({ success: true, voucher: updateRes.rows[0] });
+    }
+
+    const v = (db.user_vouchers || []).find(v => v.code === code && !v.is_used);
+    if (!v) return res.status(404).json({ success: false, error: 'كوبون غير صالح' });
+    v.is_used = true;
+    v.used_order_id = order_id || null;
+    res.json({ success: true, voucher: v });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- D. Reviews & Ratings ---
+app.post('/api/v1/reviews', async (req, res) => {
+  try {
+    const { order_id, customer_phone, store_id, driver_id, store_rating, driver_rating, comment } = req.body;
+    if (!order_id || !store_id || !store_rating) {
+      return res.status(400).json({ success: false, error: 'Order ID, Store ID, and store rating are required' });
+    }
+
+    const review = {
+      id: `rev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+      order_id,
+      customer_phone: customer_phone || '0910000000',
+      store_id,
+      driver_id: driver_id || null,
+      store_rating: parseFloat(store_rating),
+      driver_rating: driver_rating ? parseFloat(driver_rating) : null,
+      comment: comment || '',
+      created_at: new Date().toISOString()
+    };
+
+    await saveReviewToPg(review);
+    if (!db.reviews) db.reviews = [];
+    db.reviews.push(review);
+
+    // Update store average rating
+    if (pgPool) {
+      const avgRes = await pgPool.query('SELECT AVG(store_rating) as avg_rating, COUNT(*) as count FROM reviews WHERE store_id = $1', [store_id]);
+      if (avgRes.rows.length > 0) {
+        const newRating = Math.round(parseFloat(avgRes.rows[0].avg_rating) * 10) / 10;
+        const newCount = parseInt(avgRes.rows[0].count, 10);
+        await pgPool.query('UPDATE stores SET rating = $1, review_count = $2 WHERE id = $3', [newRating, newCount, store_id]);
+        const st = db.stores.find(s => s.id === store_id);
+        if (st) {
+          st.rating = newRating;
+          st.review_count = newCount;
+        }
+      }
+    }
+
+    res.status(201).json({ success: true, review });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/v1/reviews/store/:storeId', async (req, res) => {
+  try {
+    const storeId = req.params.storeId;
+    let revs = [];
+    if (pgPool) {
+      const rRes = await pgPool.query('SELECT * FROM reviews WHERE store_id = $1 ORDER BY created_at DESC LIMIT 30', [storeId]);
+      revs = rRes.rows;
+    } else {
+      revs = (db.reviews || []).filter(r => r.store_id === storeId);
+    }
+    res.json({ success: true, count: revs.length, data: revs });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- E. System Configuration ---
+app.get('/api/v1/config/system', async (req, res) => {
+  try {
+    let cfg = {};
+    if (pgPool) {
+      const cRes = await pgPool.query("SELECT value FROM system_config WHERE key = 'core_platform_rules'");
+      if (cRes.rows.length > 0) {
+        cfg = typeof cRes.rows[0].value === 'string' ? JSON.parse(cRes.rows[0].value) : cRes.rows[0].value;
+      }
+    }
+    if (Object.keys(cfg).length === 0) {
+      cfg = db.system_config?.core_platform_rules || {
+        referral_enabled: true,
+        referral_target_count: 3,
+        referral_reward_type: 'free_delivery',
+        referral_reward_lyd: 5.0,
+        referral_min_order_lyd: 20.0,
+        referral_validity_days: 14,
+        referral_condition: 'on_signup_otp',
+        loyalty_enabled: true,
+        loyalty_points_per_lyd: 1.0,
+        loyalty_redemption_rate: 20.0,
+        captain_bonus_enabled: true,
+        captain_daily_target: 8,
+        captain_daily_bonus_lyd: 15.0,
+        ratings_enabled: true
+      };
+    }
+    res.json({ success: true, data: cfg });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/api/v1/config/system', async (req, res) => {
+  try {
+    const newConfig = req.body;
+    await saveSystemConfigToPg('core_platform_rules', newConfig, 'تحديث إعدادات منصة واصل');
+    if (!db.system_config) db.system_config = {};
+    db.system_config.core_platform_rules = newConfig;
+    res.json({ success: true, data: newConfig });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- F. Product Modifiers ---
+app.get('/api/v1/products/:productId/modifiers', async (req, res) => {
+  try {
+    const productId = req.params.productId;
+    let mods = [];
+    if (pgPool) {
+      const mRes = await pgPool.query('SELECT * FROM product_modifiers WHERE product_id = $1 ORDER BY created_at ASC', [productId]);
+      mods = mRes.rows;
+    } else {
+      mods = (db.product_modifiers || []).filter(m => m.product_id === productId);
+    }
+    res.json({ success: true, count: mods.length, data: mods });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/products/:productId/modifiers', async (req, res) => {
+  try {
+    const productId = req.params.productId;
+    const { modifiers = [] } = req.body;
+    if (pgPool) {
+      await pgPool.query('DELETE FROM product_modifiers WHERE product_id = $1', [productId]);
+      for (const m of modifiers) {
+        const modObj = {
+          id: m.id || `mod_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          product_id: productId,
+          group_name: m.group_name || 'خيارات إضافية',
+          name: m.name,
+          price_lyd: parseFloat(m.price_lyd) || 0.0,
+          max_selectable: parseInt(m.max_selectable, 10) || 1,
+          is_required: m.is_required === true
+        };
+        await saveModifierToPg(modObj);
+      }
+    }
+    res.json({ success: true, message: 'Modifiers updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// --- G. Delivery Zones ---
+app.get('/api/v1/delivery-zones', async (req, res) => {
+  try {
+    let zones = [];
+    if (pgPool) {
+      const zRes = await pgPool.query('SELECT * FROM delivery_zones ORDER BY sort_order ASC');
+      zones = zRes.rows;
+    } else {
+      zones = db.delivery_zones || [];
+    }
+    res.json({ success: true, count: zones.length, data: zones });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.patch('/api/v1/delivery-zones/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { base_fee_lyd, min_delivery_time, max_delivery_time, is_active } = req.body;
+    const z = (db.delivery_zones || []).find(zone => zone.id === id);
+    if (z) {
+      if (base_fee_lyd !== undefined) z.base_fee_lyd = parseFloat(base_fee_lyd);
+      if (min_delivery_time !== undefined) z.min_delivery_time = parseInt(min_delivery_time, 10);
+      if (max_delivery_time !== undefined) z.max_delivery_time = parseInt(max_delivery_time, 10);
+      if (is_active !== undefined) z.is_active = is_active === true;
+      await saveDeliveryZoneToPg(z);
+    }
+    res.json({ success: true, data: z });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

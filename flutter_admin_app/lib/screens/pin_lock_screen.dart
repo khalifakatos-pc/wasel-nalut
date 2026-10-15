@@ -12,7 +12,6 @@ class PinLockScreen extends StatefulWidget {
 class _PinLockScreenState extends State<PinLockScreen> {
   String _enteredPin = '';
   final String _correctPin = '7788';
-  final String _backupPin = '9832';
   bool _isError = false;
 
   void _onKeyPress(String digit) {
@@ -38,7 +37,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
   }
 
   void _verifyPin() {
-    if (_enteredPin == _correctPin || _enteredPin == _backupPin) {
+    if (_enteredPin == _correctPin) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AdminMainScreen()),
       );

@@ -218,8 +218,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
   }
 
   void _openWithdrawalModal() {
-    final amountController = TextEditingController(text: '100');
-    final cardController = TextEditingController(text: '1120-4490-8819-2041');
+    final amountController = TextEditingController(text: '50');
+    final cardController = TextEditingController(text: DriverSupabaseService.activeDriverPhone);
     String selectedMethod = 'سداد';
 
     showModalBottomSheet(
@@ -266,7 +266,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                     const Text('اختر وسيلة الاستلام:', style: TextStyle(fontSize: 13, color: Colors.white70)),
                     const SizedBox(height: 8),
                     Row(
-                      children: ['سداد Sadad', 'بطاقة تداول', 'مصرف الأمان'].map((m) {
+                      children: ['سداد Sadad', 'بطاقة تداول', 'مصرف الجمهورية'].map((m) {
                         final isSel = selectedMethod == m;
                         return Padding(
                           padding: const EdgeInsets.only(left: 8),
@@ -295,7 +295,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                     TextField(
                       controller: cardController,
                       decoration: const InputDecoration(
-                        labelText: 'رقم البطاقة / الحساب',
+                        labelText: 'رقم المحفظة / رقم الحساب المصرفي',
+                        hintText: 'مثال: رقم هاتف سداد أو رقم الحساب',
                         border: OutlineInputBorder(),
                       ),
                     ),

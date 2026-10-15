@@ -49,7 +49,7 @@ class MerchantSupabaseService {
           final sPhone = (storeData['phone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
           if (sPhone.isNotEmpty && (sPhone == cleanPhone || cleanPhone.endsWith(sPhone) || sPhone.endsWith(cleanPhone))) {
             final dbPin = storeData['pin']?.toString().trim();
-            if (dbPin == null || dbPin.isEmpty || dbPin == cleanPin || cleanPin == '1234') {
+            if (dbPin != null && dbPin.isNotEmpty && dbPin == cleanPin) {
               activeDynamicStore = PartnerStore.fromMap(storeData);
               currentStoreId = activeDynamicStore!.id;
               currentUser = MerchantUser(
@@ -80,7 +80,7 @@ class MerchantSupabaseService {
         if (list.isNotEmpty) {
           final storeData = Map<String, dynamic>.from(list.first as Map);
           final dbPin = storeData['pin']?.toString().trim();
-          if (dbPin == null || dbPin.isEmpty || dbPin == cleanPin || cleanPin == '1234') {
+          if (dbPin != null && dbPin.isNotEmpty && dbPin == cleanPin) {
             activeDynamicStore = PartnerStore.fromMap(storeData);
             currentStoreId = activeDynamicStore!.id;
             currentUser = MerchantUser(
@@ -99,7 +99,8 @@ class MerchantSupabaseService {
     // 3. Check offline/local Nalut partner stores
     for (final s in PartnerStore.nalutStores) {
       if (s.phone == cleanPhone || cleanPhone.endsWith(s.phone) || s.phone.endsWith(cleanPhone)) {
-        if (cleanPin == '1234' || cleanPin == '9832') {
+        final storeSpecificPin = s.phone.length >= 4 ? s.phone.substring(s.phone.length - 4) : '2026';
+        if (cleanPin == storeSpecificPin) {
           activeDynamicStore = s;
           currentStoreId = s.id;
           currentUser = MerchantUser(
@@ -114,20 +115,6 @@ class MerchantSupabaseService {
           return null; // Reject wrong PIN
         }
       }
-    }
-
-    // 4. Dynamic login for any valid Libyan mobile with default PIN 1234
-    if ((cleanPhone.startsWith('091') || cleanPhone.startsWith('092') || cleanPhone.startsWith('094')) &&
-        cleanPhone.length >= 10 &&
-        cleanPin == '1234') {
-      currentUser = MerchantUser(
-        id: 'usr_${DateTime.now().millisecondsSinceEpoch}',
-        phone: cleanPhone,
-        name: 'شريك واصل نالوت',
-        storeId: currentStoreId,
-        role: 'مدير المتجر',
-      );
-      return currentUser;
     }
 
     return null;

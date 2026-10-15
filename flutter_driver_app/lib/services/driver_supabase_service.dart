@@ -114,9 +114,9 @@ class DriverSupabaseService {
         final List<dynamic> list = jsonDecode(res.body);
         if (list.isNotEmpty) {
           final row = list.first as Map<String, dynamic>;
-          // Default PIN 1234 or verify stored PIN if present
-          final expectedPin = row['pin']?.toString() ?? '1234';
-          if (pin == expectedPin || pin == '1234' || pin.length >= 4) {
+          // Strict PIN authentication against database
+          final expectedPin = row['pin']?.toString();
+          if (expectedPin != null && expectedPin.isNotEmpty && pin == expectedPin) {
             await _persistCaptainSession(
               id: row['id']?.toString() ?? 'driver_nalut_01',
               name: row['full_name']?.toString() ?? 'كابتن واصل',
@@ -175,7 +175,7 @@ class DriverSupabaseService {
     ];
 
     for (final captain in registeredCaptains) {
-      if (captain['phone'] == phone && (captain['pin'] == pin || pin == '1234')) {
+      if (captain['phone'] == phone && captain['pin'] == pin) {
         await _persistCaptainSession(
           id: captain['id']!,
           name: captain['name']!,
@@ -715,18 +715,34 @@ class DriverSupabaseService {
 
   /// Fetch dynamic system configuration (captain targets, incentives, etc.)
   static Future<Map<String, dynamic>> fetchSystemConfigurations() async {
+    // 1. Try Live Unified Backend config endpoint
+    for (final base in [backendBaseUrl, 'http://localhost:3000/api/v1', localBackendUrl]) {
+      try {
+        final res = await http.get(Uri.parse('$base/config/system')).timeout(const Duration(seconds: 3));
+        if (res.statusCode == 200) {
+          final dynamic body = jsonDecode(res.body);
+          if (body is Map && body['success'] == true && body['data'] is Map) {
+            return Map<String, dynamic>.from(body['data']);
+          }
+        }
+      } catch (_) {}
+    }
+
+    // 2. Try Supabase dedicated system_config table
     try {
       final res = await http.get(
-        Uri.parse('$supabaseUrl/vouchers?voucher_number=eq.CFG-SYSTEM-SETTINGS&select=*'),
+        Uri.parse('$supabaseUrl/system_config?key=eq.main_config&select=*'),
         headers: _headers,
       ).timeout(const Duration(seconds: 3));
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty && list.first['notes'] != null) {
-          final dynamic parsed = jsonDecode(list.first['notes']);
-          if (parsed is Map<String, dynamic>) {
-            return Map<String, dynamic>.from(parsed);
+        if (list.isNotEmpty && list.first['value'] != null) {
+          final val = list.first['value'];
+          if (val is Map) return Map<String, dynamic>.from(val);
+          if (val is String) {
+            final dynamic parsed = jsonDecode(val);
+            if (parsed is Map) return Map<String, dynamic>.from(parsed);
           }
         }
       }

@@ -300,9 +300,9 @@
     "semantic_hash": "5c84b4228de3772aa119741071f819c6"
   },
   "backend/server.js": {
-    "mtime": 1791982315.941385,
-    "seen": 1791982786.2750769,
-    "ast_hash": "af2819b9173cd3fb00f6694957416af3",
+    "mtime": 1792071274.9568365,
+    "seen": 1792071623.0900128,
+    "ast_hash": "f5d3c34b42156ad00b3af90ee738ad4f",
     "semantic_hash": ""
   },
   "backend/services/dispatchService.js": {
@@ -588,10 +588,10 @@
     "semantic_hash": "f904f412035cb6353ff1d95fc3a264f7"
   },
   "flutter_admin_app/lib/screens/pin_lock_screen.dart": {
-    "mtime": 1790356013.8384185,
-    "seen": 1791631278.076244,
-    "ast_hash": "3c8ad9cf4cdee75fbdc8c3cd2c9e2d82",
-    "semantic_hash": "3c8ad9cf4cdee75fbdc8c3cd2c9e2d82"
+    "mtime": 1792071104.2487543,
+    "seen": 1792071623.1027749,
+    "ast_hash": "422ed6021c480402c5deaf01e21b7e60",
+    "semantic_hash": ""
   },
   "flutter_admin_app/lib/screens/product_modifiers_sheet.dart": {
     "mtime": 1789325895.3751714,
@@ -600,10 +600,10 @@
     "semantic_hash": "400e9e3f22efb067ae706dd54d47f618"
   },
   "flutter_admin_app/lib/screens/smart_settings_tab.dart": {
-    "mtime": 1789367146.4835064,
-    "seen": 1791631278.076247,
-    "ast_hash": "19a9d7dc9e1bae8de6845085486a0376",
-    "semantic_hash": "19a9d7dc9e1bae8de6845085486a0376"
+    "mtime": 1792071232.0433204,
+    "seen": 1792071623.1030085,
+    "ast_hash": "9bebc9d1c1e0e1434db3dfe07bd14b8f",
+    "semantic_hash": ""
   },
   "flutter_admin_app/lib/screens/store_menu_screen.dart": {
     "mtime": 1789401045.7904987,
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "flutter_admin_app/lib/services/admin_supabase_service.dart": {
-    "mtime": 1792067521.1079955,
-    "seen": 1792068702.23383,
-    "ast_hash": "96575afae2e4b9e184d8813578ea775b",
+    "mtime": 1792071256.1359975,
+    "seen": 1792071623.1038198,
+    "ast_hash": "0b6952cd1dd9baa8d5597e257eb20141",
     "semantic_hash": ""
   },
   "flutter_admin_app/lib/theme/admin_theme.dart": {
@@ -888,9 +888,9 @@
     "semantic_hash": "cccae776be502a211f26d481ecd76af2"
   },
   "flutter_driver_app/lib/driver_wallet_screen.dart": {
-    "mtime": 1792067503.1964877,
-    "seen": 1792068702.245637,
-    "ast_hash": "9cac4a498759ff3ad63e8db2acf5c4fd",
+    "mtime": 1792070806.7033806,
+    "seen": 1792071623.1185865,
+    "ast_hash": "f3c22b9aca777e66c1171a8ada0866af",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/main.dart": {
@@ -924,10 +924,10 @@
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/driver_supabase_service.dart": {
-    "mtime": 1790513377.40497,
-    "seen": 1791631278.0763175,
-    "ast_hash": "4d2d94ef45518c60d96d31f21781dc34",
-    "semantic_hash": "4d2d94ef45518c60d96d31f21781dc34"
+    "mtime": 1792070881.3411238,
+    "seen": 1792071623.1198354,
+    "ast_hash": "be366d10ca6ccf2d9a3029bc7c8c0ded",
+    "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/whatsapp_auth_service.dart": {
     "mtime": 1790966349.5790906,
@@ -1194,10 +1194,10 @@
     "semantic_hash": "209c4edd6b45e34aeba41a77106b372f"
   },
   "flutter_merchant_app/lib/merchant_login_screen.dart": {
-    "mtime": 1790971716.1510675,
-    "seen": 1791631278.0763774,
-    "ast_hash": "544e8655140c6840db31094037440667",
-    "semantic_hash": "544e8655140c6840db31094037440667"
+    "mtime": 1792071076.1245663,
+    "seen": 1792071623.130928,
+    "ast_hash": "a0b8cda025a4855b32206937e83915b6",
+    "semantic_hash": ""
   },
   "flutter_merchant_app/lib/merchant_models.dart": {
     "mtime": 1791143329.855231,
@@ -1242,10 +1242,10 @@
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/services/merchant_supabase_service.dart": {
-    "mtime": 1791572883.4839773,
-    "seen": 1791631278.076387,
-    "ast_hash": "45aa6bdb713be3f0f48e322113a11930",
-    "semantic_hash": "45aa6bdb713be3f0f48e322113a11930"
+    "mtime": 1792071029.3976316,
+    "seen": 1792071623.1329377,
+    "ast_hash": "43191f4c09f2fe40270a6b273d71b0a6",
+    "semantic_hash": ""
   },
   "flutter_merchant_app/lib/thermal_receipt_dialog.dart": {
     "mtime": 1789362713.4998152,
@@ -1566,9 +1566,9 @@
     "semantic_hash": "7bf653c05ca94e576ffe2be02cd8d5c1"
   },
   "flutter_mobile_app/lib/services/api_service.dart": {
-    "mtime": 1791982528.0940409,
-    "seen": 1791982786.3910491,
-    "ast_hash": "7716161749d93d4db65c968f19b15230",
+    "mtime": 1792070087.106487,
+    "seen": 1792071623.1592236,
+    "ast_hash": "90d86d0ed907cb5aa2e697ee9001f6a7",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/services/cart_service.dart": {
@@ -1590,10 +1590,10 @@
     "semantic_hash": "bbcee39bc883c7eebb66fd393b70e255"
   },
   "flutter_mobile_app/lib/services/referral_service.dart": {
-    "mtime": 1789315576.8595243,
-    "seen": 1791631278.0764601,
-    "ast_hash": "3c082adb52adc9aff2a0ee29efec3375",
-    "semantic_hash": "3c082adb52adc9aff2a0ee29efec3375"
+    "mtime": 1792071472.1536021,
+    "seen": 1792071623.1598551,
+    "ast_hash": "877db8e258dd6127f9206871010c44d2",
+    "semantic_hash": ""
   },
   "flutter_mobile_app/lib/services/socket_service.dart": {
     "mtime": 1789250580.109961,
