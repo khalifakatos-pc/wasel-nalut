@@ -18,7 +18,7 @@ class SalesAnalyticsScreen extends StatelessWidget {
   });
 
   double get _grossSalesToday =>
-      orders.fold(0.0, (sum, o) => sum + (o.status != KdsTicketStatus.cancelled ? o.totalAmountLyd : 0.0)) + 480.00;
+      orders.fold(0.0, (sum, o) => sum + (o.status != KdsTicketStatus.cancelled ? o.totalAmountLyd : 0.0));
 
   double get _platformCommission => _grossSalesToday * 0.10; // 10% platform commission
 
@@ -276,11 +276,11 @@ class SalesAnalyticsScreen extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                _buildKpiCard('الطلبات المكتملة', '18 طلب', Icons.check_circle_outline_rounded, MerchantColors.readyGreen),
+                _buildKpiCard('الطلبات المكتملة', '${orders.where((o) => o.status == KdsTicketStatus.completed).length} طلب', Icons.check_circle_outline_rounded, MerchantColors.readyGreen),
                 const SizedBox(width: 8),
-                _buildKpiCard('متوسط وقت التجهيز', '12 دقيقة', Icons.timer_outlined, MerchantColors.primary),
+                _buildKpiCard('متوسط وقت التجهيز', '${orders.isEmpty ? 0 : (orders.fold<int>(0, (sum, o) => sum + o.prepTimeMinutes) ~/ orders.length)} دقيقة', Icons.timer_outlined, MerchantColors.primary),
                 const SizedBox(width: 8),
-                _buildKpiCard('تقييم الزبائن', '4.9 ⭐', Icons.star_outline_rounded, MerchantColors.accentAmber),
+                _buildKpiCard('تقييم الزبائن', '—', Icons.star_outline_rounded, MerchantColors.accentAmber),
               ],
             ),
             const SizedBox(height: 24),

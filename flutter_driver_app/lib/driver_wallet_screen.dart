@@ -44,7 +44,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             : 0.0;
         final int trips = (profile['total_trips'] is int) ? profile['total_trips'] as int : 0;
         _completedTrips = trips;
-        _availableEarningsLyd = (trips * 5.0).toDouble();
+        _availableEarningsLyd = _cashInHandCodLyd * 0.80; // 80% of delivery fees as captain's real earnings
 
         for (var v in vouchers) {
           final amt = (v['amount_lyd'] is num) ? (v['amount_lyd'] as num).toDouble() : 0.0;

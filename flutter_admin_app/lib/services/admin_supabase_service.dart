@@ -844,7 +844,8 @@ class AdminSupabaseService {
     final storeOrders = orders.where((o) => o['store_id'] == storeId && o['status'] == 'delivered').toList();
     double grossSales = storeOrders.fold<double>(0.0, (sum, o) => sum + ((o['subtotal_lyd'] ?? o['total_amount_lyd'] as num?)?.toDouble() ?? 0.0));
     if (grossSales == 0 && storeOrders.isEmpty) {
-      grossSales = store['id'] == 'store_nalut_01' ? 940.0 : 520.0;
+      // لا توجد طلبات مكتملة — الإجمالي يبقى صفراً (لا نحقن أرقام وهمية)
+      grossSales = 0.0;
     }
 
     double commission = grossSales * 0.10;
@@ -854,7 +855,7 @@ class AdminSupabaseService {
 
     return {
       'store': store,
-      'total_orders': storeOrders.isNotEmpty ? storeOrders.length : (grossSales / 35.0).round(),
+      'total_orders': storeOrders.length,
       'gross_sales_lyd': grossSales,
       'platform_commission_lyd': commission,
       'net_earned_lyd': netStoreEarned,

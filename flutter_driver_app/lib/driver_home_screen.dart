@@ -146,7 +146,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           final int trips = (p['total_trips'] is int) ? (p['total_trips'] as int) : 0;
           final double rating = (p['rating'] is num) ? (p['rating'] as num).toDouble() : 5.0;
           _stats = DriverStats(
-            netEarningsTodayLyd: trips * 6.5,
+            netEarningsTodayLyd: balance * 0.80, // 80% of COD cash = captain's real delivery earnings
             netEarningsYesterdayLyd: 0.0,
             completedTripsToday: trips,
             cashInHandCodLyd: balance,

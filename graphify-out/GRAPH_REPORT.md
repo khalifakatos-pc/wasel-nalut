@@ -1,7 +1,7 @@
-# Graph Report - wasel-app  (2026-10-14)
+# Graph Report - wasel-app  (2026-10-15)
 
 ## Corpus Check
-- 434 files · ~1,425,570 words
+- 434 files · ~1,425,597 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 258 file(s) not represented in the graph (top: (none) 38, .xcconfig 32, .xml 28)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `aadad922`
+- Built from commit: `2ba6be6a`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

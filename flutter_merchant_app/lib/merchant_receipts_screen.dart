@@ -57,19 +57,17 @@ class _MerchantReceiptsScreenState extends State<MerchantReceiptsScreen>
   }
 
   double get _totalGrossToday =>
-      _receipts.fold(0.0, (sum, r) => sum + r.subtotalLyd) + 240.0;
+      _receipts.fold(0.0, (sum, r) => sum + r.subtotalLyd);
 
   double get _cashCollected =>
       _receipts
           .where((r) => r.paymentMethod.contains('كاش') || r.paymentMethod.contains('COD'))
-          .fold(0.0, (sum, r) => sum + r.subtotalLyd) +
-      130.0;
+          .fold(0.0, (sum, r) => sum + r.subtotalLyd);
 
   double get _electronicPaid =>
       _receipts
           .where((r) => !r.paymentMethod.contains('كاش') && !r.paymentMethod.contains('COD'))
-          .fold(0.0, (sum, r) => sum + r.subtotalLyd) +
-      110.0;
+          .fold(0.0, (sum, r) => sum + r.subtotalLyd);
 
   double get _platformCommission => _totalGrossToday * 0.10;
   double get _netMerchantShare => _totalGrossToday * 0.90;
