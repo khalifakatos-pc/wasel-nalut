@@ -49,3 +49,6 @@ skills-lock.json
 scratch/
 *.canvas
 *.base
+
+# Graphify cache
+graphify-out/cache/

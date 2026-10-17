@@ -9,7 +9,7 @@ import 'merchant_models.dart';
 class MerchantInventoryScreen extends StatefulWidget {
   final List<CatalogProduct> catalog;
   final PartnerStore store;
-  final Function(CatalogProduct) onProductUpdated;
+  final Future<bool> Function(CatalogProduct) onProductUpdated;
 
   const MerchantInventoryScreen({
     super.key,
@@ -49,37 +49,77 @@ class _MerchantInventoryScreenState extends State<MerchantInventoryScreen> {
   int get _lowStockCount => widget.catalog.where((p) => p.inStock && p.stockQuantity <= p.minStockAlert).length;
   int get _outOfStockCount => widget.catalog.where((p) => !p.inStock || p.stockQuantity == 0).length;
 
-  void _toggleProductStock(CatalogProduct product) {
+  Future<void> _toggleProductStock(CatalogProduct product) async {
+    final prevInStock = product.inStock;
+    final prevQuantity = product.stockQuantity;
+
+    final newInStock = !prevInStock;
+    final newQuantity = (newInStock && prevQuantity == 0) ? 10 : prevQuantity;
+
     setState(() {
-      product.inStock = !product.inStock;
-      if (product.inStock && product.stockQuantity == 0) {
-        product.stockQuantity = 10;
-      }
+      product.inStock = newInStock;
+      product.stockQuantity = newQuantity;
     });
-    widget.onProductUpdated(product);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          product.inStock
-              ? '🟢 تم تفعيل: ${product.nameAr} (متوفر للطلب في نالوت)'
-              : '🔴 تم إيقاف: ${product.nameAr} (نفدت الكمية من المتجر)',
+
+    final success = await widget.onProductUpdated(product);
+    if (!mounted) return;
+
+    if (!success) {
+      // Revert optimistic state on server/network failure
+      setState(() {
+        product.inStock = prevInStock;
+        product.stockQuantity = prevQuantity;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ تعذر تحديث المخزون على الخادم - يرجى التحقق من الاتصال'),
+          backgroundColor: MerchantColors.rejectedRed,
+          duration: Duration(seconds: 3),
         ),
-        backgroundColor: product.inStock ? MerchantColors.readyGreen : MerchantColors.rejectedRed,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            product.inStock
+                ? '🟢 تم تفعيل: ${product.nameAr} (متوفر للطلب في نالوت)'
+                : '🔴 تم إيقاف: ${product.nameAr} (نفدت الكمية من المتجر)',
+          ),
+          backgroundColor: product.inStock ? MerchantColors.readyGreen : MerchantColors.rejectedRed,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
-  void _adjustQuantity(CatalogProduct product, int delta) {
+  Future<void> _adjustQuantity(CatalogProduct product, int delta) async {
+    final prevQuantity = product.stockQuantity;
+    final prevInStock = product.inStock;
+
+    final newQuantity = (prevQuantity + delta).clamp(0, 999);
+    final newInStock = newQuantity > 0;
+
     setState(() {
-      product.stockQuantity = (product.stockQuantity + delta).clamp(0, 999);
-      if (product.stockQuantity == 0) {
-        product.inStock = false;
-      } else if (!product.inStock && product.stockQuantity > 0) {
-        product.inStock = true;
-      }
+      product.stockQuantity = newQuantity;
+      product.inStock = newInStock;
     });
-    widget.onProductUpdated(product);
+
+    final success = await widget.onProductUpdated(product);
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() {
+        product.stockQuantity = prevQuantity;
+        product.inStock = prevInStock;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ تعذر تحديث المخزون على الخادم - يرجى التحقق من الاتصال'),
+          backgroundColor: MerchantColors.rejectedRed,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
   }
 
   void _showSetQuantityDialog(CatalogProduct product) {
@@ -128,16 +168,35 @@ class _MerchantInventoryScreenState extends State<MerchantInventoryScreen> {
               backgroundColor: MerchantColors.primary,
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
+            onPressed: () async {
               final newQty = int.tryParse(controller.text);
+              Navigator.pop(ctx);
               if (newQty != null && newQty >= 0) {
+                final prevQty = product.stockQuantity;
+                final prevInStock = product.inStock;
+
                 setState(() {
                   product.stockQuantity = newQty;
                   product.inStock = newQty > 0;
                 });
-                widget.onProductUpdated(product);
+
+                final success = await widget.onProductUpdated(product);
+                if (!mounted) return;
+
+                if (!success) {
+                  setState(() {
+                    product.stockQuantity = prevQty;
+                    product.inStock = prevInStock;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('❌ تعذر تحديث المخزون على الخادم - يرجى التحقق من الاتصال'),
+                      backgroundColor: MerchantColors.rejectedRed,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
               }
-              Navigator.pop(ctx);
             },
             child: const Text('حفظ الكمية'),
           ),
@@ -188,15 +247,29 @@ class _MerchantInventoryScreenState extends State<MerchantInventoryScreen> {
               backgroundColor: MerchantColors.primary,
               foregroundColor: Colors.white,
             ),
-            onPressed: () {
+            onPressed: () async {
               final newPrice = double.tryParse(priceController.text);
+              Navigator.pop(ctx);
               if (newPrice != null && newPrice > 0) {
+                final prevPrice = product.priceLyd;
                 setState(() {
                   product.priceLyd = newPrice;
                 });
-                widget.onProductUpdated(product);
+                final success = await widget.onProductUpdated(product);
+                if (!mounted) return;
+                if (!success) {
+                  setState(() {
+                    product.priceLyd = prevPrice;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('❌ تعذر تحديث السعر على الخادم - يرجى التحقق من الاتصال'),
+                      backgroundColor: MerchantColors.rejectedRed,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                }
               }
-              Navigator.pop(ctx);
             },
             child: const Text('حفظ السعر'),
           ),

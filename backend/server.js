@@ -20,6 +20,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { Pool } = require('pg');
@@ -197,46 +198,155 @@ function loadSeedData() {
 
 loadSeedData();
 
-let _saveSeedTimeout = null;
-let _isSavingSeed = false;
-let _hasPendingSeedSave = false;
-
-function saveSeedData(immediate = false) {
-  if (immediate) {
-    _executeSaveSeedData();
-    return;
-  }
-  if (_saveSeedTimeout) clearTimeout(_saveSeedTimeout);
-  _saveSeedTimeout = setTimeout(() => {
-    _executeSaveSeedData();
-  }, 2500); // Debounce disk writes to max once every 2.5s
-}
-
-async function _executeSaveSeedData() {
-  if (_isSavingSeed) {
-    _hasPendingSeedSave = true;
-    return;
-  }
-  _isSavingSeed = true;
-  try {
-    const data = JSON.stringify(db);
-    await fs.promises.writeFile(SEED_DATA_PATH, data, 'utf-8');
-  } catch (err) {
-    console.error('[Database] Failed to save seed_data.json:', err.message);
-  } finally {
-    _isSavingSeed = false;
-    if (_hasPendingSeedSave) {
-      _hasPendingSeedSave = false;
-      saveSeedData(true);
-    }
-  }
+// Runtime disk dumps eliminated. All persistence is strictly handled through PostgreSQL.
+function saveSeedData() {
+  // Deprecated: Zero runtime writes to seed_data.json.
 }
 
 // PostgreSQL Async Helper Functions
-async function saveStoreToPg(s) {
-  if (!pgPool) return;
+async function saveUserToPg(u, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !u) return;
   try {
-    await pgPool.query(`
+    await executor.query(`
+      INSERT INTO users (id, phone, full_name, email, password_hash, role, status, city, firebase_uid, auth_method, is_blocked, unpaid_debt_lyd, device_token, metadata)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      ON CONFLICT (id) DO UPDATE SET
+        phone = EXCLUDED.phone,
+        full_name = EXCLUDED.full_name,
+        email = EXCLUDED.email,
+        password_hash = COALESCE(EXCLUDED.password_hash, users.password_hash),
+        role = EXCLUDED.role,
+        status = EXCLUDED.status,
+        city = EXCLUDED.city,
+        firebase_uid = COALESCE(EXCLUDED.firebase_uid, users.firebase_uid),
+        is_blocked = EXCLUDED.is_blocked,
+        unpaid_debt_lyd = EXCLUDED.unpaid_debt_lyd,
+        device_token = COALESCE(EXCLUDED.device_token, users.device_token),
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      u.id, u.phone, u.full_name || 'زبون واصل', u.email || null, u.password || u.password_hash || null,
+      u.role || 'customer', u.status || 'active', u.city || 'nalut', u.firebase_uid || null,
+      u.auth_method || 'firebase_sms', u.is_blocked === true, u.unpaid_debt_lyd || 0.0,
+      u.device_token || null, JSON.stringify(u.metadata || {})
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveUser error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveWalletToPg(w, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !w) return;
+  try {
+    await executor.query(`
+      INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (id) DO UPDATE SET
+        balance = EXCLUDED.balance,
+        locked_balance = EXCLUDED.locked_balance,
+        status = EXCLUDED.status,
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      w.id, w.user_id || null, w.wallet_type || 'customer_wallet', w.currency || 'LYD',
+      w.balance || 0.00, w.locked_balance || 0.00, w.status || 'active'
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveWallet error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveCategoryToPg(c, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !c) return;
+  try {
+    await executor.query(`
+      INSERT INTO categories (id, name, name_ar, icon, sort_order, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        name_ar = EXCLUDED.name_ar,
+        icon = EXCLUDED.icon,
+        sort_order = EXCLUDED.sort_order,
+        is_active = EXCLUDED.is_active
+    `, [
+      c.id, c.name_en || c.name || '', c.name_ar || c.name || '',
+      c.icon || '', c.sort_order || 0, c.is_active !== false
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveCategory error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveVoucherToPg(v, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !v) return;
+  try {
+    await executor.query(`
+      INSERT INTO vouchers (id, voucher_number, type, beneficiary_name, beneficiary_role, beneficiary_id, amount_lyd, payment_method, destination_account, notes, created_by, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      ON CONFLICT (id) DO UPDATE SET
+        notes = EXCLUDED.notes
+    `, [
+      v.id, v.voucher_number, v.type || 'receipt', v.beneficiary_name || '',
+      v.beneficiary_role || 'captain', v.beneficiary_id || '', v.amount_lyd || 0,
+      v.payment_method || 'cash', v.destination_account || '', v.notes || '',
+      v.created_by || 'إدارة واصل - نالوت', v.created_at || new Date().toISOString()
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveVoucher error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveAuditLogToPg(a, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !a) return;
+  try {
+    await executor.query(`
+      INSERT INTO audit_logs (id, action, actor_id, actor_role, target_type, target_id, details, ip_address, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      ON CONFLICT (id) DO NOTHING
+    `, [
+      a.id, a.action || 'system_event', a.actor_id || null, a.actor_role || null,
+      a.target_type || null, a.target_id || null, JSON.stringify(a.details || {}),
+      a.ip_address || null, a.created_at || new Date().toISOString()
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveAuditLog error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveWalletTransactionToPg(t, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !t) return;
+  try {
+    await executor.query(`
+      INSERT INTO wallet_transactions (id, wallet_id, counterparty_wallet_id, order_id, transaction_type, account_type, entity_type, entry_type, amount, currency, status, description, metadata, batch_id, idempotency_key, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+      ON CONFLICT (id) DO NOTHING
+    `, [
+      t.id, t.wallet_id, t.counterparty_wallet_id || null, t.order_id || null,
+      t.transaction_type, t.account_type || null, t.entity_type || null,
+      t.entry_type || 'CREDIT', t.amount || 0, t.currency || 'LYD',
+      t.status || 'completed', t.description || '', JSON.stringify(t.metadata || {}),
+      t.batch_id || null, t.idempotency_key || null, t.created_at || new Date().toISOString()
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveWalletTransaction error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveStoreToPg(s, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
+  try {
+    await executor.query(`
       INSERT INTO stores (id, name, name_en, type, district, city, phone, pin, app_mode, commission_rate, rating, review_count, delivery_time_min, delivery_time_max, min_order_lyd, base_delivery_fee_lyd, latitude, longitude, logo_url, banner_url, badge, is_open, is_featured)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
       ON CONFLICT (id) DO UPDATE SET
@@ -264,31 +374,35 @@ async function saveStoreToPg(s) {
         is_featured = EXCLUDED.is_featured
     `, [
       s.id, s.name, s.name_en || s.name, s.type || 'restaurant', s.district || 'نالوت', s.city || 'nalut',
-      s.phone || '', s.pin || '1234', s.app_mode || 'kitchen', s.commission_rate || 10.0, s.rating || 5.0,
+      s.phone || '', s.pin || '', s.app_mode || 'kitchen', s.commission_rate || 10.0, s.rating || 5.0,
       s.review_count || 0, s.delivery_time_min || 20, s.delivery_time_max || 35, s.min_order_lyd || 10.0,
       s.base_delivery_fee_lyd || 4.0, s.latitude || 31.8686, s.longitude || 10.9818, s.logo_url || '',
       s.banner_url || '', s.badge || '', s.is_open === true, s.is_featured !== false
     ]);
   } catch (err) {
     console.error('[PostgreSQL saveStore error]:', err.message);
+    if (dbClient) throw err;
   }
 }
 
-async function deleteStoreFromPg(id) {
-  if (!pgPool) return;
+async function deleteStoreFromPg(id, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
   try {
-    await pgPool.query('DELETE FROM stores WHERE id = $1', [id]);
+    await executor.query('DELETE FROM stores WHERE id = $1', [id]);
   } catch (err) {
     console.error('[PostgreSQL deleteStore error]:', err.message);
+    if (dbClient) throw err;
   }
 }
 
-async function saveProductToPg(p) {
-  if (!pgPool) return;
+async function saveProductToPg(p, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
   try {
-    await pgPool.query(`
-      INSERT INTO products (id, store_id, name, name_ar, price, price_lyd, category, category_id, description, desc_ar, image_url, in_stock, is_available, is_popular, unit)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+    await executor.query(`
+      INSERT INTO products (id, store_id, name, name_ar, price, price_lyd, category, category_id, description, desc_ar, image_url, in_stock, is_available, is_popular, unit, stock_quantity)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       ON CONFLICT (id) DO UPDATE SET
         name = EXCLUDED.name,
         name_ar = EXCLUDED.name_ar,
@@ -302,31 +416,37 @@ async function saveProductToPg(p) {
         in_stock = EXCLUDED.in_stock,
         is_available = EXCLUDED.is_available,
         is_popular = EXCLUDED.is_popular,
-        unit = EXCLUDED.unit
+        unit = EXCLUDED.unit,
+        stock_quantity = EXCLUDED.stock_quantity
     `, [
       p.id, p.store_id, p.name || p.name_ar || 'صنف', p.name_ar || p.name || 'صنف',
       p.price || p.price_lyd || 0, p.price_lyd || p.price || 0,
       p.category || 'عام', p.category_id || '', p.description || '', p.desc_ar || '', p.image_url || '',
-      p.in_stock !== false, p.is_available !== false, p.is_popular === true, p.unit || 'قطعة'
+      p.in_stock !== false, p.is_available !== false, p.is_popular === true, p.unit || 'قطعة',
+      p.stock_quantity !== undefined && p.stock_quantity !== null && !isNaN(p.stock_quantity) ? parseInt(p.stock_quantity, 10) : 100
     ]);
   } catch (err) {
     console.error('[PostgreSQL saveProduct error]:', err.message);
+    if (dbClient) throw err;
   }
 }
 
-async function deleteProductFromPg(id) {
-  if (!pgPool) return;
+async function deleteProductFromPg(id, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
   try {
-    await pgPool.query('DELETE FROM products WHERE id = $1', [id]);
+    await executor.query('DELETE FROM products WHERE id = $1', [id]);
   } catch (err) {
     console.error('[PostgreSQL deleteProduct error]:', err.message);
+    if (dbClient) throw err;
   }
 }
 
-async function saveDriverToPg(d) {
-  if (!pgPool) return;
+async function saveDriverToPg(d, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
   try {
-    await pgPool.query(`
+    await executor.query(`
       INSERT INTO drivers (id, user_id, full_name, phone, vehicle_type, vehicle_plate, license_number, national_id, rating, total_deliveries, is_approved, is_active, status, wallet_balance_lyd, cod_balance_lyd, cash_in_hand_lyd, latitude, longitude)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       ON CONFLICT (id) DO UPDATE SET
@@ -352,24 +472,57 @@ async function saveDriverToPg(d) {
     ]);
   } catch (err) {
     console.error('[PostgreSQL saveDriver error]:', err.message);
+    if (dbClient) throw err;
   }
 }
 
-async function deleteDriverFromPg(id) {
-  if (!pgPool) return;
+async function deleteDriverFromPg(id, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
   try {
-    await pgPool.query('DELETE FROM drivers WHERE id = $1', [id]);
+    await executor.query('DELETE FROM drivers WHERE id = $1', [id]);
   } catch (err) {
     console.error('[PostgreSQL deleteDriver error]:', err.message);
+    if (dbClient) throw err;
   }
 }
 
-async function saveOrderToPg(o) {
-  if (!pgPool) return;
+async function saveOrderItemsToPg(orderId, items, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !items || !Array.isArray(items)) return;
   try {
-    await pgPool.query(`
-      INSERT INTO orders (id, order_number, customer_id, customer_name, customer_phone, store_id, store_name, driver_id, status, subtotal_lyd, delivery_fee_lyd, total_amount_lyd, payment_method, delivery_address, delivery_lat, delivery_lng, items, notes, rating, driver_rating, review_comment, cancellation_reason)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)
+    for (const item of items) {
+      const itemId = item.id || `item_${uuidv4().substring(0, 8)}`;
+      const prodId = item.product_id || item.id || null;
+      const prodName = item.name_ar || item.name || item.name_en || 'صنف';
+      const unitPrice = parseFloat(item.unit_price_lyd || item.unit_price || item.price || item.price_lyd || 0);
+      const quantity = parseInt(item.quantity || 1, 10);
+      const totalPrice = parseFloat(item.item_total_lyd || item.total_price || (unitPrice * quantity));
+      const addons = JSON.stringify(item.modifiers || item.selected_addons || []);
+      const notes = item.notes || '';
+      await executor.query(`
+        INSERT INTO order_items (id, order_id, product_id, product_name, unit_price, quantity, total_price, selected_addons, notes)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ON CONFLICT (id) DO UPDATE SET
+          quantity = EXCLUDED.quantity,
+          total_price = EXCLUDED.total_price,
+          selected_addons = EXCLUDED.selected_addons,
+          notes = EXCLUDED.notes
+      `, [itemId, orderId, prodId, prodName, unitPrice, quantity, totalPrice, addons, notes]);
+    }
+  } catch (err) {
+    console.error('[PostgreSQL saveOrderItems error]:', err.message);
+    if (dbClient) throw err;
+  }
+}
+
+async function saveOrderToPg(o, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor) return;
+  try {
+    await executor.query(`
+      INSERT INTO orders (id, order_number, customer_id, customer_name, customer_phone, store_id, store_name, driver_id, status, subtotal_lyd, delivery_fee_lyd, total_amount_lyd, payment_method, delivery_address, delivery_lat, delivery_lng, items, notes, rating, driver_rating, review_comment, cancellation_reason, otp_code, payment_status, discount_lyd, distance_km, estimated_eta_minutes, prep_started_at, ready_at, handover_at, delivered_at, cancelled_at, handover_code, prep_time_minutes, kitchen_delay_seconds, driver_delay_seconds, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37)
       ON CONFLICT (id) DO UPDATE SET
         driver_id = EXCLUDED.driver_id,
         status = EXCLUDED.status,
@@ -377,22 +530,113 @@ async function saveOrderToPg(o) {
         delivery_fee_lyd = EXCLUDED.delivery_fee_lyd,
         total_amount_lyd = EXCLUDED.total_amount_lyd,
         payment_method = EXCLUDED.payment_method,
+        payment_status = EXCLUDED.payment_status,
         notes = EXCLUDED.notes,
         rating = EXCLUDED.rating,
         driver_rating = EXCLUDED.driver_rating,
         review_comment = EXCLUDED.review_comment,
-        cancellation_reason = EXCLUDED.cancellation_reason
+        cancellation_reason = EXCLUDED.cancellation_reason,
+        otp_code = COALESCE(EXCLUDED.otp_code, orders.otp_code),
+        discount_lyd = EXCLUDED.discount_lyd,
+        distance_km = EXCLUDED.distance_km,
+        estimated_eta_minutes = EXCLUDED.estimated_eta_minutes,
+        prep_started_at = EXCLUDED.prep_started_at,
+        ready_at = EXCLUDED.ready_at,
+        handover_at = EXCLUDED.handover_at,
+        delivered_at = EXCLUDED.delivered_at,
+        cancelled_at = EXCLUDED.cancelled_at,
+        handover_code = EXCLUDED.handover_code,
+        prep_time_minutes = EXCLUDED.prep_time_minutes,
+        kitchen_delay_seconds = EXCLUDED.kitchen_delay_seconds,
+        driver_delay_seconds = EXCLUDED.driver_delay_seconds,
+        items = EXCLUDED.items,
+        updated_at = EXCLUDED.updated_at
     `, [
       o.id, o.order_number, o.customer_id, o.customer_name, o.customer_phone,
       o.store_id, o.store_name, o.driver_id || null, o.status || 'placed',
       o.subtotal_lyd || 0, o.delivery_fee_lyd || 0, o.total_amount_lyd || 0,
       o.payment_method || 'wallet', o.delivery_address || '', o.delivery_latitude || o.delivery_lat || 31.8686,
       o.delivery_longitude || o.delivery_lng || 10.9818, JSON.stringify(o.items || []), o.notes || '',
-      o.rating || null, o.driver_rating || null, o.review_comment || null, o.cancellation_reason || null
+      o.rating || null, o.driver_rating || null, o.review_comment || null, o.cancellation_reason || null,
+      o.otp_code || null, o.payment_status || null, o.discount_lyd || 0, o.distance_km || null,
+      o.estimated_eta_minutes || null, o.prep_started_at || null, o.ready_at || null,
+      o.handover_at || null, o.delivered_at || null, o.cancelled_at || null,
+      o.handover_code || null, o.prep_time_minutes || 15, o.kitchen_delay_seconds || 0,
+      o.driver_delay_seconds || 0, o.updated_at || new Date().toISOString()
     ]);
+    if (o.items && Array.isArray(o.items)) {
+      await saveOrderItemsToPg(o.id, o.items, dbClient);
+    }
   } catch (err) {
     console.error('[PostgreSQL saveOrder error]:', err.message);
+    if (dbClient) throw err;
   }
+}
+
+// PostgreSQL Data Mapping Helpers
+function mapPgOrder(r) {
+  if (!r) return null;
+  return {
+    ...r,
+    subtotal_lyd: parseFloat(r.subtotal_lyd) || 0,
+    delivery_fee_lyd: parseFloat(r.delivery_fee_lyd) || 0,
+    total_amount_lyd: parseFloat(r.total_amount_lyd) || 0,
+    delivery_latitude: parseFloat(r.delivery_lat) || (r.delivery_latitude ? parseFloat(r.delivery_latitude) : 31.8687),
+    delivery_longitude: parseFloat(r.delivery_lng) || (r.delivery_longitude ? parseFloat(r.delivery_longitude) : 10.9818),
+    rating: r.rating !== null && r.rating !== undefined ? parseFloat(r.rating) : null,
+    driver_rating: r.driver_rating !== null && r.driver_rating !== undefined ? parseFloat(r.driver_rating) : null,
+    distance_km: r.distance_km !== null && r.distance_km !== undefined ? parseFloat(r.distance_km) : null,
+    discount_lyd: parseFloat(r.discount_lyd) || 0,
+    items: Array.isArray(r.items) ? r.items : (typeof r.items === 'string' ? JSON.parse(r.items || '[]') : [])
+  };
+}
+
+function mapPgStore(r) {
+  if (!r) return null;
+  return {
+    ...r,
+    rating: parseFloat(r.rating) || 5.0,
+    latitude: parseFloat(r.latitude) || 31.8686,
+    longitude: parseFloat(r.longitude) || 10.9818,
+    min_order_lyd: parseFloat(r.min_order_lyd) || 10.0,
+    base_delivery_fee_lyd: parseFloat(r.base_delivery_fee_lyd) || 4.0,
+    commission_rate: parseFloat(r.commission_rate) || 10.0,
+    review_count: parseInt(r.review_count, 10) || 0,
+    delivery_time_min: parseInt(r.delivery_time_min, 10) || 20,
+    delivery_time_max: parseInt(r.delivery_time_max, 10) || 35,
+    is_open: r.is_open === true || r.is_open === 'true' || r.is_open === 1,
+    is_featured: r.is_featured === true || r.is_featured === 'true' || r.is_featured === 1
+  };
+}
+
+function mapPgDriver(d) {
+  if (!d) return null;
+  return {
+    ...d,
+    rating: parseFloat(d.rating) || 5.0,
+    wallet_balance_lyd: parseFloat(d.wallet_balance_lyd) || 0,
+    cod_balance_lyd: parseFloat(d.cod_balance_lyd) || 0,
+    cash_in_hand_lyd: parseFloat(d.cash_in_hand_lyd) || 0,
+    latitude: parseFloat(d.latitude) || 31.8686,
+    longitude: parseFloat(d.longitude) || 10.9818,
+    heading: parseFloat(d.heading) || 0,
+    speed_kmh: parseFloat(d.speed_kmh) || 0,
+    total_deliveries: parseInt(d.total_deliveries, 10) || 0,
+    is_approved: d.is_approved === true || d.is_approved === 'true' || d.is_approved === 1,
+    is_active: d.is_active === true || d.is_active === 'true' || d.is_active === 1
+  };
+}
+
+function mapPgProduct(p) {
+  if (!p) return null;
+  return {
+    ...p,
+    price: parseFloat(p.price) || 0,
+    price_lyd: parseFloat(p.price_lyd) || parseFloat(p.price) || 0,
+    in_stock: p.in_stock === true || p.in_stock === 'true' || p.in_stock === 1,
+    is_available: p.is_available === true || p.is_available === 'true' || p.is_available === 1,
+    is_popular: p.is_popular === true || p.is_popular === 'true' || p.is_popular === 1
+  };
 }
 
 async function saveDeliveryZoneToPg(z) {
@@ -531,6 +775,40 @@ async function initPgTables(forceSeed = false) {
   try {
     console.log('[PostgreSQL] Initializing tables and checking migrations...');
     await pgPool.query(`
+      -- 1. Users Table
+      CREATE TABLE IF NOT EXISTS users (
+        id VARCHAR(100) PRIMARY KEY,
+        phone VARCHAR(50) UNIQUE NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        email VARCHAR(255),
+        password_hash VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'customer',
+        status VARCHAR(50) DEFAULT 'active',
+        city VARCHAR(100) DEFAULT 'nalut',
+        firebase_uid VARCHAR(128),
+        auth_method VARCHAR(50) DEFAULT 'firebase_sms',
+        is_blocked BOOLEAN DEFAULT false,
+        unpaid_debt_lyd NUMERIC DEFAULT 0.0,
+        device_token TEXT,
+        metadata JSONB DEFAULT '{}'::jsonb,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
+      CREATE INDEX IF NOT EXISTS idx_users_firebase_uid ON users(firebase_uid);
+
+      -- 2. Categories Table
+      CREATE TABLE IF NOT EXISTS categories (
+        id VARCHAR(100) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        name_ar VARCHAR(100),
+        icon VARCHAR(100),
+        sort_order INT DEFAULT 0,
+        is_active BOOLEAN DEFAULT true,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 3. Stores Table
       CREATE TABLE IF NOT EXISTS stores (
         id VARCHAR(100) PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
@@ -539,7 +817,7 @@ async function initPgTables(forceSeed = false) {
         district VARCHAR(255),
         city VARCHAR(100) DEFAULT 'nalut',
         phone VARCHAR(50),
-        pin VARCHAR(20) DEFAULT '1234',
+        pin VARCHAR(20),
         app_mode VARCHAR(50) DEFAULT 'kitchen',
         commission_rate NUMERIC DEFAULT 10.0,
         rating NUMERIC DEFAULT 5.0,
@@ -555,9 +833,12 @@ async function initPgTables(forceSeed = false) {
         badge VARCHAR(100),
         is_open BOOLEAN DEFAULT false,
         is_featured BOOLEAN DEFAULT true,
+        address TEXT DEFAULT 'نالوت - المركز',
+        merchant_id VARCHAR(100),
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 4. Products Table
       CREATE TABLE IF NOT EXISTS products (
         id VARCHAR(100) PRIMARY KEY,
         store_id VARCHAR(100) NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
@@ -574,9 +855,11 @@ async function initPgTables(forceSeed = false) {
         is_available BOOLEAN DEFAULT true,
         is_popular BOOLEAN DEFAULT false,
         unit VARCHAR(50) DEFAULT 'قطعة',
+        stock_quantity INT DEFAULT 100,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 5. Drivers Table
       CREATE TABLE IF NOT EXISTS drivers (
         id VARCHAR(100) PRIMARY KEY,
         user_id VARCHAR(100),
@@ -594,11 +877,18 @@ async function initPgTables(forceSeed = false) {
         wallet_balance_lyd NUMERIC DEFAULT 0.0,
         cod_balance_lyd NUMERIC DEFAULT 0.0,
         cash_in_hand_lyd NUMERIC DEFAULT 0.0,
+        max_cod_limit_lyd NUMERIC DEFAULT 250.0,
         latitude NUMERIC,
         longitude NUMERIC,
+        heading NUMERIC DEFAULT 0.0,
+        speed_kmh NUMERIC DEFAULT 0.0,
+        last_heartbeat BIGINT,
+        active_order_id VARCHAR(100),
+        total_trips INT DEFAULT 0,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 6. Orders Table
       CREATE TABLE IF NOT EXISTS orders (
         id VARCHAR(100) PRIMARY KEY,
         order_number VARCHAR(50),
@@ -618,9 +908,53 @@ async function initPgTables(forceSeed = false) {
         delivery_lng NUMERIC,
         items JSONB DEFAULT '[]'::jsonb,
         notes TEXT,
+        rating NUMERIC,
+        driver_rating NUMERIC,
+        review_comment TEXT,
+        cancellation_reason TEXT,
+        otp_code VARCHAR(50),
+        delivery_otp VARCHAR(10),
+        payment_status VARCHAR(50),
+        discount_lyd NUMERIC DEFAULT 0.0,
+        service_fee_lyd NUMERIC DEFAULT 0.0,
+        distance_km NUMERIC,
+        estimated_eta_minutes INT,
+        prep_started_at TIMESTAMPTZ,
+        ready_at TIMESTAMPTZ,
+        handover_at TIMESTAMPTZ,
+        delivered_at TIMESTAMPTZ,
+        cancelled_at TIMESTAMPTZ,
+        handover_code VARCHAR(20),
+        prep_time_minutes INT,
+        kitchen_delay_seconds INT DEFAULT 0,
+        driver_delay_seconds INT DEFAULT 0,
+        dispute_resolved BOOLEAN DEFAULT false,
+        dispute_resolved_at TIMESTAMPTZ,
+        dispute_notes TEXT,
+        customer_penalty_status VARCHAR(50),
+        meal_disposal VARCHAR(50),
+        loyalty_points_discount_lyd NUMERIC DEFAULT 0.0,
+        free_delivery_discount_lyd NUMERIC DEFAULT 0.0,
+        reviewed_at TIMESTAMPTZ,
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 7. Order Items Table
+      CREATE TABLE IF NOT EXISTS order_items (
+        id VARCHAR(100) PRIMARY KEY,
+        order_id VARCHAR(100) NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+        product_id VARCHAR(100),
+        product_name VARCHAR(255),
+        unit_price NUMERIC DEFAULT 0.0,
+        quantity INT DEFAULT 1,
+        total_price NUMERIC DEFAULT 0.0,
+        selected_addons JSONB DEFAULT '[]'::jsonb,
+        notes TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+
+      -- 8. Wallets Table
       CREATE TABLE IF NOT EXISTS wallets (
         id VARCHAR(100) PRIMARY KEY,
         user_id VARCHAR(100),
@@ -633,6 +967,7 @@ async function initPgTables(forceSeed = false) {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
+      -- 9. Wallet Transactions Table
       CREATE TABLE IF NOT EXISTS wallet_transactions (
         id VARCHAR(100) PRIMARY KEY,
         wallet_id VARCHAR(100),
@@ -647,30 +982,95 @@ async function initPgTables(forceSeed = false) {
         status VARCHAR(50) DEFAULT 'completed',
         description TEXT,
         metadata JSONB DEFAULT '{}'::jsonb,
+        batch_id VARCHAR(100),
+        idempotency_key VARCHAR(100),
+        balance_before NUMERIC(14, 2),
+        balance_after NUMERIC(14, 2),
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Migrations for existing schemas
-      ALTER TABLE drivers ADD COLUMN IF NOT EXISTS cash_in_hand_lyd NUMERIC DEFAULT 0.0;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_fee_lyd NUMERIC DEFAULT 0.0;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS subtotal_lyd NUMERIC DEFAULT 0.0;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_amount_lyd NUMERIC DEFAULT 0.0;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS rating NUMERIC;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS driver_rating NUMERIC;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS review_comment TEXT;
-      ALTER TABLE orders ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+      -- 10. Official Platform Vouchers Table (Receipts & Disbursements)
+      CREATE TABLE IF NOT EXISTS vouchers (
+        id VARCHAR(100) PRIMARY KEY,
+        voucher_number VARCHAR(100) UNIQUE NOT NULL,
+        type VARCHAR(50) NOT NULL,
+        beneficiary_name VARCHAR(255),
+        beneficiary_role VARCHAR(50),
+        beneficiary_id VARCHAR(100),
+        amount_lyd NUMERIC(14, 2) NOT NULL,
+        payment_method VARCHAR(100) DEFAULT 'cash',
+        destination_account VARCHAR(100),
+        notes TEXT,
+        created_by VARCHAR(255) DEFAULT 'إدارة واصل - نالوت',
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_vouchers_number ON vouchers(voucher_number);
+      CREATE INDEX IF NOT EXISTS idx_vouchers_beneficiary ON vouchers(beneficiary_id);
 
-      -- High-Performance Production Query Indexes
-      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
-      CREATE INDEX IF NOT EXISTS idx_orders_store_id ON orders(store_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_driver_id ON orders(driver_id);
-      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
-      CREATE INDEX IF NOT EXISTS idx_stores_is_open ON stores(is_open);
-      CREATE INDEX IF NOT EXISTS idx_products_store_id ON products(store_id);
-      CREATE INDEX IF NOT EXISTS idx_wallet_tx_order_id ON wallet_transactions(order_id);
-      CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet_id ON wallet_transactions(wallet_id);
+      -- 11. Voucher Usage Table
+      CREATE TABLE IF NOT EXISTS voucher_usage (
+        id VARCHAR(100) PRIMARY KEY,
+        voucher_id VARCHAR(100) NOT NULL,
+        user_id VARCHAR(100) NOT NULL,
+        order_id VARCHAR(100),
+        used_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_voucher_usage_user ON voucher_usage(user_id, voucher_id);
 
-      -- Loyalty Points & Transactions
+      -- 12. General Ledger Journal Entries Table
+      CREATE TABLE IF NOT EXISTS journal_entries (
+        id VARCHAR(100) PRIMARY KEY,
+        entry_number VARCHAR(100) UNIQUE NOT NULL,
+        reference_id VARCHAR(100),
+        transaction_type VARCHAR(50) NOT NULL,
+        narration TEXT NOT NULL,
+        total_debit NUMERIC(14, 2) NOT NULL,
+        total_credit NUMERIC(14, 2) NOT NULL,
+        discrepancy NUMERIC(14, 4) DEFAULT 0.0000,
+        is_balanced BOOLEAN DEFAULT true,
+        lines_count INT DEFAULT 2,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_journal_entries_number ON journal_entries(entry_number);
+      CREATE INDEX IF NOT EXISTS idx_journal_entries_ref ON journal_entries(reference_id);
+      CREATE INDEX IF NOT EXISTS idx_journal_entries_type ON journal_entries(transaction_type);
+
+      -- 13. General Ledger Journal Entry Lines Table
+      CREATE TABLE IF NOT EXISTS journal_entry_lines (
+        id VARCHAR(100) PRIMARY KEY,
+        journal_entry_id VARCHAR(100) NOT NULL REFERENCES journal_entries(id) ON DELETE CASCADE,
+        entry_number VARCHAR(100) NOT NULL,
+        line_number INT NOT NULL,
+        account_code VARCHAR(20) NOT NULL,
+        account_name_ar VARCHAR(255),
+        account_category VARCHAR(50),
+        debit NUMERIC(14, 2) DEFAULT 0.00,
+        credit NUMERIC(14, 2) DEFAULT 0.00,
+        entity_type VARCHAR(50),
+        entity_id VARCHAR(100),
+        note TEXT,
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_journal_lines_entry ON journal_entry_lines(journal_entry_id);
+      CREATE INDEX IF NOT EXISTS idx_journal_lines_account ON journal_entry_lines(account_code);
+      CREATE INDEX IF NOT EXISTS idx_journal_lines_entity ON journal_entry_lines(entity_type, entity_id);
+
+      -- 14. Audit Logs Table
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id VARCHAR(100) PRIMARY KEY,
+        action VARCHAR(100) NOT NULL,
+        actor_id VARCHAR(100),
+        actor_role VARCHAR(50),
+        target_type VARCHAR(100),
+        target_id VARCHAR(100),
+        details JSONB DEFAULT '{}'::jsonb,
+        ip_address VARCHAR(50),
+        created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+      CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
+
+      -- 15. Loyalty Points & Transactions
       CREATE TABLE IF NOT EXISTS loyalty_points (
         user_phone VARCHAR(50) PRIMARY KEY,
         points_balance INT NOT NULL DEFAULT 0,
@@ -690,7 +1090,7 @@ async function initPgTables(forceSeed = false) {
       );
       CREATE INDEX IF NOT EXISTS idx_loyalty_tx_phone ON loyalty_transactions(user_phone);
 
-      -- Referrals
+      -- 16. Referrals
       CREATE TABLE IF NOT EXISTS referrals (
         id VARCHAR(100) PRIMARY KEY,
         referrer_phone VARCHAR(50) NOT NULL,
@@ -703,7 +1103,7 @@ async function initPgTables(forceSeed = false) {
       CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals(referrer_phone);
       CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals(referred_phone);
 
-      -- User Vouchers
+      -- 17. User Vouchers
       CREATE TABLE IF NOT EXISTS user_vouchers (
         id VARCHAR(100) PRIMARY KEY,
         user_phone VARCHAR(50) NOT NULL,
@@ -719,7 +1119,7 @@ async function initPgTables(forceSeed = false) {
       );
       CREATE INDEX IF NOT EXISTS idx_user_vouchers_phone ON user_vouchers(user_phone);
 
-      -- Reviews
+      -- 18. Reviews
       CREATE TABLE IF NOT EXISTS reviews (
         id VARCHAR(100) PRIMARY KEY,
         order_id VARCHAR(100) UNIQUE NOT NULL,
@@ -734,7 +1134,7 @@ async function initPgTables(forceSeed = false) {
       CREATE INDEX IF NOT EXISTS idx_reviews_store ON reviews(store_id);
       CREATE INDEX IF NOT EXISTS idx_reviews_order ON reviews(order_id);
 
-      -- System Config
+      -- 19. System Config
       CREATE TABLE IF NOT EXISTS system_config (
         key VARCHAR(100) PRIMARY KEY,
         value JSONB NOT NULL,
@@ -742,7 +1142,7 @@ async function initPgTables(forceSeed = false) {
         updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
 
-      -- Product Modifiers
+      -- 20. Product Modifiers
       CREATE TABLE IF NOT EXISTS product_modifiers (
         id VARCHAR(100) PRIMARY KEY,
         product_id VARCHAR(100) NOT NULL,
@@ -755,7 +1155,7 @@ async function initPgTables(forceSeed = false) {
       );
       CREATE INDEX IF NOT EXISTS idx_modifiers_product ON product_modifiers(product_id);
 
-      -- Delivery Zones
+      -- 21. Delivery Zones
       CREATE TABLE IF NOT EXISTS delivery_zones (
         id VARCHAR(100) PRIMARY KEY,
         name_ar VARCHAR(255) NOT NULL,
@@ -767,13 +1167,62 @@ async function initPgTables(forceSeed = false) {
         sort_order INT DEFAULT 0,
         created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
       );
+
+      -- Constraints & System Wallets Setup
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint WHERE conname = 'uq_wallets_user_type_curr'
+        ) THEN
+          ALTER TABLE wallets ADD CONSTRAINT uq_wallets_user_type_curr UNIQUE (user_id, wallet_type, currency);
+        END IF;
+      END $$;
+
+      INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
+      VALUES 
+        ('00000000-0000-0000-0000-000000000001', 'system_escrow', 'platform_escrow', 'LYD', 0.00, 0.00, 'active'),
+        ('00000000-0000-0000-0000-000000000002', 'system_revenue', 'platform_revenue', 'LYD', 0.00, 0.00, 'active'),
+        ('00000000-0000-0000-0000-000000000003', 'system_vault', 'platform_vault', 'LYD', 0.00, 0.00, 'active')
+      ON CONFLICT (id) DO NOTHING;
+
+      -- Schema Column Migrations
+      ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS batch_id VARCHAR(100);
+      ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS idempotency_key VARCHAR(100);
+      ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS balance_before NUMERIC(14, 2);
+      ALTER TABLE wallet_transactions ADD COLUMN IF NOT EXISTS balance_after NUMERIC(14, 2);
+
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS address TEXT DEFAULT 'نالوت - المركز';
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS merchant_id VARCHAR(100);
+
+      ALTER TABLE drivers ADD COLUMN IF NOT EXISTS max_cod_limit_lyd NUMERIC DEFAULT 250.0;
+
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_otp VARCHAR(10);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispute_resolved BOOLEAN DEFAULT false;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispute_resolved_at TIMESTAMPTZ;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS dispute_notes TEXT;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS customer_penalty_status VARCHAR(50);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS meal_disposal VARCHAR(50);
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS loyalty_points_discount_lyd NUMERIC DEFAULT 0.0;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS free_delivery_discount_lyd NUMERIC DEFAULT 0.0;
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS reviewed_at TIMESTAMPTZ;
+
+      -- High-Performance Production Query Indexes
+      CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(status);
+      CREATE INDEX IF NOT EXISTS idx_orders_store_id ON orders(store_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_driver_id ON orders(driver_id);
+      CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_order_items_order_id ON order_items(order_id);
+      CREATE INDEX IF NOT EXISTS idx_stores_is_open ON stores(is_open);
+      CREATE INDEX IF NOT EXISTS idx_products_store_id ON products(store_id);
+      CREATE INDEX IF NOT EXISTS idx_wallet_tx_order_id ON wallet_transactions(order_id);
+      CREATE INDEX IF NOT EXISTS idx_wallet_tx_wallet_id ON wallet_transactions(wallet_id);
     `);
 
     const countRes = await pgPool.query('SELECT COUNT(*) FROM stores');
     const storeCount = parseInt(countRes.rows[0].count, 10);
 
     if (storeCount === 0 || forceSeed) {
-      console.log(`[PostgreSQL] Seeding ${db.stores.length} authentic stores into PostgreSQL...`);
+      console.log(`[PostgreSQL] Initial bootstrap: Seeding authentic data into PostgreSQL...`);
       for (const s of db.stores) {
         await saveStoreToPg(s);
       }
@@ -783,54 +1232,90 @@ async function initPgTables(forceSeed = false) {
       for (const d of db.drivers) {
         await saveDriverToPg(d);
       }
-      console.log('[PostgreSQL] Seeding completed successfully.');
+      for (const c of db.categories) {
+        await saveCategoryToPg(c);
+      }
+      for (const u of db.users) {
+        await saveUserToPg(u);
+      }
+      for (const w of db.wallets) {
+        await saveWalletToPg(w);
+      }
+      console.log('[PostgreSQL] Initial bootstrap seeding completed successfully.');
     } else {
-      console.log(`[PostgreSQL] Hydrating memory cache from PostgreSQL (${storeCount} stores)...`);
+      console.log(`[PostgreSQL] Hydrating cache from PostgreSQL (${storeCount} stores)...`);
       const storesRes = await pgPool.query('SELECT * FROM stores ORDER BY is_open DESC, is_featured DESC');
-      db.stores = storesRes.rows.map(r => ({
-        ...r,
-        rating: parseFloat(r.rating) || 5.0,
-        latitude: parseFloat(r.latitude) || 31.8686,
-        longitude: parseFloat(r.longitude) || 10.9818,
-        min_order_lyd: parseFloat(r.min_order_lyd) || 10.0,
-        base_delivery_fee_lyd: parseFloat(r.base_delivery_fee_lyd) || 4.0,
-        commission_rate: parseFloat(r.commission_rate) || 10.0,
-        is_open: false, // Default to closed on startup until merchant app sends heartbeat
-        last_heartbeat: null
-      }));
+      db.stores = storesRes.rows.map(mapPgStore);
 
       const productsRes = await pgPool.query('SELECT * FROM products ORDER BY name ASC');
-      db.products = productsRes.rows.map(r => ({
-        ...r,
-        price: parseFloat(r.price) || 0,
-        price_lyd: parseFloat(r.price_lyd) || parseFloat(r.price) || 0
-      }));
+      db.products = productsRes.rows.map(mapPgProduct);
 
       const driversRes = await pgPool.query('SELECT * FROM drivers');
-      db.drivers = driversRes.rows.map(r => ({
-        ...r,
-        rating: parseFloat(r.rating) || 5.0,
-        wallet_balance_lyd: parseFloat(r.wallet_balance_lyd) || 0,
-        cod_balance_lyd: parseFloat(r.cod_balance_lyd) || 0,
-        latitude: parseFloat(r.latitude) || 31.8686,
-        longitude: parseFloat(r.longitude) || 10.9818,
-        status: 'offline', // Default to offline on startup until captain app sends heartbeat
-        is_active: false,
-        last_heartbeat: null
-      }));
+      db.drivers = driversRes.rows.map(mapPgDriver);
 
       const ordersRes = await pgPool.query('SELECT * FROM orders ORDER BY created_at DESC LIMIT 300');
-      if (ordersRes.rows && ordersRes.rows.length > 0) {
-        db.orders = ordersRes.rows.map(r => ({
+      db.orders = (ordersRes.rows || []).map(mapPgOrder);
+
+      // Hydrate Users
+      const usersRes = await pgPool.query('SELECT * FROM users');
+      if (usersRes.rows.length > 0) {
+        db.users = usersRes.rows.map(r => ({
           ...r,
-          subtotal_lyd: parseFloat(r.subtotal_lyd) || 0,
-          delivery_fee_lyd: parseFloat(r.delivery_fee_lyd) || 0,
-          total_amount_lyd: parseFloat(r.total_amount_lyd) || 0,
-          delivery_latitude: parseFloat(r.delivery_lat) || 31.8686,
-          delivery_longitude: parseFloat(r.delivery_lng) || 10.9818,
-          items: Array.isArray(r.items) ? r.items : (typeof r.items === 'string' ? JSON.parse(r.items || '[]') : [])
+          unpaid_debt_lyd: parseFloat(r.unpaid_debt_lyd) || 0
         }));
       }
+
+      // Hydrate Wallets
+      const walletsRes = await pgPool.query('SELECT * FROM wallets');
+      if (walletsRes.rows.length > 0) {
+        db.wallets = walletsRes.rows.map(r => ({
+          ...r,
+          balance: parseFloat(r.balance) || 0,
+          locked_balance: parseFloat(r.locked_balance) || 0
+        }));
+      }
+
+      // Hydrate Categories
+      const catRes = await pgPool.query('SELECT * FROM categories ORDER BY sort_order ASC');
+      if (catRes.rows.length > 0) {
+        db.categories = catRes.rows;
+      }
+
+      // Hydrate Vouchers
+      const vouchersRes = await pgPool.query('SELECT * FROM vouchers ORDER BY created_at DESC LIMIT 300');
+      if (vouchersRes.rows.length > 0) {
+        db.vouchers = vouchersRes.rows.map(r => ({
+          ...r,
+          amount_lyd: parseFloat(r.amount_lyd) || 0
+        }));
+      }
+
+      // Hydrate Audit Logs
+      const auditRes = await pgPool.query('SELECT * FROM audit_logs ORDER BY created_at DESC LIMIT 300');
+      if (auditRes.rows.length > 0) {
+        db.audit_logs = auditRes.rows;
+      }
+
+      // Hydrate Journal Entries & Lines
+      const jrnRes = await pgPool.query('SELECT * FROM journal_entries ORDER BY created_at DESC LIMIT 300');
+      if (jrnRes.rows.length > 0) {
+        db.journal_entries = jrnRes.rows.map(r => ({
+          ...r,
+          total_debit: parseFloat(r.total_debit) || 0,
+          total_credit: parseFloat(r.total_credit) || 0,
+          discrepancy: parseFloat(r.discrepancy) || 0
+        }));
+      }
+
+      const jrnLinesRes = await pgPool.query('SELECT * FROM journal_entry_lines ORDER BY line_number ASC LIMIT 1000');
+      if (jrnLinesRes.rows.length > 0) {
+        db.journal_entry_lines = jrnLinesRes.rows.map(r => ({
+          ...r,
+          debit: parseFloat(r.debit) || 0,
+          credit: parseFloat(r.credit) || 0
+        }));
+      }
+
       // -------------------------------------------------------------
       // Delivery Zones Seeding & Hydration
       // -------------------------------------------------------------
@@ -896,7 +1381,7 @@ async function initPgTables(forceSeed = false) {
       const loyaltyRes = await pgPool.query('SELECT * FROM loyalty_points');
       db.loyalty_points = loyaltyRes.rows;
 
-      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders, ${db.delivery_zones.length} delivery zones.`);
+      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders, ${db.users.length} users, ${db.wallets.length} wallets, ${db.delivery_zones.length} delivery zones.`);
     }
   } catch (err) {
     console.error('[PostgreSQL] Table initialization/hydration error:', err.message);
@@ -1125,13 +1610,27 @@ app.use('/api/v1/reviews', (req, res, next) => {
 // ----------------------------------------------------------------------------
 
 function generateToken(user) {
+  let driverId = user.driver_id;
+  if (!driverId && user.role === 'driver' && typeof db !== 'undefined' && db.drivers) {
+    const matched = db.drivers.find(d => d.user_id === user.id || d.id === user.id || (user.phone && d.phone === user.phone));
+    if (matched) driverId = matched.id;
+  }
+  let storeId = user.store_id;
+  if (!storeId && user.role === 'merchant' && typeof db !== 'undefined' && db.stores) {
+    const matched = db.stores.find(s => s.merchant_id === user.id || s.id === user.id || (user.phone && s.phone === user.phone));
+    if (matched) storeId = matched.id;
+  }
+
   return jwt.sign(
     {
       id: user.id,
+      sub: user.id,
       phone: user.phone,
       full_name: user.full_name,
       role: user.role,
-      city: user.city || 'tripoli'
+      city: user.city || 'nalut',
+      driver_id: driverId || undefined,
+      store_id: storeId || undefined
     },
     JWT_SECRET,
     { expiresIn: '30d' }
@@ -1141,59 +1640,9 @@ function generateToken(user) {
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    // Permit guest/mobile customers without blocking
-    const guestUser = db.users.find(u => u.role === 'customer') || {
-      id: 'usr_guest_nalut',
-      phone: '0910000000',
-      full_name: 'زبون واصل نالوت',
-      role: 'customer'
-    };
-    req.user = guestUser;
-    return next();
-  }
-
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = db.users.find(u => u.id === decoded.id);
-    if (!user) {
-      req.user = { id: decoded.id, phone: decoded.phone, full_name: decoded.full_name || 'زبون واصل', role: decoded.role || 'customer' };
-      return next();
-    }
-    req.user = user;
-    next();
-  } catch (err) {
-    req.user = db.users.find(u => u.role === 'customer') || {
-      id: 'usr_guest_nalut',
-      phone: '0910000000',
-      full_name: 'زبون واصل نالوت',
-      role: 'customer'
-    };
-    next();
-  }
-}
-
-// Security: Administrative Authorization Guard
-function adminAuthMiddleware(req, res, next) {
-  const authHeader = req.headers.authorization;
-  const adminKey = req.headers['x-admin-key'] || req.query.admin_key;
-  const masterPin = process.env.ADMIN_DEFAULT_PIN || '7788';
-
-  // Support master admin key for operations dashboards / monitoring
-  if (adminKey && (adminKey === masterPin || adminKey === '7788')) {
-    const adminUser = db.users.find(u => u.role === 'admin') || {
-      id: 'admin_master',
-      full_name: 'Platform Super Admin',
-      role: 'admin'
-    };
-    req.user = adminUser;
-    return next();
-  }
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
-      error: 'Access Denied: Admin authorization required'
+      error: 'Authentication required: Missing or invalid Bearer token'
     });
   }
 
@@ -1201,17 +1650,126 @@ function adminAuthMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     const user = db.users.find(u => u.id === decoded.id);
-    if (!user || user.role !== 'admin') {
+    if (!user) {
+      req.user = {
+        id: decoded.id,
+        phone: decoded.phone,
+        full_name: decoded.full_name || 'مستخدم واصل',
+        role: decoded.role || 'customer',
+        city: decoded.city || 'nalut',
+        store_id: decoded.store_id || null,
+        driver_id: decoded.driver_id || null
+      };
+      return next();
+    }
+    req.user = user;
+    next();
+  } catch (err) {
+    return res.status(401).json({
+      success: false,
+      error: 'Invalid or expired authorization token'
+    });
+  }
+}
+
+// Security: Administrative Authorization Guard
+function adminAuthMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({
+      success: false,
+      error: 'Access Denied: Admin authorization required. Missing Bearer token'
+    });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role !== 'admin') {
       return res.status(403).json({
         success: false,
         error: 'Forbidden: You do not have permission to access administrative resources'
       });
     }
-    req.user = user;
+    const user = db.users.find(u => u.id === decoded.id);
+    req.user = user || { id: decoded.id, role: 'admin', full_name: decoded.full_name || 'مدير النظام' };
     next();
   } catch (err) {
     return res.status(401).json({ success: false, error: 'Invalid or expired admin session' });
   }
+}
+
+function storeOwnerOrAdminMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Authentication required: Missing Bearer token' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role === 'admin') {
+      req.user = decoded;
+      return next();
+    }
+    if (decoded.role === 'merchant' && (decoded.store_id === req.params.id || decoded.id === req.params.id)) {
+      req.user = decoded;
+      return next();
+    }
+    return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission to manage this store' });
+  } catch (err) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+}
+
+function driverSelfOrAdminMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, error: 'Authentication required: Missing Bearer token' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    if (decoded.role === 'admin') {
+      req.user = decoded;
+      return next();
+    }
+    const targetDriver = (typeof db !== 'undefined' && db.drivers)
+      ? db.drivers.find(d => d.id === req.params.id || d.user_id === req.params.id)
+      : null;
+    const isSelfDriver = decoded.role === 'driver' && (
+      decoded.driver_id === req.params.id ||
+      decoded.id === req.params.id ||
+      decoded.sub === req.params.id ||
+      (targetDriver && (
+        targetDriver.id === decoded.driver_id ||
+        targetDriver.id === decoded.id ||
+        targetDriver.id === decoded.sub ||
+        targetDriver.user_id === decoded.id ||
+        targetDriver.user_id === decoded.sub ||
+        targetDriver.user_id === decoded.driver_id
+      ))
+    );
+    if (isSelfDriver) {
+      req.user = decoded;
+      return next();
+    }
+    return res.status(403).json({ success: false, error: 'Forbidden: You do not have permission to settle for this driver' });
+  } catch (err) {
+    return res.status(401).json({ success: false, error: 'Invalid or expired token' });
+  }
+}
+
+function sanitizeStore(store) {
+  if (!store) return store;
+  const { pin, password, password_hash, ...publicStore } = store;
+  return publicStore;
+}
+
+function sanitizeDriver(driver) {
+  if (!driver) return driver;
+  const { pin, password, password_hash, ...publicDriver } = driver;
+  return publicDriver;
 }
 
 // ----------------------------------------------------------------------------
@@ -1308,14 +1866,18 @@ app.post('/api/v1/pricing/quote', handlePricingQuote);
 // ----------------------------------------------------------------------------
 // AUTH ROUTES
 // ----------------------------------------------------------------------------
-app.post('/api/v1/auth/register', (req, res) => {
+app.post('/api/v1/auth/register', async (req, res) => {
   try {
     const { full_name, phone, password, role = 'customer', city = 'tripoli', email } = req.body;
     if (!phone || !full_name) {
       return res.status(400).json({ success: false, error: 'Phone number and full name are required' });
     }
 
-    const existing = db.users.find(u => u.phone === phone);
+    let existing = db.users.find(u => u.phone === phone);
+    if (!existing && pgPool) {
+      const uRes = await pgPool.query('SELECT * FROM users WHERE phone = $1', [phone]);
+      if (uRes.rows.length > 0) existing = uRes.rows[0];
+    }
     if (existing) {
       return res.status(409).json({ success: false, error: 'User with this phone already exists' });
     }
@@ -1326,13 +1888,14 @@ app.post('/api/v1/auth/register', (req, res) => {
       full_name,
       phone,
       email: email || `${phone.replace('+', '')}@presto-mataa.ly`,
-      password: password || 'Password123!',
+      password: password || require('crypto').randomBytes(8).toString('hex'),
       role,
       status: 'active',
       city,
       created_at: new Date().toISOString()
     };
     db.users.push(newUser);
+    await saveUserToPg(newUser);
 
     // Create wallet with initial welcome balance (e.g. 50 LYD for testing)
     const walletId = `wallet_${userId}`;
@@ -1346,6 +1909,7 @@ app.post('/api/v1/auth/register', (req, res) => {
       status: 'active'
     };
     db.wallets.push(newWallet);
+    await saveWalletToPg(newWallet);
 
     const token = generateToken(newUser);
     res.status(201).json({
@@ -1363,7 +1927,7 @@ app.post('/api/v1/auth/register', (req, res) => {
 });
 
 // PASSWORDLESS VERIFIED PHONE AUTHENTICATION (Firebase SMS & WhatsApp OTP)
-app.post('/api/v1/auth/phone-login', rateLimiter(20, 60000), (req, res) => {
+app.post('/api/v1/auth/phone-login', rateLimiter(20, 60000), async (req, res) => {
   try {
     const { phone, full_name, firebase_uid, auth_method } = req.body;
     if (!phone) {
@@ -1384,6 +1948,18 @@ app.post('/api/v1/auth/phone-login', rateLimiter(20, 60000), (req, res) => {
       (u.firebase_uid && firebase_uid && u.firebase_uid === firebase_uid)
     );
 
+    if (!user && pgPool) {
+      const uRes = await pgPool.query(`
+        SELECT * FROM users
+        WHERE phone = $1 OR phone = $2 OR phone = $3 OR (firebase_uid IS NOT NULL AND firebase_uid = $4)
+        LIMIT 1
+      `, [cleanPhone, standardLibyan, localLibyan, firebase_uid || '']);
+      if (uRes.rows.length > 0) {
+        user = uRes.rows[0];
+        db.users.push(user);
+      }
+    }
+
     let isNewUser = false;
     if (!user) {
       isNewUser = true;
@@ -1401,6 +1977,7 @@ app.post('/api/v1/auth/phone-login', rateLimiter(20, 60000), (req, res) => {
         created_at: new Date().toISOString()
       };
       db.users.push(user);
+      await saveUserToPg(user);
 
       // Initialize Customer Wallet with welcome credit (50 LYD)
       const walletId = `wallet_${userId}`;
@@ -1414,11 +1991,11 @@ app.post('/api/v1/auth/phone-login', rateLimiter(20, 60000), (req, res) => {
         status: 'active'
       };
       db.wallets.push(newWallet);
-      saveSeedData();
+      await saveWalletToPg(newWallet);
     } else {
       if (firebase_uid && !user.firebase_uid) {
         user.firebase_uid = firebase_uid;
-        saveSeedData();
+        await saveUserToPg(user);
       }
     }
 
@@ -1463,21 +2040,37 @@ app.post('/api/v1/auth/login', rateLimiter(15, 60000), (req, res) => {
           driverData = matchedDriver;
           user = {
             id: matchedDriver.user_id || matchedDriver.id,
+            driver_id: matchedDriver.id,
             full_name: matchedDriver.full_name,
             phone: matchedDriver.phone,
             role: 'driver',
             city: 'nalut',
-            password: matchedDriver.pin || '1234'
+            password: matchedDriver.pin || null
           };
+        }
+      } else if (user.role === 'driver') {
+        const matchedDriver = db.drivers.find(d => d.user_id === user.id || d.phone === phone);
+        if (matchedDriver) {
+          driverData = matchedDriver;
+          user.driver_id = matchedDriver.id;
         }
       }
     } else if (role === 'admin') {
-      // Admin role login requires admin password or PIN
-      const adminPin = process.env.ADMIN_DEFAULT_PIN || '9832';
-      if (password !== adminPin && password !== 'Admin123!') {
-        return res.status(401).json({ success: false, error: 'Invalid admin credentials or PIN' });
-      }
       user = db.users.find(u => u.role === 'admin');
+    } else if (role === 'driver') {
+      const matchedDriver = db.drivers[0];
+      if (matchedDriver) {
+        driverData = matchedDriver;
+        user = {
+          id: matchedDriver.user_id || matchedDriver.id,
+          driver_id: matchedDriver.id,
+          full_name: matchedDriver.full_name,
+          phone: matchedDriver.phone,
+          role: 'driver',
+          city: 'nalut',
+          password: matchedDriver.pin || null
+        };
+      }
     } else if (role) {
       user = db.users.find(u => u.role === role);
     }
@@ -1486,8 +2079,15 @@ app.post('/api/v1/auth/login', rateLimiter(15, 60000), (req, res) => {
       return res.status(401).json({ success: false, error: 'Invalid login credentials' });
     }
 
-    // Password or PIN verification
-    if (password && user.password && password !== user.password && password !== 'Password123!' && password !== '1234') {
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password or PIN required' });
+    }
+
+    const storedSecret = user.password || user.password_hash;
+    if (!storedSecret) {
+      return res.status(401).json({ success: false, error: 'لم يتم تعيين رمز مرور لهذا الحساب' });
+    }
+    if (storedSecret !== password) {
       return res.status(401).json({ success: false, error: 'Incorrect password or PIN' });
     }
 
@@ -1520,22 +2120,59 @@ app.post('/api/v1/auth/login', rateLimiter(15, 60000), (req, res) => {
   }
 });
 
+// ============================================================================
+// HELPER: Robust Libyan Phone Number Normalization
+// ============================================================================
+function normalizeLibyanPhone(input) {
+  if (!input) return '';
+  const ascii = String(input)
+    .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 1632)
+    .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 1776);
+  let digits = ascii.replace(/\D/g, '');
+  if (digits.startsWith('00218')) {
+    digits = digits.slice(5);
+  } else if (digits.startsWith('218')) {
+    digits = digits.slice(3);
+  }
+  return digits.replace(/^0+/, '');
+}
+
 app.post('/api/v1/auth/merchant-login', rateLimiter(20, 60000), (req, res) => {
   try {
-    const { store_id, pin } = req.body;
-    if (!store_id) {
+    const { store_id, pin, phone } = req.body;
+    const identifier = store_id || phone;
+    if (!identifier) {
       return res.status(400).json({ success: false, error: 'Store ID is required' });
     }
 
-    const store = db.stores.find(s => s.id === store_id);
+    const cleanInput = String(identifier).trim();
+    const normInput = normalizeLibyanPhone(cleanInput);
+
+    const store = db.stores.find(s => {
+      if (!s) return false;
+      // 1. Exact Store ID match (case-insensitive)
+      if (s.id && (s.id === cleanInput || s.id.toLowerCase() === cleanInput.toLowerCase())) {
+        return true;
+      }
+      // 2. Phone match against Libyan normalized format (minimum 7 digits for subscriber line)
+      if (normInput.length >= 7) {
+        const normStorePhone = normalizeLibyanPhone(s.phone);
+        if (normStorePhone.length >= 7) {
+          if (normStorePhone === normInput ||
+              normStorePhone.endsWith(normInput) ||
+              normInput.endsWith(normStorePhone)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    });
     if (!store) {
       return res.status(404).json({ success: false, error: 'المتجر المحدد غير مسجل بالنظام' });
     }
 
-    const validPin = store.pin || '1234';
-    const masterPin = process.env.ADMIN_DEFAULT_PIN || '9832';
-
-    if (pin !== validPin && pin !== masterPin) {
+    const validPin = store.pin;
+    if (!validPin || pin !== validPin) {
       return res.status(401).json({ success: false, error: 'رمز PIN الخاص بالمتجر غير صحيح' });
     }
 
@@ -1573,17 +2210,22 @@ app.post('/api/v1/auth/merchant-login', rateLimiter(20, 60000), (req, res) => {
 app.post('/api/v1/auth/admin-login', rateLimiter(10, 60000), (req, res) => {
   try {
     const { pin, password } = req.body || {};
-    const masterPin = process.env.ADMIN_DEFAULT_PIN || '7788';
-
-    if (pin !== masterPin && pin !== '7788' && pin !== '9832' && password !== masterPin && password !== '7788' && password !== '9832' && password !== 'Admin123!') {
-      return res.status(401).json({ success: false, error: 'رمز الأمان الإداري غير صحيح' });
+    const adminUser = db.users.find(u => u.role === 'admin');
+    if (!adminUser) {
+      return res.status(401).json({ success: false, error: 'حساب الإدارة غير متوفر بالنظام' });
     }
 
-    const adminUser = db.users.find(u => u.role === 'admin') || {
-      id: 'admin_master',
-      full_name: 'مدير عمليات أسطول نالوت',
-      role: 'admin'
-    };
+    const providedSecret = (pin || password || '').toString().trim();
+    const adminSecret = (adminUser.password || adminUser.password_hash || '').toString().trim();
+    const validAdminPin = (adminUser.pin || process.env.ADMIN_PIN || process.env.ADMIN_DEFAULT_PIN || '7788').toString().trim();
+
+    const isMatch = Boolean(
+      providedSecret && (providedSecret === adminSecret || providedSecret === validAdminPin)
+    );
+
+    if (!isMatch) {
+      return res.status(401).json({ success: false, error: 'رمز الأمان الإداري غير صحيح' });
+    }
 
     const token = jwt.sign(
       { id: adminUser.id, role: 'admin', full_name: adminUser.full_name },
@@ -1596,7 +2238,6 @@ app.post('/api/v1/auth/admin-login', rateLimiter(10, 60000), (req, res) => {
       message: 'تم التحقق من الصلاحيات الإدارية بنجاح',
       data: {
         token,
-        admin_key: masterPin,
         user: {
           id: adminUser.id,
           full_name: adminUser.full_name,
@@ -1676,7 +2317,7 @@ app.get('/api/v1/stores', (req, res) => {
     res.json({
       success: true,
       count: stores.length,
-      data: stores
+      data: stores.map(sanitizeStore)
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1691,7 +2332,7 @@ app.get('/api/v1/stores/:id', (req, res) => {
   res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
   res.json({
     success: true,
-    data: store
+    data: sanitizeStore(store)
   });
 });
 
@@ -1740,7 +2381,7 @@ app.get('/api/v1/stores/:id/menu', (req, res) => {
   }
 });
 
-app.post('/api/v1/stores', (req, res) => {
+app.post('/api/v1/stores', adminAuthMiddleware, async (req, res) => {
   try {
     const s = req.body;
     if (!s.name) {
@@ -1754,7 +2395,7 @@ app.post('/api/v1/stores', (req, res) => {
       district: s.district || 'نالوت',
       city: 'nalut',
       phone: s.phone || '',
-      pin: s.pin || '1234',
+      pin: s.pin || crypto.randomInt(1000, 10000).toString(),
       app_mode: s.app_mode || ((s.type === 'grocery' || s.type === 'pharmacy') ? 'retail' : 'kitchen'),
       commission_rate: s.commission_rate || 10.0,
       rating: 5.0,
@@ -1770,18 +2411,18 @@ app.post('/api/v1/stores', (req, res) => {
       created_at: new Date().toISOString()
     };
     db.stores.unshift(newStore);
-    saveSeedData();
-    saveStoreToPg(newStore);
+    await saveStoreToPg(newStore);
     if (req.io) {
       req.io.emit('store:created', newStore);
     }
     res.status(201).json({ success: true, data: newStore });
   } catch (err) {
+    db.stores = db.stores.filter(s => s.id !== req.body?.id && s.name !== req.body?.name);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.patch('/api/v1/stores/:id', (req, res) => {
+app.patch('/api/v1/stores/:id', storeOwnerOrAdminMiddleware, async (req, res) => {
   try {
     const store = db.stores.find(s => s.id === req.params.id);
     if (!store) {
@@ -1792,8 +2433,7 @@ app.patch('/api/v1/stores/:id', (req, res) => {
       store.is_open = req.body.is_open === true || req.body.is_open === 'true' || req.body.is_open === 1;
       store.last_heartbeat = store.is_open ? Date.now() : 0;
     }
-    saveSeedData();
-    saveStoreToPg(store);
+    await saveStoreToPg(store);
     if (req.io) {
       req.io.emit('store:updated', store);
       req.io.emit('store:status_changed', { store_id: store.id, is_open: store.is_open });
@@ -1805,7 +2445,7 @@ app.patch('/api/v1/stores/:id', (req, res) => {
 });
 
 // Merchant Active Heartbeat (Auto-opens store while merchant app is running)
-app.post('/api/v1/stores/:id/heartbeat', (req, res) => {
+app.post('/api/v1/stores/:id/heartbeat', storeOwnerOrAdminMiddleware, async (req, res) => {
   try {
     const store = db.stores.find(s => s.id === req.params.id);
     if (!store) {
@@ -1816,8 +2456,7 @@ app.post('/api/v1/stores/:id/heartbeat', (req, res) => {
     store.is_open = true;
 
     if (wasClosed) {
-      saveStoreToPg(store);
-      saveSeedData();
+      await saveStoreToPg(store);
       if (req.io) {
         req.io.emit('store:status_changed', { store_id: store.id, is_open: true });
         req.io.emit('store:updated', store);
@@ -1836,25 +2475,28 @@ app.post('/api/v1/stores/:id/heartbeat', (req, res) => {
   }
 });
 
-app.delete('/api/v1/stores/:id', (req, res) => {
-  db.stores = db.stores.filter(s => s.id !== req.params.id);
-  db.products = db.products.filter(p => p.store_id !== req.params.id);
-  saveSeedData();
-  deleteStoreFromPg(req.params.id);
-  if (req.io) {
-    req.io.emit('store:deleted', { id: req.params.id });
+app.delete('/api/v1/stores/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    db.stores = db.stores.filter(s => s.id !== req.params.id);
+    db.products = db.products.filter(p => p.store_id !== req.params.id);
+    await deleteStoreFromPg(req.params.id);
+    if (req.io) {
+      req.io.emit('store:deleted', { id: req.params.id });
+    }
+    res.json({ success: true, message: 'Store deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
-  res.json({ success: true, message: 'Store deleted' });
 });
 
-app.post('/api/v1/drivers', (req, res) => {
+app.post('/api/v1/drivers', adminAuthMiddleware, async (req, res) => {
   try {
     const d = req.body;
     const newDriver = {
       id: d.id || `drv_${Date.now()}`,
       full_name: d.full_name || d.name || 'كابتن واصل',
       phone: d.phone || '',
-      pin: d.pin || '1234',
+      pin: d.pin || crypto.randomInt(1000, 10000).toString(),
       vehicle_type: d.vehicle_type || 'سيارة',
       plate_number: d.plate_number || 'نالوت 14-',
       status: 'available',
@@ -1865,8 +2507,7 @@ app.post('/api/v1/drivers', (req, res) => {
       created_at: new Date().toISOString()
     };
     db.drivers.unshift(newDriver);
-    saveSeedData();
-    saveDriverToPg(newDriver);
+    await saveDriverToPg(newDriver);
     if (req.io) {
       req.io.emit('driver:added', newDriver);
     }
@@ -1876,28 +2517,65 @@ app.post('/api/v1/drivers', (req, res) => {
   }
 });
 
-app.delete('/api/v1/drivers/:id', (req, res) => {
-  db.drivers = db.drivers.filter(d => d.id !== req.params.id);
-  saveSeedData();
-  deleteDriverFromPg(req.params.id);
-  if (req.io) {
-    req.io.emit('driver:deleted', { id: req.params.id });
+app.delete('/api/v1/drivers/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    db.drivers = db.drivers.filter(d => d.id !== req.params.id);
+    await deleteDriverFromPg(req.params.id);
+    if (req.io) {
+      req.io.emit('driver:deleted', { id: req.params.id });
+    }
+    res.json({ success: true, message: 'Driver deleted' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
-  res.json({ success: true, message: 'Driver deleted' });
 });
 
-app.post('/api/v1/drivers/:id/settle', async (req, res) => {
+app.post('/api/v1/drivers/:id/settle', driverSelfOrAdminMiddleware, async (req, res) => {
+  let client = null;
+  let prevCashInHand = null;
+  let prevCodBalance = null;
+  let driver = null;
+
   try {
-    const driver = db.drivers.find(d => d.id === req.params.id);
+    if (pgPool && typeof pgPool.connect === 'function') {
+      client = await pgPool.connect();
+      await client.query('BEGIN');
+    }
+
+    const runner = client || pgPool;
+    if (runner) {
+      const dRes = await runner.query('SELECT * FROM drivers WHERE id = $1 OR user_id = $1 FOR UPDATE', [req.params.id]);
+      if (dRes.rows.length > 0) {
+        driver = mapPgDriver(dRes.rows[0]);
+        const memIdx = db.drivers.findIndex(d => d.id === driver.id);
+        if (memIdx >= 0) db.drivers[memIdx] = driver;
+        else db.drivers.push(driver);
+      }
+    }
     if (!driver) {
+      driver = db.drivers.find(d => d.id === req.params.id || d.user_id === req.params.id);
+    }
+    if (!driver) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(404).json({ success: false, error: 'Driver not found' });
     }
 
-    const settlementResult = await ledgerService.settleDriverCash(db, driver.id, req.body || {}, pgPool);
+    // Preserve memory state snapshot for clean rollback on error
+    prevCashInHand = driver.cash_in_hand_lyd;
+    prevCodBalance = driver.cod_balance_lyd;
+
+    const settlementResult = await ledgerService.settleDriverCash(db, driver.id, req.body || {}, client || pgPool);
     const { settled_amount, voucher } = settlementResult;
 
-    saveSeedData();
-    saveDriverToPg(driver);
+    // Save driver state to PostgreSQL using the active transaction client
+    await saveDriverToPg(driver, client);
+
+    // Commit transaction
+    if (client) {
+      await client.query('COMMIT');
+      client.release();
+      client = null;
+    }
 
     if (req.io) {
       req.io.emit('driver:settled', {
@@ -1921,6 +2599,19 @@ app.post('/api/v1/drivers/:id/settle', async (req, res) => {
       voucher: voucher
     });
   } catch (err) {
+    // Roll back database transaction
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      client.release();
+      client = null;
+    }
+
+    // Roll back in-memory driver state
+    if (driver && prevCashInHand !== null) {
+      driver.cash_in_hand_lyd = prevCashInHand;
+      driver.cod_balance_lyd = prevCodBalance;
+    }
+
     res.status(500).json({ success: false, error: err.message });
   }
 });
@@ -1930,26 +2621,102 @@ app.patch('/api/v1/drivers/:id/settle', (req, res, next) => {
   app._router.handle(req, res, next);
 });
 
-app.post('/api/v1/admin/purge', async (req, res) => {
-  const { admin_pin } = req.body;
-  if (admin_pin !== '9832') {
-    return res.status(403).json({ success: false, error: 'Invalid admin PIN' });
-  }
-  db.stores = [];
-  db.products = [];
-  db.drivers = [];
-  db.orders = [];
-  db.wallet_transactions = [];
-  saveSeedData();
-  if (pgPool) {
-    try {
-      await pgPool.query('TRUNCATE stores, products, drivers, orders CASCADE');
-    } catch (e) {
-      console.error('[PostgreSQL purge error]:', e.message);
+// SELECTIVE ADMIN ORDERS PURGE ENDPOINT (F8 Selective Order Purge)
+const handleAdminOrdersPurge = async (req, res) => {
+  try {
+    const { pin } = req.body || {};
+    if (!pin || (pin !== '7788' && pin !== req.user?.pin)) {
+      return res.status(401).json({ success: false, error: 'رمز الأمان PIN مطلوب وغير صحيح' });
     }
+
+    // 1. Clear orders and related transactional ledger from memory
+    db.orders = [];
+    db.wallet_transactions = [];
+    if (db.journal_entries) db.journal_entries = [];
+    if (db.journal_entry_lines) db.journal_entry_lines = [];
+    if (db.vouchers) db.vouchers = [];
+
+    // 2. Reset driver active orders and COD custody liabilities
+    if (db.drivers) {
+      for (const driver of db.drivers) {
+        driver.active_order_id = null;
+        driver.cod_balance_lyd = 0.00;
+        driver.cash_in_hand_lyd = 0.00;
+        driver.status = 'offline';
+        driver.is_active = false;
+      }
+    }
+
+    // 3. Unlock customer wallet balances
+    if (db.wallets) {
+      for (const wallet of db.wallets) {
+        wallet.locked_balance = 0.00;
+      }
+    }
+
+    // 4. Update seed_data.json on disk to maintain zero state across server boots
+    try {
+      if (fs.existsSync(SEED_DATA_PATH)) {
+        const rawSeed = fs.readFileSync(SEED_DATA_PATH, 'utf8');
+        const parsedSeed = JSON.parse(rawSeed);
+        parsedSeed.orders = [];
+        if (parsedSeed.drivers) {
+          for (const d of parsedSeed.drivers) {
+            d.active_order_id = null;
+            d.cod_balance_lyd = 0;
+            d.cash_in_hand_lyd = 0;
+            d.status = 'offline';
+            d.is_active = false;
+          }
+        }
+        if (parsedSeed.wallets) {
+          for (const w of parsedSeed.wallets) {
+            if (w.locked_balance !== undefined) w.locked_balance = 0;
+          }
+        }
+        fs.writeFileSync(SEED_DATA_PATH, JSON.stringify(parsedSeed, null, 2), 'utf8');
+      }
+    } catch (fsErr) {
+      console.warn('[Seed Data Disk Update Warning]:', fsErr.message);
+    }
+
+    // 5. Execute selective cascade truncate and reset in PostgreSQL
+    if (pgPool) {
+      try { await pgPool.query('TRUNCATE orders, order_items CASCADE'); } catch (_) {}
+      try { await pgPool.query('TRUNCATE reviews CASCADE'); } catch (_) {}
+      try {
+        await pgPool.query(`
+          UPDATE drivers
+          SET active_order_id = NULL,
+              cod_balance_lyd = 0.00,
+              cash_in_hand_lyd = 0.00,
+              status = 'offline',
+              is_active = false
+        `);
+      } catch (_) {}
+      try { await pgPool.query('UPDATE wallets SET locked_balance = 0.00'); } catch (_) {}
+      try { await pgPool.query('TRUNCATE wallet_transactions CASCADE'); } catch (_) {}
+      try { await pgPool.query('TRUNCATE journal_entries, journal_entry_lines CASCADE'); } catch (_) {}
+      try { await pgPool.query('TRUNCATE voucher_usage CASCADE'); } catch (_) {}
+    }
+
+    // 6. Broadcast admin:orders_purged
+    if (req.io) {
+      req.io.emit('admin:orders_purged', { timestamp: new Date().toISOString() });
+      req.io.to('admin:fleet').emit('admin:orders_purged', { timestamp: new Date().toISOString() });
+    }
+
+    res.json({
+      success: true,
+      message: 'تم تصفير كافة الطلبات وسجل الحركات بنجاح مع الحفاظ على المتاجر والمنتجات والكباتن'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
   }
-  res.json({ success: true, message: 'All test stores, products, drivers, and orders purged successfully!' });
-});
+};
+
+app.post('/api/v1/admin/orders/purge', adminAuthMiddleware, handleAdminOrdersPurge);
+app.post('/api/v1/admin/purge', adminAuthMiddleware, handleAdminOrdersPurge);
 
 app.get('/api/v1/categories', (req, res) => {
   const { vertical } = req.query;
@@ -2007,7 +2774,7 @@ app.get('/api/v1/products/:id', (req, res) => {
   });
 });
 
-app.post('/api/v1/products', (req, res) => {
+app.post('/api/v1/products', async (req, res) => {
   try {
     const p = req.body;
     if (!p.name && !p.name_ar) {
@@ -2042,8 +2809,7 @@ app.post('/api/v1/products', (req, res) => {
     };
 
     db.products.push(newProd);
-    saveSeedData();
-    saveProductToPg(newProd);
+    await saveProductToPg(newProd);
 
     if (req.io) {
       req.io.emit('product:created', newProd);
@@ -2052,11 +2818,12 @@ app.post('/api/v1/products', (req, res) => {
 
     res.status(201).json({ success: true, data: newProd });
   } catch (err) {
+    db.products = db.products.filter(p => p.id !== req.body?.id);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.patch('/api/v1/products/:id', (req, res) => {
+app.patch('/api/v1/products/:id', async (req, res) => {
   try {
     const product = db.products.find(p => p.id === req.params.id);
     if (!product) {
@@ -2113,8 +2880,7 @@ app.patch('/api/v1/products/:id', (req, res) => {
     if (updates.category) product.category = updates.category;
     if (updates.unit) product.unit = updates.unit;
 
-    saveSeedData();
-    saveProductToPg(product);
+    await saveProductToPg(product);
 
     if (req.io) {
       req.io.emit('product:updated', product);
@@ -2134,15 +2900,14 @@ app.patch('/api/v1/products/:id', (req, res) => {
   }
 });
 
-app.delete('/api/v1/products/:id', (req, res) => {
+app.delete('/api/v1/products/:id', async (req, res) => {
   try {
     const idx = db.products.findIndex(p => p.id === req.params.id);
     if (idx === -1) {
       return res.status(404).json({ success: false, error: 'Product not found' });
     }
     const deleted = db.products.splice(idx, 1)[0];
-    saveSeedData();
-    deleteProductFromPg(req.params.id);
+    await deleteProductFromPg(req.params.id);
 
     if (req.io) {
       req.io.emit('product:deleted', { id: req.params.id, store_id: deleted.store_id });
@@ -2304,8 +3069,20 @@ app.post('/api/v1/stores/:id/bulk-products', (req, res) => {
 // ----------------------------------------------------------------------------
 // ORDERS & CHECKOUT ROUTES (R1)
 // ----------------------------------------------------------------------------
-app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, res) => {
+app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, async (req, res) => {
+  let client = null;
+  let customerWallet = null;
+  let holdTxn = null;
+  let newOrder = null;
+  let totalAmount = 0;
+  let isCommitted = false;
+  const deductedProducts = [];
   try {
+    if (pgPool && typeof pgPool.connect === 'function') {
+      client = await pgPool.connect();
+      await client.query('BEGIN');
+    }
+
     const {
       store_id,
       items = [],
@@ -2319,19 +3096,33 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
     } = req.body;
 
     if (!store_id) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(400).json({ success: false, error: 'store_id is required' });
     }
     if (!items || items.length === 0) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(400).json({ success: false, error: 'Order must contain at least 1 item' });
     }
 
-    const store = db.stores.find(s => s.id === store_id);
+    let store = null;
+    const storeQueryRunner = client || pgPool;
+    if (storeQueryRunner) {
+      const sRes = await storeQueryRunner.query('SELECT * FROM stores WHERE id = $1', [store_id]);
+      if (sRes.rows.length > 0) {
+        store = mapPgStore(sRes.rows[0]);
+      }
+    }
     if (!store) {
+      store = db.stores.find(s => s.id === store_id);
+    }
+    if (!store) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(404).json({ success: false, error: 'Store not found' });
     }
 
     // Reject orders if store is closed
     if (store.is_open === false) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(400).json({
         success: false,
         error: `عذراً، متجر "${store.name}" مغلق حالياً ولا يستقبل طلبات جديدة.`
@@ -2340,21 +3131,37 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
 
     // Pre-flight validation: check stock availability for every requested item
     for (const item of items) {
-      const product = db.products.find(p =>
-        (item.product_id && p.id === item.product_id) ||
-        (item.id && p.id === item.id) ||
-        (item.name && (p.name === item.name || p.name_ar === item.name))
-      );
+      let product = null;
+      const itemId = item.product_id || item.id;
+      const prodQueryRunner = client || pgPool;
+      if (prodQueryRunner) {
+        if (itemId) {
+          const pRes = await prodQueryRunner.query('SELECT * FROM products WHERE id = $1', [itemId]);
+          if (pRes.rows.length > 0) product = mapPgProduct(pRes.rows[0]);
+        }
+        if (!product && item.name) {
+          const pRes = await prodQueryRunner.query('SELECT * FROM products WHERE name = $1 OR name_ar = $1 LIMIT 1', [item.name]);
+          if (pRes.rows.length > 0) product = mapPgProduct(pRes.rows[0]);
+        }
+      }
+      if (!product) {
+        product = db.products.find(p =>
+          (itemId && p.id === itemId) ||
+          (item.name && (p.name === item.name || p.name_ar === item.name))
+        );
+      }
 
       if (product) {
         const reqQty = parseInt(item.quantity || 1, 10);
         if (product.is_available === false || product.in_stock === false) {
+          if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
           return res.status(400).json({
             success: false,
             error: `عذراً، الصنف "${product.name_ar || product.name}" نفدت كميته ولم يعد متوفراً حالياً.`
           });
         }
         if (product.stock_quantity !== undefined && product.stock_quantity !== null && product.stock_quantity < reqQty) {
+          if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
           return res.status(400).json({
             success: false,
             error: `عذراً، الكمية المطلوبة من "${product.name_ar || product.name}" غير متوفرة (المتبقي في المتجر: ${product.stock_quantity} فقط).`
@@ -2374,13 +3181,22 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
     const orderItems = [];
 
     for (const item of items) {
-      const product = db.products.find(p => p.id === item.product_id || p.id === item.id) || {
-        id: item.product_id || item.id || `prod_${Date.now()}`,
-        name_ar: item.name_ar || item.name || 'وجبة نالوت الطازجة',
-        name_en: item.name_en || item.name || 'Nalut Item',
-        price_lyd: parseFloat(item.price || item.price_lyd || 15.0),
-        weight_kg: 0.5
-      };
+      let product = null;
+      const itemId = item.product_id || item.id;
+      const prodQueryRunner = client || pgPool;
+      if (prodQueryRunner && itemId) {
+        const pRes = await prodQueryRunner.query('SELECT * FROM products WHERE id = $1', [itemId]);
+        if (pRes.rows.length > 0) product = mapPgProduct(pRes.rows[0]);
+      }
+      if (!product) {
+        product = db.products.find(p => p.id === itemId) || {
+          id: itemId || `prod_${Date.now()}`,
+          name_ar: item.name_ar || item.name || 'وجبة نالوت الطازجة',
+          name_en: item.name_en || item.name || 'Nalut Item',
+          price_lyd: parseFloat(item.price || item.price_lyd || 15.0),
+          weight_kg: 0.5
+        };
+      }
 
       const itemPrice = item.price ? parseFloat(item.price) : (product.discount_price_lyd || product.price_lyd || 15.0);
       let itemModifierTotal = 0;
@@ -2423,10 +3239,10 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
     const pointsDiscount = req.body.loyalty_points_discount_lyd ? parseFloat(req.body.loyalty_points_discount_lyd) : 0.00;
     const freeDeliveryDiscount = req.body.free_delivery_discount_lyd ? parseFloat(req.body.free_delivery_discount_lyd) : 0.00;
     const totalPromotions = discount + pointsDiscount + freeDeliveryDiscount;
-    const totalAmount = Math.max(0, subtotal + deliveryFee + serviceFee - totalPromotions);
+    totalAmount = Math.max(0, subtotal + deliveryFee + serviceFee - totalPromotions);
 
     // Escrow Reservation if wallet payment
-    let customerWallet = db.wallets.find(w => w.user_id === customer.id);
+    customerWallet = db.wallets.find(w => w.user_id === customer.id);
     if (!customerWallet) {
       customerWallet = {
         id: `wallet_${customer.id}`,
@@ -2441,8 +3257,20 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
     }
 
     if (payment_method === 'wallet') {
+      let pgWallet = null;
+      const walletRunner = client || pgPool;
+      if (walletRunner) {
+        const wRes = await walletRunner.query('SELECT * FROM wallets WHERE user_id = $1 FOR UPDATE', [customer.id]);
+        if (wRes.rows.length > 0) {
+          pgWallet = wRes.rows[0];
+          customerWallet.balance = parseFloat(pgWallet.balance) || customerWallet.balance;
+          customerWallet.locked_balance = parseFloat(pgWallet.locked_balance) || customerWallet.locked_balance;
+        }
+      }
+
       const availableBalance = customerWallet.balance - customerWallet.locked_balance;
       if (availableBalance < totalAmount) {
+        if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
         return res.status(400).json({
           success: false,
           error: `Insufficient wallet balance. Available: ${availableBalance.toFixed(2)} LYD, Required: ${totalAmount.toFixed(2)} LYD`,
@@ -2456,9 +3284,12 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
 
       // Lock funds in escrow
       customerWallet.locked_balance += totalAmount;
+      if (client && pgWallet) {
+        await client.query('UPDATE wallets SET locked_balance = locked_balance + $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [totalAmount, pgWallet.id]);
+      }
 
       // Record escrow hold transaction
-      db.wallet_transactions.push({
+      holdTxn = {
         id: `txn_hold_${uuidv4().substring(0, 8)}`,
         wallet_id: customerWallet.id,
         counterparty_wallet_id: SYSTEM_WALLETS.ESCROW,
@@ -2469,21 +3300,22 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
         status: 'completed',
         description: `حجز ضمان مالي للطلب من ${store.name}`,
         created_at: new Date().toISOString()
-      });
+      };
+      db.wallet_transactions.push(holdTxn);
+      if (client) {
+        await saveWalletTransactionToPg(holdTxn, client);
+      }
     }
-
-    // Decoupled dispatch: orders start unassigned (driver_id = null).
-    // Dispatching to Captain Radar ONLY occurs when store marks order 'ready_for_pickup'.
-    let assignedDriver = null;
 
     const orderId = `ord_${uuidv4().substring(0, 8)}`;
     const orderNumber = `ORD-2026-LY-${Math.floor(1000 + Math.random() * 9000)}`;
-    const otpCode = (1000 + Math.floor(Math.random() * 9000)).toString();
+    const otpCode = crypto.randomInt(1000, 10000).toString();
+    const handoverCode = crypto.randomInt(1000, 10000).toString();
 
     const customerName = (req.body.customer_name && String(req.body.customer_name).trim().length > 0) ? String(req.body.customer_name).trim() : (customer.full_name || 'زبون واصل نالوت');
     const customerPhone = (req.body.customer_phone && String(req.body.customer_phone).trim().length > 0) ? String(req.body.customer_phone).trim() : (customer.phone || '0910000000');
 
-    const newOrder = {
+    newOrder = {
       id: orderId,
       order_number: orderNumber,
       customer_id: customer.id,
@@ -2496,6 +3328,8 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
       driver_id: null,
       status: 'placed',
       otp_code: otpCode,
+      delivery_otp: otpCode,
+      handover_code: handoverCode,
       payment_method,
       payment_status: payment_method === 'wallet' ? 'held_escrow' : 'pending_cod',
       subtotal_lyd: subtotal,
@@ -2518,53 +3352,77 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
     };
 
     db.orders.push(newOrder);
-    saveOrderToPg(newOrder);
+    await saveOrderToPg(newOrder, client);
 
     // Deduct stock for ordered products in real-time
+    const updatedProducts = [];
     for (const item of items) {
-      const product = db.products.find(p =>
-        (item.product_id && p.id === item.product_id) ||
-        (item.id && p.id === item.id) ||
-        (item.name && (p.name === item.name || p.name_ar === item.name))
-      );
+      let product = null;
+      const itemId = item.product_id || item.id;
+      const prodRunner = client || pgPool;
+      if (prodRunner && itemId) {
+        const pRes = await prodRunner.query('SELECT * FROM products WHERE id = $1', [itemId]);
+        if (pRes.rows.length > 0) product = mapPgProduct(pRes.rows[0]);
+      }
+      if (!product) {
+        product = db.products.find(p =>
+          (itemId && p.id === itemId) ||
+          (item.name && (p.name === item.name || p.name_ar === item.name))
+        );
+      }
       if (product) {
         const qty = parseInt(item.quantity || 1, 10);
         if (product.stock_quantity !== undefined && product.stock_quantity !== null) {
           product.stock_quantity = Math.max(0, product.stock_quantity - qty);
+          deductedProducts.push({ id: product.id, quantity: qty });
           if (product.stock_quantity === 0) {
             product.in_stock = false;
             product.is_available = false;
           }
         }
-        saveProductToPg(product);
-        if (req.io) {
-          req.io.emit('product:stock_changed', {
-            product_id: product.id,
-            store_id: product.store_id,
-            in_stock: product.in_stock,
-            is_available: product.is_available,
-            stock_quantity: product.stock_quantity
-          });
+        await saveProductToPg(product, client);
+        const memProduct = db.products.find(p => p.id === product.id);
+        if (memProduct) {
+          Object.assign(memProduct, product);
         }
+        updatedProducts.push(product);
       }
     }
-    saveSeedData();
-    if (req.io) {
-      req.io.emit('store:menu_updated', { store_id: store.id });
+
+    // ATOMIC ACID COMMIT
+    if (client) {
+      await client.query('COMMIT');
+      client.release();
+      client = null;
     }
+    isCommitted = true;
 
-    // Real-time Socket broadcasts to Store, User, and Admin (NOT Captain Radar yet)
-    req.io.to(`store:${store.id}`).emit('store:new_order', {
-      order_id: orderId,
-      order_number: orderNumber,
-      items: orderItems,
-      total_amount_lyd: totalAmount,
-      status: newOrder.status
-    });
+    // STRICTLY POST-COMMIT REAL-TIME BROADCASTS
+    if (req.io) {
+      for (const prod of updatedProducts) {
+        req.io.emit('product:stock_changed', {
+          product_id: prod.id,
+          store_id: prod.store_id,
+          in_stock: prod.in_stock,
+          is_available: prod.is_available,
+          stock_quantity: prod.stock_quantity
+        });
+      }
+      req.io.emit('store:menu_updated', { store_id: store.id });
 
-    req.io.to(`user:${customer.id}`).emit('order:created', newOrder);
-    req.io.to('admin:fleet').emit('admin:order_created', newOrder);
-    req.io.emit('merchant:new_order', newOrder);
+      // Real-time Socket broadcasts to Store, User, and Admin (NOT Captain Radar yet)
+      req.io.to(`store:${store.id}`).emit('store:new_order', {
+        order_id: orderId,
+        order_number: orderNumber,
+        items: orderItems,
+        total_amount_lyd: totalAmount,
+        status: newOrder.status
+      });
+
+      req.io.to(`user:${customer.id}`).emit('order:created', newOrder);
+      req.io.to('admin:fleet').emit('admin:order_created', newOrder);
+      req.io.emit('merchant:new_order', newOrder);
+    }
 
     // FIREBASE CLOUD MESSAGING: Loud Buzzer for Merchant Tablet (KDS)
     try {
@@ -2596,20 +3454,89 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, (req, re
       }
     });
   } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      client.release();
+      client = null;
+    }
+
+    // In-memory rollback recovery if transaction aborted before/during COMMIT
+    if (!isCommitted) {
+      // 1. Revert customer wallet locked balance
+      if (customerWallet && holdTxn) {
+        customerWallet.locked_balance = Math.max(0, customerWallet.locked_balance - totalAmount);
+      }
+      // 2. Remove escrow hold transaction from db.wallet_transactions
+      if (holdTxn && db.wallet_transactions) {
+        const hIdx = db.wallet_transactions.findIndex(t => t.id === holdTxn.id);
+        if (hIdx !== -1) {
+          db.wallet_transactions.splice(hIdx, 1);
+        }
+      }
+      // 3. Remove newOrder from db.orders
+      if (newOrder && db.orders) {
+        const oIdx = db.orders.findIndex(o => o.id === newOrder.id);
+        if (oIdx !== -1) {
+          db.orders.splice(oIdx, 1);
+        }
+      }
+      // 4. Restore decremented product stock quantities
+      if (deductedProducts.length > 0 && db.products) {
+        for (const item of deductedProducts) {
+          const prod = db.products.find(p => p.id === item.id);
+          if (prod && prod.stock_quantity !== undefined && prod.stock_quantity !== null) {
+            prod.stock_quantity += item.quantity;
+            if (prod.stock_quantity > 0) {
+              prod.in_stock = true;
+              prod.is_available = true;
+            }
+          }
+        }
+      }
+    }
+
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/api/v1/orders/:id', (req, res) => {
+app.get('/api/v1/orders/:id', async (req, res) => {
   try {
-    const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    let order = null;
+    if (pgPool) {
+      const oRes = await pgPool.query('SELECT * FROM orders WHERE id = $1 OR order_number = $1', [req.params.id]);
+      if (oRes.rows.length > 0) {
+        order = mapPgOrder(oRes.rows[0]);
+      }
+    }
+    if (!order) {
+      order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    }
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
-    const store = db.stores.find(s => s.id === order.store_id);
-    const driver = order.driver_id ? db.drivers.find(d => d.id === order.driver_id) : null;
-    const customer = db.users.find(u => u.id === order.customer_id);
+    let store = null;
+    if (pgPool && order.store_id) {
+      const sRes = await pgPool.query('SELECT * FROM stores WHERE id = $1', [order.store_id]);
+      if (sRes.rows.length > 0) store = mapPgStore(sRes.rows[0]);
+    }
+    if (!store && order.store_id) {
+      store = db.stores.find(s => s.id === order.store_id);
+    }
+
+    let driver = null;
+    if (pgPool && order.driver_id) {
+      const dRes = await pgPool.query('SELECT * FROM drivers WHERE id = $1', [order.driver_id]);
+      if (dRes.rows.length > 0) driver = mapPgDriver(dRes.rows[0]);
+    }
+    if (!driver && order.driver_id) {
+      driver = db.drivers.find(d => d.id === order.driver_id);
+    }
+
+    let customer = null;
+    if (order.customer_id) {
+      customer = db.users.find(u => u.id === order.customer_id);
+    }
 
     let remainingDistanceMeters = null;
     let etaMinutes = null;
@@ -2621,10 +3548,24 @@ app.get('/api/v1/orders/:id', (req, res) => {
       etaMinutes = estimateEtaMinutes(remainingDistanceMeters, driver.speed_kmh || 25);
     }
 
+    let requestingUser = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        requestingUser = jwt.verify(authHeader.split(' ')[1], JWT_SECRET);
+      } catch (_) {}
+    }
+
+    let orderData = { ...order };
+    if (requestingUser && requestingUser.role === 'driver') {
+      delete orderData.otp_code;
+      delete orderData.delivery_otp;
+    }
+
     res.json({
       success: true,
       data: {
-        ...order,
+        ...orderData,
         store: store ? {
           id: store.id,
           name: store.name,
@@ -2640,7 +3581,7 @@ app.get('/api/v1/orders/:id', (req, res) => {
           phone: driver.phone,
           vehicle_type: driver.vehicle_type,
           vehicle_model: driver.vehicle_model,
-          license_plate: driver.license_plate,
+          license_plate: driver.vehicle_plate || driver.license_plate,
           rating: driver.rating,
           latitude: driver.latitude,
           longitude: driver.longitude,
@@ -2668,18 +3609,14 @@ app.get('/api/v1/orders/:id', (req, res) => {
 /**
  * PUBLIC RECIPIENT TRACKING ENDPOINT
  * Allows anyone with the tracking link / order ID to fetch live status,
- * telemetry coordinates, ETA, and verification OTP without customer authentication.
+ * telemetry coordinates, and ETA without customer authentication.
+ * Note: delivery_otp is strictly omitted to prevent delivery fraud.
  */
 app.get('/api/v1/public/track/:id', (req, res) => {
   try {
     const rawId = req.params.id;
     let order = db.orders.find(o => o.id === rawId || o.order_number === rawId);
     
-    // Graceful fallback to most recent or active order if exact match not found (for simulation / demo links)
-    if (!order) {
-      order = db.orders.find(o => ['out_for_delivery', 'picked_up', 'preparing', 'placed'].includes(o.status)) || db.orders[0];
-    }
-
     if (!order) {
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
@@ -2701,15 +3638,12 @@ app.get('/api/v1/public/track/:id', (req, res) => {
       ? order.delivery_address
       : (order.delivery_address?.address_line1 || order.delivery_address?.name || 'نالوت - وسط المدينة');
 
-    const deliveryOtp = order.delivery_otp || order.metadata?.delivery_otp || '4821';
-
     res.json({
       success: true,
       data: {
         order_id: order.id,
         order_number: order.order_number || rawId,
         status: order.status || 'out_for_delivery',
-        delivery_otp: deliveryOtp,
         created_at: order.created_at,
         delivery_address_text: deliveryAddressText,
         delivery_latitude: order.delivery_latitude || 31.8695,
@@ -2747,38 +3681,78 @@ app.get('/api/v1/public/track/:id', (req, res) => {
   }
 });
 
-app.get('/api/v1/orders', (req, res) => {
+app.get('/api/v1/orders', async (req, res) => {
   try {
     const { id, order_number, customer_id, customer_phone, phone, driver_id, store_id, status } = req.query;
-    let orders = [...db.orders];
+    let orders = [];
 
-    if (id) {
-      orders = orders.filter(o => o.id === id || o.order_number === id);
-    }
-    if (order_number) {
-      orders = orders.filter(o => o.order_number === order_number || o.id === order_number);
-    }
-    if (customer_id) {
-      orders = orders.filter(o => o.customer_id === customer_id);
-    }
-    const targetPhone = customer_phone || phone;
-    if (targetPhone) {
-      const cleanTarget = String(targetPhone).replace(/\D/g, '');
-      orders = orders.filter(o => {
-        if (!o.customer_phone) return false;
-        const cleanCust = String(o.customer_phone).replace(/\D/g, '');
-        return cleanCust.includes(cleanTarget) || cleanTarget.includes(cleanCust);
-      });
-    }
-    if (driver_id) orders = orders.filter(o => o.driver_id === driver_id);
-    if (store_id) orders = orders.filter(o => o.store_id === store_id);
-    if (status) {
-      const statusList = status.split(',').map(s => s.trim());
-      orders = orders.filter(o => statusList.includes(o.status));
-    }
+    if (pgPool) {
+      let query = 'SELECT * FROM orders WHERE 1=1';
+      const params = [];
 
-    // Sort newest first
-    orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      if (id) {
+        params.push(id);
+        query += ` AND (id = $${params.length} OR order_number = $${params.length})`;
+      }
+      if (order_number) {
+        params.push(order_number);
+        query += ` AND (order_number = $${params.length} OR id = $${params.length})`;
+      }
+      if (customer_id) {
+        params.push(customer_id);
+        query += ` AND customer_id = $${params.length}`;
+      }
+      const targetPhone = customer_phone || phone;
+      if (targetPhone) {
+        const cleanTarget = String(targetPhone).replace(/\D/g, '');
+        params.push(`%${cleanTarget}%`);
+        query += ` AND customer_phone LIKE $${params.length}`;
+      }
+      if (driver_id) {
+        params.push(driver_id);
+        query += ` AND driver_id = $${params.length}`;
+      }
+      if (store_id) {
+        params.push(store_id);
+        query += ` AND store_id = $${params.length}`;
+      }
+      if (status) {
+        const statusList = status.split(',').map(s => s.trim());
+        params.push(statusList);
+        query += ` AND status = ANY($${params.length}::text[])`;
+      }
+
+      query += ' ORDER BY created_at DESC';
+      const oRes = await pgPool.query(query, params);
+      orders = oRes.rows.map(mapPgOrder);
+    } else {
+      orders = [...db.orders];
+      if (id) {
+        orders = orders.filter(o => o.id === id || o.order_number === id);
+      }
+      if (order_number) {
+        orders = orders.filter(o => o.order_number === order_number || o.id === order_number);
+      }
+      if (customer_id) {
+        orders = orders.filter(o => o.customer_id === customer_id);
+      }
+      const targetPhone = customer_phone || phone;
+      if (targetPhone) {
+        const cleanTarget = String(targetPhone).replace(/\D/g, '');
+        orders = orders.filter(o => {
+          if (!o.customer_phone) return false;
+          const cleanCust = String(o.customer_phone).replace(/\D/g, '');
+          return cleanCust.includes(cleanTarget) || cleanTarget.includes(cleanCust);
+        });
+      }
+      if (driver_id) orders = orders.filter(o => o.driver_id === driver_id);
+      if (store_id) orders = orders.filter(o => o.store_id === store_id);
+      if (status) {
+        const statusList = status.split(',').map(s => s.trim());
+        orders = orders.filter(o => statusList.includes(o.status));
+      }
+      orders.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    }
 
     res.json({
       success: true,
@@ -2791,22 +3765,69 @@ app.get('/api/v1/orders', (req, res) => {
 });
 
 const handleOrderStatusUpdate = async (req, res) => {
+  let client = null;
+  let isCommitted = false;
+  let originalOrderSnapshot = null;
+  let originalDriverSnapshot = null;
+  let originalCustomerWalletSnapshot = null;
+  let initialTxCount = db.wallet_transactions ? db.wallet_transactions.length : 0;
+  let memOrder = null;
   try {
+    if (pgPool && typeof pgPool.connect === 'function') {
+      client = await pgPool.connect();
+      await client.query('BEGIN');
+    }
+
     const { status, driver_id, notes, admin_override } = req.body;
-    const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    let order = null;
+    const runner = client || pgPool;
+    if (runner) {
+      const oRes = await runner.query('SELECT * FROM orders WHERE id = $1 OR order_number = $1', [req.params.id]);
+      if (oRes.rows.length > 0) {
+        order = mapPgOrder(oRes.rows[0]);
+      }
+    }
+    if (!order) {
+      order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    }
 
     if (!order) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(404).json({ success: false, error: 'Order not found' });
     }
 
+    // Keep memory in sync and capture rollback snapshot
+    memOrder = db.orders.find(o => o.id === order.id || o.order_number === order.order_number);
+    if (memOrder) {
+      Object.assign(memOrder, order);
+    } else {
+      memOrder = order;
+      db.orders.push(memOrder);
+    }
+    originalOrderSnapshot = JSON.parse(JSON.stringify(memOrder));
+
+    const activeDriverId = driver_id || order.driver_id;
+    if (activeDriverId && db.drivers) {
+      const drv = db.drivers.find(d => d.id === activeDriverId);
+      if (drv) originalDriverSnapshot = JSON.parse(JSON.stringify(drv));
+    }
+
+    if (order.customer_id && db.wallets) {
+      const cw = db.wallets.find(w => w.user_id === order.customer_id);
+      if (cw) originalCustomerWalletSnapshot = JSON.parse(JSON.stringify(cw));
+    }
+
     // 1. Strict FSM Transition Validation
+    const isAdmin = req.user?.role === 'admin';
+    const hasAdminOverride = isAdmin && Boolean(req.body.adminOverride || req.body.admin_override);
     const validation = orderService.validateTransition(order.status, status, {
-      isAdmin: req.user?.role === 'admin' || Boolean(admin_override) || req.body.role === 'admin',
-      adminOverride: Boolean(admin_override),
+      isAdmin: isAdmin,
+      adminOverride: hasAdminOverride,
       driver_id: driver_id || order.driver_id
     }, order);
 
     if (!validation.valid) {
+      if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
       return res.status(validation.statusCode || 400).json({
         success: false,
         error: validation.error
@@ -2824,9 +3845,18 @@ const handleOrderStatusUpdate = async (req, res) => {
           driver.status = 'busy_delivery';
           driver.active_order_id = order.id;
         }
+        if (runner) {
+          await runner.query("UPDATE drivers SET status = 'busy_delivery', active_order_id = $1 WHERE id = $2", [order.id, driver_id]);
+        }
       }
       order.updated_at = new Date().toISOString();
-      saveOrderToPg(order);
+      await saveOrderToPg(order, client);
+      if (memOrder) Object.assign(memOrder, order);
+      if (client) {
+        await client.query('COMMIT');
+        client.release();
+        client = null;
+      }
       return res.json({
         success: true,
         message: `Order status is already ${order.status} (idempotent)`,
@@ -2834,7 +3864,22 @@ const handleOrderStatusUpdate = async (req, res) => {
       });
     }
 
-    // 3. Apply state transition
+    // 3. Pre-flight Security Verification for Delivery
+    if (status === 'delivered' && previousStatus !== 'delivered') {
+      if (!isAdmin) {
+        const expectedOtp = order.otp_code || order.delivery_otp;
+        const cleanReceived = req.body.otp_code ? String(req.body.otp_code).trim() : null;
+        if (!cleanReceived || cleanReceived !== String(expectedOtp).trim()) {
+          if (client) { await client.query('ROLLBACK'); client.release(); client = null; }
+          return res.status(400).json({
+            success: false,
+            error: 'رمز التسليم (OTP) مطلوب وغير صحيح! يرجى أخذ الرمز السري من الزبون لتأكيد الاستلام.'
+          });
+        }
+      }
+    }
+
+    // 4. Apply state transition
     order.status = status;
     order.updated_at = new Date().toISOString();
 
@@ -2870,29 +3915,19 @@ const handleOrderStatusUpdate = async (req, res) => {
     if (driver_id) {
       order.driver_id = driver_id;
       const driver = db.drivers.find(d => d.id === driver_id);
+      const newDriverStatus = status === 'delivered' || status === 'cancelled' ? 'online_idle' : 'busy_delivery';
+      const newActiveOrder = status === 'delivered' || status === 'cancelled' ? null : order.id;
       if (driver) {
-        driver.status = status === 'delivered' || status === 'cancelled' ? 'online_idle' : 'busy_delivery';
-        driver.active_order_id = status === 'delivered' || status === 'cancelled' ? null : order.id;
+        driver.status = newDriverStatus;
+        driver.active_order_id = newActiveOrder;
+      }
+      if (runner) {
+        await runner.query("UPDATE drivers SET status = $1, active_order_id = $2 WHERE id = $3", [newDriverStatus, newActiveOrder, driver_id]);
       }
     }
 
-    // 4. FINANCIAL SETTLEMENT ON ORDER DELIVERY
+    // 5. FINANCIAL SETTLEMENT ON ORDER DELIVERY
     if (status === 'delivered' && previousStatus !== 'delivered') {
-      // Security OTP Verification (anti-fraud delivery handover)
-      if (req.body.otp_code) {
-        const expectedOtp = order.otp_code || order.delivery_otp;
-        if (expectedOtp) {
-          const cleanExpected = String(expectedOtp).trim();
-          const cleanReceived = String(req.body.otp_code).trim();
-          if (cleanExpected !== cleanReceived && cleanReceived !== '1234' && !admin_override) {
-            return res.status(400).json({
-              success: false,
-              error: 'رمز التسليم (OTP) غير صحيح! يرجى أخذ الرمز السري من الزبون لتأكيد الاستلام.'
-            });
-          }
-        }
-      }
-
       order.delivered_at = new Date().toISOString();
       order.payment_status = 'captured';
 
@@ -2911,23 +3946,38 @@ const handleOrderStatusUpdate = async (req, res) => {
           driver.active_order_id = null;
           driver.total_trips = (driver.total_trips || 0) + 1;
         }
+        if (runner) {
+          await runner.query("UPDATE drivers SET status = 'online_idle', active_order_id = NULL, total_deliveries = total_deliveries + 1 WHERE id = $1", [order.driver_id]);
+        }
       }
 
-      // Automated double-entry financial ledger execution
-      await ledgerService.processOrderDelivery(db, order, pgPool);
-      saveSeedData();
+      // Automated double-entry financial ledger execution (participates in transaction)
+      await ledgerService.processOrderDelivery(db, order, client || pgPool);
       if (order.driver_id) {
         const driver = db.drivers.find(d => d.id === order.driver_id);
-        if (driver) saveDriverToPg(driver);
+        if (driver) await saveDriverToPg(driver, client);
       }
     }
 
-    // 5. REFUND ON CANCELLATION
+    // 5. REFUND & FINANCIAL REVERSAL ON CANCELLATION (F9)
     if (status === 'cancelled' && previousStatus !== 'cancelled') {
-      if (order.payment_method === 'wallet') {
-        const customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
-        if (customerWallet) {
-          customerWallet.locked_balance = Math.max(0, customerWallet.locked_balance - order.total_amount_lyd);
+      const wasDelivered = previousStatus === 'delivered' || Boolean(order.delivered_at && order.payment_status === 'paid');
+      if (wasDelivered) {
+        // Reverse double-entry financial settlement: clears Account 1040 (COD custody), debits 2030, debits 2020, debits 4010/4020, refunds customer wallet if charged
+        await ledgerService.reverseOrderSettlement(db, order, client || pgPool);
+      } else {
+        if (order.payment_method === 'wallet') {
+          const customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
+          if (customerWallet) {
+            customerWallet.locked_balance = Math.max(0, (customerWallet.locked_balance || 0) - (order.total_amount_lyd || 0));
+          }
+          if (runner && order.customer_id) {
+            await runner.query(`
+              UPDATE wallets
+              SET locked_balance = GREATEST(0, locked_balance - $1), updated_at = CURRENT_TIMESTAMP
+              WHERE user_id = $2 AND wallet_type = 'customer_wallet'
+            `, [order.total_amount_lyd, order.customer_id]);
+          }
         }
       }
       if (order.driver_id) {
@@ -2936,13 +3986,25 @@ const handleOrderStatusUpdate = async (req, res) => {
           driver.status = 'online_idle';
           driver.active_order_id = null;
         }
+        if (runner) {
+          await runner.query("UPDATE drivers SET status = 'online_idle', active_order_id = NULL WHERE id = $1", [order.driver_id]);
+        }
       }
     }
 
-    // 6. Persist in PostgreSQL
-    saveOrderToPg(order);
+    // 6. Persist Order in PostgreSQL (participates in transaction)
+    await saveOrderToPg(order, client);
+    if (memOrder) Object.assign(memOrder, order);
 
-    // 7. Unified Socket.io State Transition Broadcast
+    // ATOMIC ACID COMMIT
+    if (client) {
+      await client.query('COMMIT');
+      client.release();
+      client = null;
+    }
+    isCommitted = true;
+
+    // 7. Strictly Post-COMMIT Socket.io State Transition Broadcast
     SocketService.broadcastOrderStatusTransition(order, previousStatus, db, notes);
 
     res.json({
@@ -2951,16 +4013,40 @@ const handleOrderStatusUpdate = async (req, res) => {
       data: order
     });
   } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      client.release();
+      client = null;
+    }
+
+    // Rollback in-memory state mutations if transaction aborted before/during COMMIT
+    if (!isCommitted) {
+      if (originalOrderSnapshot && memOrder) {
+        Object.assign(memOrder, originalOrderSnapshot);
+      }
+      if (originalDriverSnapshot && db.drivers) {
+        const drv = db.drivers.find(d => d.id === originalDriverSnapshot.id);
+        if (drv) Object.assign(drv, originalDriverSnapshot);
+      }
+      if (originalCustomerWalletSnapshot && db.wallets) {
+        const cw = db.wallets.find(w => w.user_id === originalCustomerWalletSnapshot.user_id);
+        if (cw) Object.assign(cw, originalCustomerWalletSnapshot);
+      }
+      if (db.wallet_transactions && db.wallet_transactions.length > initialTxCount) {
+        db.wallet_transactions.splice(initialTxCount);
+      }
+    }
+
     res.status(500).json({ success: false, error: err.message });
   }
 };
 
-app.post('/api/v1/orders/:id/status', handleOrderStatusUpdate);
-app.patch('/api/v1/orders/:id/status', handleOrderStatusUpdate);
+app.post('/api/v1/orders/:id/status', authMiddleware, handleOrderStatusUpdate);
+app.patch('/api/v1/orders/:id/status', authMiddleware, handleOrderStatusUpdate);
 
 // HANDOVER VERIFICATION & CUSTODY TRANSFER ENDPOINT
 // Transferred from Merchant to Captain when captain arrives and confirms code
-app.post('/api/v1/orders/:id/handover', (req, res) => {
+app.post('/api/v1/orders/:id/handover', authMiddleware, async (req, res) => {
   try {
     const { handover_code, driver_id } = req.body;
     const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
@@ -2973,7 +4059,7 @@ app.post('/api/v1/orders/:id/handover', (req, res) => {
       if (driver_id && !order.driver_id) {
         order.driver_id = driver_id;
         order.updated_at = new Date().toISOString();
-        saveOrderToPg(order);
+        await saveOrderToPg(order);
       }
       return res.json({
         success: true,
@@ -2999,13 +4085,14 @@ app.post('/api/v1/orders/:id/handover', (req, res) => {
       });
     }
 
-    // Verify code if provided
-    if (order.handover_code && handover_code) {
-      const cleanExpected = String(order.handover_code).trim();
-      const cleanReceived = String(handover_code).trim();
-      if (cleanExpected !== cleanReceived && cleanReceived !== '1234') {
-        return res.status(400).json({ success: false, error: 'كود تسليم الوجبة غير صحيح (Invalid Handover Code)' });
-      }
+    // Verify code strictly without bypasses or omissions
+    if (!handover_code) {
+      return res.status(400).json({ success: false, error: 'كود تسليم الوجبة مطلوب (Handover Code is required)' });
+    }
+    const cleanExpected = order.handover_code ? String(order.handover_code).trim() : null;
+    const cleanReceived = String(handover_code).trim();
+    if (!cleanExpected || cleanReceived !== cleanExpected) {
+      return res.status(400).json({ success: false, error: 'كود تسليم الوجبة غير صحيح (Invalid Handover Code)' });
     }
 
     order.status = 'out_for_delivery';
@@ -3013,7 +4100,7 @@ app.post('/api/v1/orders/:id/handover', (req, res) => {
     if (driver_id) order.driver_id = driver_id;
     order.updated_at = new Date().toISOString();
 
-    saveOrderToPg(order);
+    await saveOrderToPg(order);
 
     SocketService.sendOrderStatusNotification(order, 'ready_for_pickup', db);
 
@@ -3056,9 +4143,9 @@ app.patch('/api/v1/orders/:id', (req, res, next) => {
 });
 
 // ORDER CANCELLATION ENDPOINT (Customer & Admin)
-app.post('/api/v1/orders/:id/cancel', async (req, res) => {
+app.post('/api/v1/orders/:id/cancel', authMiddleware, async (req, res) => {
   try {
-    const { reason, role } = req.body || {};
+    const { reason } = req.body || {};
     const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
 
     if (!order) {
@@ -3071,11 +4158,12 @@ app.post('/api/v1/orders/:id/cancel', async (req, res) => {
     }
 
     // FSM validation for cancellation
-    const isAdmin = role === 'admin' || req.user?.role === 'admin';
+    const isAdmin = req.user?.role === 'admin';
+    const hasAdminOverride = isAdmin && Boolean(req.body?.adminOverride || req.body?.admin_override);
     const validation = orderService.validateTransition(order.status, 'cancelled', {
-      isAdmin,
-      adminOverride: isAdmin
-    });
+      isAdmin: isAdmin,
+      adminOverride: hasAdminOverride
+    }, order);
 
     if (!validation.valid) {
       return res.status(validation.statusCode || 400).json({
@@ -3090,11 +4178,26 @@ app.post('/api/v1/orders/:id/cancel', async (req, res) => {
     order.cancelled_at = new Date().toISOString();
     order.updated_at = new Date().toISOString();
 
-    // Release customer locked wallet balance if payment was via wallet
-    if (order.payment_method === 'wallet') {
-      const customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
-      if (customerWallet) {
-        customerWallet.locked_balance = Math.max(0, (customerWallet.locked_balance || 0) - (order.total_amount_lyd || 0));
+    const wasDelivered = previousStatus === 'delivered' || Boolean(order.delivered_at && order.payment_status === 'paid');
+    if (wasDelivered) {
+      // Automatic Cancellation Financial Settlement (F9)
+      await ledgerService.reverseOrderSettlement(db, order, pgPool);
+    } else {
+      // Release customer locked wallet balance if payment was via wallet
+      if (order.payment_method === 'wallet') {
+        const customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
+        if (customerWallet) {
+          customerWallet.locked_balance = Math.max(0, (customerWallet.locked_balance || 0) - (order.total_amount_lyd || 0));
+        }
+        if (pgPool && order.customer_id) {
+          try {
+            await pgPool.query(`
+              UPDATE wallets
+              SET locked_balance = GREATEST(0, locked_balance - $1), updated_at = CURRENT_TIMESTAMP
+              WHERE user_id = $2 AND wallet_type = 'customer_wallet'
+            `, [order.total_amount_lyd || 0, order.customer_id]);
+          } catch (_) {}
+        }
       }
     }
 
@@ -3109,7 +4212,6 @@ app.post('/api/v1/orders/:id/cancel', async (req, res) => {
     }
 
     saveOrderToPg(order);
-    saveSeedData();
 
     // Unified Socket.io State Transition Broadcast
     SocketService.broadcastOrderStatusTransition(order, previousStatus, db, order.cancellation_reason);
@@ -3118,6 +4220,166 @@ app.post('/api/v1/orders/:id/cancel', async (req, res) => {
       success: true,
       message: 'تم إلغاء الطلب بنجاح وفك حجز الرصيد',
       data: order
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// DRIVER REASSIGNMENT ENDPOINT (F6 Admin Courier Reassignment)
+app.post('/api/v1/orders/:id/reassign', adminAuthMiddleware, async (req, res) => {
+  try {
+    const { driver_id: newDriverId } = req.body || {};
+    if (!newDriverId) {
+      return res.status(400).json({ success: false, error: 'driver_id is required for reassignment' });
+    }
+
+    const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+    }
+
+    if (['delivered', 'cancelled'].includes(order.status)) {
+      return res.status(400).json({
+        success: false,
+        error: `لا يمكن إعادة إسناد كابتن لطلب منتهٍ بحالة: ${order.status}`
+      });
+    }
+
+    const newDriver = db.drivers.find(d => d.id === newDriverId);
+    if (!newDriver) {
+      return res.status(404).json({ success: false, error: 'الكابتن المطلوب غير مسجل' });
+    }
+
+    const previousDriverId = order.driver_id;
+    const previousStatus = order.status;
+
+    // Unassign previous driver if present
+    if (previousDriverId && previousDriverId !== newDriverId) {
+      const prevDriver = db.drivers.find(d => d.id === previousDriverId);
+      if (prevDriver) {
+        prevDriver.status = 'online_idle';
+        prevDriver.active_order_id = null;
+        if (pgPool) {
+          try {
+            await pgPool.query("UPDATE drivers SET status = 'online_idle', active_order_id = NULL WHERE id = $1", [previousDriverId]);
+          } catch (_) {}
+        }
+      }
+    }
+
+    // Assign new driver
+    newDriver.status = 'busy_delivery';
+    newDriver.active_order_id = order.id;
+    if (pgPool) {
+      try {
+        await pgPool.query("UPDATE drivers SET status = 'busy_delivery', active_order_id = $1 WHERE id = $2", [order.id, newDriverId]);
+      } catch (_) {}
+    }
+
+    // Update order
+    order.driver_id = newDriverId;
+    order.updated_at = new Date().toISOString();
+
+    if (pgPool) {
+      try {
+        await pgPool.query('UPDATE orders SET driver_id = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [newDriverId, order.id]);
+      } catch (_) {}
+    }
+
+    // Broadcast state transition and telemetry
+    SocketService.broadcastOrderStatusTransition(order, previousStatus, db, `إعادة إسناد الطلب للكابتن ${newDriver.full_name}`);
+    if (req.io) {
+      req.io.to(`driver:${newDriverId}`).emit('radar:incoming_order', {
+        ...order,
+        status: order.status,
+        prep_status_badge: '🟢 تم إسناد هذا الطلب إليك مباشرة من قبل الإدارة'
+      });
+      req.io.to('role:driver').emit('radar:order_claimed', { order_id: order.id, driver_id: newDriverId });
+      req.io.to('admin:fleet').emit('admin:order_status_changed', {
+        order_id: order.id,
+        status: order.status,
+        driver_id: newDriverId,
+        driver_name: newDriver.full_name,
+        updated_at: order.updated_at
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `تم إعادة إسناد الطلب للكابتن ${newDriver.full_name} بنجاح`,
+      data: order
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// SINGLE ORDER ADMIN DELETE ENDPOINT (F7 Single Order Admin Delete)
+app.delete('/api/v1/admin/orders/:id', adminAuthMiddleware, async (req, res) => {
+  try {
+    const order = db.orders.find(o => o.id === req.params.id || o.order_number === req.params.id);
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'الطلب غير موجود' });
+    }
+
+    // Clear driver binding if bound
+    if (order.driver_id && db.drivers) {
+      const driver = db.drivers.find(d => d.id === order.driver_id);
+      if (driver && driver.active_order_id === order.id) {
+        driver.active_order_id = null;
+        driver.status = 'offline';
+        if (pgPool) {
+          try {
+            await pgPool.query("UPDATE drivers SET active_order_id = NULL, status = 'offline' WHERE id = $1", [driver.id]);
+          } catch (_) {}
+        }
+      }
+    }
+
+    // Unlock customer wallet locked_balance if was locked
+    if (order.customer_id && order.payment_method === 'wallet' && db.wallets) {
+      const customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
+      if (customerWallet) {
+        customerWallet.locked_balance = Math.max(0, (customerWallet.locked_balance || 0) - (order.total_amount_lyd || 0));
+      }
+      if (pgPool) {
+        try {
+          await pgPool.query(`
+            UPDATE wallets
+            SET locked_balance = GREATEST(0, locked_balance - $1), updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2 AND wallet_type = 'customer_wallet'
+          `, [order.total_amount_lyd || 0, order.customer_id]);
+        } catch (_) {}
+      }
+    }
+
+    // Delete from PostgreSQL
+    if (pgPool) {
+      try {
+        await pgPool.query('DELETE FROM orders WHERE id = $1 OR order_number = $1', [order.id]);
+      } catch (e) {
+        console.error('[PostgreSQL order delete error]:', e.message);
+      }
+    }
+
+    // Remove from in-memory cache
+    const idx = db.orders.findIndex(o => o.id === order.id || o.order_number === order.order_number);
+    if (idx !== -1) {
+      db.orders.splice(idx, 1);
+    }
+
+    // Socket.io broadcasts
+    if (req.io) {
+      req.io.emit('order:deleted', { order_id: order.id, id: order.id, order_number: order.order_number });
+      req.io.to('admin:fleet').emit('admin:order_deleted', { order_id: order.id, id: order.id, order_number: order.order_number });
+      req.io.emit('admin:order_deleted', { order_id: order.id, id: order.id, order_number: order.order_number });
+    }
+
+    res.json({
+      success: true,
+      message: 'تم حذف الطلب نهائياً بنجاح',
+      data: { id: order.id, order_number: order.order_number }
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -3167,7 +4429,6 @@ app.post('/api/v1/orders/:id/rate', async (req, res) => {
     }
 
     saveOrderToPg(order);
-    saveSeedData();
 
     // Broadcast review event to merchant and admin
     if (req.io) {
@@ -3204,7 +4465,7 @@ app.post('/api/v1/orders/:id/rate', async (req, res) => {
 // ----------------------------------------------------------------------------
 // ADMIN DISPUTE RESOLUTION ENDPOINT (فض النزاعات والتعويض المالي التلقائي)
 // ----------------------------------------------------------------------------
-app.post('/api/v1/admin/disputes/resolve', async (req, res) => {
+app.post('/api/v1/admin/disputes/resolve', adminAuthMiddleware, async (req, res) => {
   try {
     const {
       order_id,
@@ -3273,7 +4534,6 @@ app.post('/api/v1/admin/disputes/resolve', async (req, res) => {
     }
 
     saveOrderToPg(order);
-    saveSeedData();
 
     // Broadcast dispute resolution via socket
     if (req.io) {
@@ -3322,10 +4582,10 @@ app.get('/api/v1/drivers/:id', (req, res) => {
   if (!driver) {
     return res.status(404).json({ success: false, error: 'Driver not found' });
   }
-  res.json({ success: true, data: driver });
+  res.json({ success: true, data: sanitizeDriver(driver) });
 });
 
-app.patch('/api/v1/drivers/:id', (req, res) => {
+app.patch('/api/v1/drivers/:id', adminAuthMiddleware, (req, res) => {
   const driver = db.drivers.find(d => d.id === req.params.id);
   if (!driver) {
     return res.status(404).json({ success: false, error: 'Driver not found' });
@@ -3349,12 +4609,11 @@ app.patch('/api/v1/drivers/:id', (req, res) => {
       recorded_at: new Date().toISOString()
     });
   }
-  saveSeedData();
   saveDriverToPg(driver);
-  res.json({ success: true, data: driver });
+  res.json({ success: true, data: sanitizeDriver(driver) });
 });
 
-app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
+const handleDriverTelemetry = (req, res) => {
   const driver = db.drivers.find(d => d.id === req.params.id);
   if (!driver) {
     return res.status(404).json({ success: false, error: 'Driver not found' });
@@ -3416,10 +4675,13 @@ app.post('/api/v1/drivers/:id/telemetry', (req, res) => {
       }
     }
   }
-  saveSeedData();
   saveDriverToPg(driver);
   res.json({ success: true, data: telemetryData });
-});
+};
+
+app.post('/api/v1/drivers/:id/telemetry', handleDriverTelemetry);
+app.post('/api/v1/drivers/:id/location', handleDriverTelemetry);
+app.post('/api/v1/captains/:id/location', handleDriverTelemetry);
 
 // Captain Active Heartbeat (Auto-online while captain app is running)
 app.post('/api/v1/drivers/:id/heartbeat', (req, res) => {
@@ -3472,7 +4734,6 @@ app.post('/api/v1/drivers/:id/heartbeat', (req, res) => {
 
     if (wasOffline) {
       saveDriverToPg(driver);
-      saveSeedData();
       if (req.io) {
         req.io.emit('driver:status_changed', { driver_id: driver.id, status: driver.status });
         req.io.to('admin:fleet').emit('admin:driver_status_changed', { driver_id: driver.id, status: driver.status });
@@ -3493,13 +4754,13 @@ app.post('/api/v1/drivers/:id/heartbeat', (req, res) => {
 });
 
 app.get('/api/v1/drivers', (req, res) => {
-  res.json({ success: true, count: db.drivers.length, data: db.drivers });
+  res.json({ success: true, count: db.drivers.length, data: db.drivers.map(sanitizeDriver) });
 });
 
 // ----------------------------------------------------------------------------
 // PRODUCT MANAGEMENT (CATALOG UPDATES)
 // ----------------------------------------------------------------------------
-app.patch('/api/v1/products/:id', (req, res) => {
+app.patch('/api/v1/products/:id', async (req, res) => {
   const product = db.products.find(p => p.id === req.params.id);
   if (!product) {
     return res.status(404).json({ success: false, error: 'Product not found' });
@@ -3515,12 +4776,11 @@ app.patch('/api/v1/products/:id', (req, res) => {
   if (req.io) {
     req.io.emit('catalog:product_updated', product);
   }
-  saveSeedData();
-  saveProductToPg(product);
+  await saveProductToPg(product);
   res.json({ success: true, data: product });
 });
 
-app.post('/api/v1/products', (req, res) => {
+app.post('/api/v1/products', async (req, res) => {
   const newProduct = {
     id: req.body.id || `prod_${Date.now()}`,
     store_id: req.body.store_id || 'store_default',
@@ -3538,26 +4798,24 @@ app.post('/api/v1/products', (req, res) => {
     created_at: new Date().toISOString()
   };
   db.products.push(newProduct);
-  saveSeedData();
-  saveProductToPg(newProduct);
+  await saveProductToPg(newProduct);
   if (req.io) {
     req.io.emit('catalog:product_added', newProduct);
   }
   res.status(201).json({ success: true, data: newProduct });
 });
 
-app.delete('/api/v1/products/:id', (req, res) => {
+app.delete('/api/v1/products/:id', async (req, res) => {
   const initialLen = db.products.length;
   db.products = db.products.filter(p => p.id !== req.params.id);
-  saveSeedData();
-  deleteProductFromPg(req.params.id);
+  await deleteProductFromPg(req.params.id);
   if (req.io) {
     req.io.emit('catalog:product_deleted', { id: req.params.id });
   }
   res.json({ success: true, message: 'Product deleted', deleted: db.products.length < initialLen });
 });
 
-app.post('/api/v1/admin/batch-import', (req, res) => {
+app.post('/api/v1/admin/batch-import', adminAuthMiddleware, async (req, res) => {
   try {
     const { store, products = [] } = req.body;
     if (!store || !store.name) {
@@ -3573,7 +4831,7 @@ app.post('/api/v1/admin/batch-import', (req, res) => {
       district: store.district || 'نالوت',
       city: 'nalut',
       phone: store.phone || '',
-      pin: store.pin || '1234',
+      pin: store.pin || crypto.randomInt(1000, 10000).toString(),
       app_mode: store.app_mode || ((store.type === 'grocery' || store.type === 'pharmacy') ? 'retail' : 'kitchen'),
       commission_rate: store.commission_rate || 10.0,
       rating: 5.0,
@@ -3591,6 +4849,7 @@ app.post('/api/v1/admin/batch-import', (req, res) => {
 
     db.stores = db.stores.filter(s => s.id !== storeId);
     db.stores.unshift(newStore);
+    await saveStoreToPg(newStore);
 
     const createdProducts = [];
     if (Array.isArray(products) && products.length > 0) {
@@ -3610,11 +4869,10 @@ app.post('/api/v1/admin/batch-import', (req, res) => {
           created_at: new Date().toISOString()
         };
         db.products.push(prod);
+        await saveProductToPg(prod);
         createdProducts.push(prod);
       }
     }
-
-    saveSeedData();
 
     if (req.io) {
       req.io.emit('catalog:store_imported', { store: newStore, products_count: createdProducts.length });
@@ -4072,7 +5330,7 @@ app.get('/api/v1/delivery-zones', async (req, res) => {
   }
 });
 
-app.patch('/api/v1/delivery-zones/:id', async (req, res) => {
+app.patch('/api/v1/delivery-zones/:id', adminAuthMiddleware, async (req, res) => {
   try {
     const id = req.params.id;
     const { base_fee_lyd, min_delivery_time, max_delivery_time, is_active } = req.body;
@@ -4110,7 +5368,7 @@ app.post('/api/v1/vouchers', (req, res) => {
     created_at: req.body.created_at || new Date().toISOString()
   };
   db.vouchers.push(voucher);
-  saveSeedData();
+  saveVoucherToPg(voucher);
   res.status(201).json({ success: true, data: voucher });
 });
 
@@ -4130,7 +5388,7 @@ app.post('/api/v1/audit', (req, res) => {
     created_at: req.body.created_at || new Date().toISOString()
   };
   db.audit_logs.unshift(entry);
-  saveSeedData();
+  saveAuditLogToPg(entry);
   res.status(201).json({ success: true, data: entry });
 });
 
@@ -4212,7 +5470,6 @@ app.post('/api/v1/accounting/payouts/disburse', async (req, res) => {
       notes: notes || '',
       pgPool
     });
-    saveSeedData();
     res.json({ success: true, message: 'تم صرف المستحقات وتوليد سند الصرف والقيد المحاسبي بنجاح', data: result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -4233,19 +5490,13 @@ app.post('/api/v1/accounting/journal-entries', async (req, res) => {
       lines: lines,
       pgPool
     });
-    saveSeedData();
     res.status(201).json({ success: true, data: entry });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
-app.post('/api/v1/admin/seed', async (req, res) => {
-  const { admin_pin } = req.body || {};
-  const masterPin = process.env.ADMIN_DEFAULT_PIN || '9832';
-  if (admin_pin !== '9832' && admin_pin !== masterPin) {
-    return res.status(403).json({ success: false, error: 'رمز الحماية الإداري غير صحيح' });
-  }
+app.post('/api/v1/admin/seed', adminAuthMiddleware, async (req, res) => {
   loadSeedData();
   await initPgTables(true);
   res.json({
@@ -4260,10 +5511,25 @@ app.post('/api/v1/admin/seed', async (req, res) => {
 // ----------------------------------------------------------------------------
 // WALLET & LEDGER ROUTES
 // ----------------------------------------------------------------------------
-app.get('/api/v1/wallet/balance', authMiddleware, (req, res) => {
+app.get('/api/v1/wallet/balance', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
-    let wallet = db.wallets.find(w => w.user_id === user.id);
+    let wallet = null;
+
+    if (pgPool) {
+      const wRes = await pgPool.query('SELECT * FROM wallets WHERE user_id = $1 LIMIT 1', [user.id]);
+      if (wRes.rows.length > 0) {
+        wallet = {
+          ...wRes.rows[0],
+          balance: parseFloat(wRes.rows[0].balance) || 0.00,
+          locked_balance: parseFloat(wRes.rows[0].locked_balance) || 0.00
+        };
+      }
+    }
+
+    if (!wallet) {
+      wallet = db.wallets.find(w => w.user_id === user.id);
+    }
 
     if (!wallet) {
       wallet = {
@@ -4276,6 +5542,9 @@ app.get('/api/v1/wallet/balance', authMiddleware, (req, res) => {
         status: 'active'
       };
       db.wallets.push(wallet);
+      if (pgPool) {
+        await saveWalletToPg(wallet);
+      }
     }
 
     const availableBalance = wallet.balance - wallet.locked_balance;
@@ -4299,7 +5568,8 @@ app.get('/api/v1/wallet/balance', authMiddleware, (req, res) => {
   }
 });
 
-app.post('/api/v1/wallet/topup', authMiddleware, rateLimiter(10, 60000), (req, res) => {
+app.post('/api/v1/wallet/topup', authMiddleware, rateLimiter(10, 60000), async (req, res) => {
+  let client = null;
   try {
     const { amount, payment_channel = 'Sadad', reference_code } = req.body;
     const topupAmount = parseFloat(amount);
@@ -4350,14 +5620,32 @@ app.post('/api/v1/wallet/topup', authMiddleware, rateLimiter(10, 60000), (req, r
     };
     db.wallet_transactions.push(txn);
 
-    // Emit live socket event
-    req.io.to(`user:${user.id}`).emit('wallet:balance_updated', {
-      wallet_id: wallet.id,
-      balance: wallet.balance,
-      locked_balance: wallet.locked_balance,
-      available_balance: wallet.balance - wallet.locked_balance,
-      currency: 'LYD'
-    });
+    // Atomic PostgreSQL transaction
+    if (pgPool && typeof pgPool.connect === 'function') {
+      client = await pgPool.connect();
+      await client.query('BEGIN');
+      await client.query(`
+        INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
+        VALUES ($1, $2, 'customer_wallet', 'LYD', $3, 0.00, 'active')
+        ON CONFLICT (user_id, wallet_type, currency)
+        DO UPDATE SET balance = wallets.balance + $3, updated_at = CURRENT_TIMESTAMP
+      `, [wallet.id, user.id, topupAmount]);
+      await saveWalletTransactionToPg(txn, client);
+      await client.query('COMMIT');
+      client.release();
+      client = null;
+    }
+
+    // Strictly Post-COMMIT Socket.io emit
+    if (req.io) {
+      req.io.to(`user:${user.id}`).emit('wallet:balance_updated', {
+        wallet_id: wallet.id,
+        balance: wallet.balance,
+        locked_balance: wallet.locked_balance,
+        available_balance: wallet.balance - wallet.locked_balance,
+        currency: 'LYD'
+      });
+    }
 
     res.json({
       success: true,
@@ -4371,16 +5659,45 @@ app.post('/api/v1/wallet/topup', authMiddleware, rateLimiter(10, 60000), (req, r
       }
     });
   } catch (err) {
+    if (client) {
+      try { await client.query('ROLLBACK'); } catch (_) {}
+      client.release();
+      client = null;
+    }
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-app.get('/api/v1/wallet/transactions', authMiddleware, (req, res) => {
+app.get('/api/v1/wallet/transactions', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
-    const wallet = db.wallets.find(w => w.user_id === user.id);
+    let wallet = db.wallets.find(w => w.user_id === user.id);
+
+    if (pgPool) {
+      const wRes = await pgPool.query('SELECT * FROM wallets WHERE user_id = $1 LIMIT 1', [user.id]);
+      if (wRes.rows.length > 0) {
+        wallet = wRes.rows[0];
+      }
+    }
+
     if (!wallet) {
       return res.json({ success: true, count: 0, data: [] });
+    }
+
+    if (pgPool) {
+      const txRes = await pgPool.query(`
+        SELECT * FROM wallet_transactions
+        WHERE wallet_id = $1 OR wallet_id = $2
+        ORDER BY created_at DESC
+        LIMIT 100
+      `, [wallet.id, `wallet_${user.id}`]);
+      if (txRes.rows.length > 0) {
+        return res.json({
+          success: true,
+          count: txRes.rows.length,
+          data: txRes.rows
+        });
+      }
     }
 
     const txns = db.wallet_transactions.filter(t => t.wallet_id === wallet.id);
@@ -4875,12 +6192,24 @@ setInterval(() => {
 // ----------------------------------------------------------------------------
 // 10. START SERVER
 // ----------------------------------------------------------------------------
-server.listen(PORT, () => {
-  console.log(`================================================================`);
-  console.log(`🚀 WASEL NALUT SUPER-APP BACKEND RUNNING ON PORT ${PORT}`);
-  console.log(`🌍 Libya Market: Nalut, Tripoli & Benghazi | Currency: LYD (د.ل)`);
-  console.log(`📡 WebSocket & REST API: http://localhost:${PORT}`);
-  console.log(`================================================================`);
+server.on('error', (err) => {
+  if (err.code === 'EADDRINUSE') {
+    // Port already in use by active server or test runner, reuse gracefully without crashing
+    return;
+  }
+  console.error('[Server Error]:', err);
 });
+
+if (require.main === module || !server.listening) {
+  try {
+    server.listen(PORT, () => {
+      console.log(`================================================================`);
+      console.log(`🚀 WASEL NALUT SUPER-APP BACKEND RUNNING ON PORT ${PORT}`);
+      console.log(`🌍 Libya Market: Nalut, Tripoli & Benghazi | Currency: LYD (د.ل)`);
+      console.log(`📡 WebSocket & REST API: http://localhost:${PORT}`);
+      console.log(`================================================================`);
+    });
+  } catch (_) {}
+}
 
 module.exports = { app, server, io, db, pricingService, ledgerService, accountingEngine, calculateDynamicDeliveryFee };

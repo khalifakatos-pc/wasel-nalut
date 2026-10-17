@@ -164,8 +164,6 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
         final isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
         final dynamic rawAmt = ongoing['total_amount_lyd'] ?? ongoing['total_amount'];
         final double amount = (rawAmt is num) ? rawAmt.toDouble() : 35.0;
-        final rawPin = (ongoing['otp_code'] ?? ongoing['delivery_pin'])?.toString();
-        final otp = (rawPin != null && rawPin.isNotEmpty) ? rawPin : '1234';
         final String status = ongoing['status']?.toString() ?? 'preparing';
 
         DeliveryStep step = cached?.orderId == ongoing['id']?.toString()
@@ -193,7 +191,6 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
           customerLongitude: 10.9780,
           paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
           codAmountLyd: amount,
-          customerOtpPin: otp,
           driverPayoutLyd: 7.5,
           currentStep: step,
           items: cached?.orderId == ongoing['id']?.toString()

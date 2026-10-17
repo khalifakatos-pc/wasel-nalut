@@ -26,51 +26,75 @@ class MerchantSupabaseService {
         'Prefer': 'return=representation',
       };
 
+  static String? jwtToken;
+
+  static Map<String, String> get backendHeaders => {
+        'Content-Type': 'application/json',
+        if (jwtToken != null && jwtToken!.isNotEmpty) 'Authorization': 'Bearer $jwtToken',
+      };
+
   static String currentStoreId = 'store_default';
   static MerchantUser? currentUser;
   static PartnerStore? activeDynamicStore;
   static bool allowMockFallback = false;
 
-  /// Authenticate Merchant with Libyan phone & PIN
-  static Future<MerchantUser?> authenticateMerchant(String phone, String pin) async {
-    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+  /// Authenticate Merchant with Libyan phone & PIN via Unified Backend
+  static Future<MerchantUser?> authenticateMerchant(String phoneOrStoreId, String pin) async {
+    final cleanInput = phoneOrStoreId.trim();
+    final cleanPhone = cleanInput.replaceAll(RegExp(r'[^0-9]'), '');
     final cleanPin = pin.trim();
 
-    // 1. Check live stores in Unified Backend first
+    // 1. Authenticate with Unified Backend (/api/v1/auth/merchant-login)
     try {
-      final res = await http.get(Uri.parse('$backendBaseUrl/stores')).timeout(const Duration(seconds: 4));
+      final identifier = cleanPhone.isNotEmpty ? cleanPhone : cleanInput;
+      final res = await http
+          .post(
+            Uri.parse('$backendBaseUrl/auth/merchant-login'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'store_id': identifier,
+              'pin': cleanPin,
+            }),
+          )
+          .timeout(const Duration(seconds: 5));
+
       if (res.statusCode == 200) {
         final bData = jsonDecode(res.body);
-        final List<dynamic> sList = (bData is Map && bData['data'] is List)
-            ? bData['data']
-            : (bData is List ? bData : []);
-        for (final s in sList) {
-          final storeData = Map<String, dynamic>.from(s as Map);
-          final sPhone = (storeData['phone'] ?? '').toString().replaceAll(RegExp(r'[^0-9]'), '');
-          if (sPhone.isNotEmpty && (sPhone == cleanPhone || cleanPhone.endsWith(sPhone) || sPhone.endsWith(cleanPhone))) {
-            final dbPin = storeData['pin']?.toString().trim();
-            if (dbPin != null && dbPin.isNotEmpty && dbPin == cleanPin) {
-              activeDynamicStore = PartnerStore.fromMap(storeData);
-              currentStoreId = activeDynamicStore!.id;
-              currentUser = MerchantUser(
-                id: 'usr_${activeDynamicStore!.id}',
-                phone: cleanPhone,
-                name: activeDynamicStore!.name,
-                storeId: activeDynamicStore!.id,
-                role: 'مدير المتجر',
-              );
-              return currentUser;
-            }
+        if (bData is Map && bData['success'] == true && bData['data'] != null) {
+          final data = Map<String, dynamic>.from(bData['data'] as Map);
+          jwtToken = data['token']?.toString();
+
+          final prefs = await SharedPreferences.getInstance();
+          if (jwtToken != null && jwtToken!.isNotEmpty) {
+            await prefs.setString('wasel_merchant_jwt_token', jwtToken!);
+          }
+
+          if (data['store'] != null) {
+            final storeData = Map<String, dynamic>.from(data['store'] as Map);
+            activeDynamicStore = PartnerStore.fromMap(storeData);
+            currentStoreId = activeDynamicStore!.id;
+            currentUser = MerchantUser(
+              id: 'usr_${activeDynamicStore!.id}',
+              phone: activeDynamicStore!.phone.isNotEmpty ? activeDynamicStore!.phone : cleanPhone,
+              name: activeDynamicStore!.name,
+              storeId: activeDynamicStore!.id,
+              role: 'مدير المتجر',
+            );
+            return currentUser;
           }
         }
+      } else if (res.statusCode == 401 || res.statusCode == 403) {
+        // Explicit invalid credentials from backend - reject immediately
+        return null;
       }
     } catch (_) {}
 
     // 2. Check live cloud stores in Supabase
     try {
+      final queryParam = cleanPhone.isNotEmpty ? 'phone=eq.$cleanPhone' : 'id=eq.$cleanInput';
       final res = await http
           .get(
-            Uri.parse('$supabaseUrl/stores?phone=eq.$cleanPhone&select=*'),
+            Uri.parse('$supabaseUrl/stores?$queryParam&select=*'),
             headers: _headers,
           )
           .timeout(const Duration(seconds: 4));
@@ -85,7 +109,7 @@ class MerchantSupabaseService {
             currentStoreId = activeDynamicStore!.id;
             currentUser = MerchantUser(
               id: 'usr_${activeDynamicStore!.id}',
-              phone: cleanPhone,
+              phone: cleanPhone.isNotEmpty ? cleanPhone : (activeDynamicStore!.phone),
               name: activeDynamicStore!.name,
               storeId: activeDynamicStore!.id,
               role: 'مدير المتجر',
@@ -96,27 +120,7 @@ class MerchantSupabaseService {
       }
     } catch (_) {}
 
-    // 3. Check offline/local Nalut partner stores
-    for (final s in PartnerStore.nalutStores) {
-      if (s.phone == cleanPhone || cleanPhone.endsWith(s.phone) || s.phone.endsWith(cleanPhone)) {
-        final storeSpecificPin = s.phone.length >= 4 ? s.phone.substring(s.phone.length - 4) : '2026';
-        if (cleanPin == storeSpecificPin) {
-          activeDynamicStore = s;
-          currentStoreId = s.id;
-          currentUser = MerchantUser(
-            id: 'usr_${s.id}',
-            phone: cleanPhone,
-            name: s.name,
-            storeId: s.id,
-            role: 'مدير المتجر',
-          );
-          return currentUser;
-        } else {
-          return null; // Reject wrong PIN
-        }
-      }
-    }
-
+    // No hardcoded fallback or substring phone PINs!
     return null;
   }
 
@@ -197,27 +201,7 @@ class MerchantSupabaseService {
         }
       } catch (_) {}
     }
-    return [
-      MerchantReceipt(
-        id: 'rcp_nalut_001',
-        receiptNumber: 'RCP-NAL-2026-001',
-        orderNumber: '#W-101',
-        storeId: targetStoreId,
-        issuedAt: DateTime.now(),
-        subtotalLyd: 45.00,
-        deliveryFeeLyd: 5.00,
-        platformCommissionLyd: 4.50,
-        netMerchantLyd: 40.50,
-        paymentMethod: 'كاش عند الاستلام',
-        paymentStatus: 'paid',
-        customerName: 'محمد النالوتي',
-        courierName: 'كابتن خالد',
-        items: [
-          KdsOrderItem(name: 'شاورما دبل نالوت', quantity: 2, priceLyd: 18.00),
-          KdsOrderItem(name: 'بطاطا مقلية عائلية', quantity: 1, priceLyd: 9.00),
-        ],
-      )
-    ];
+    return [];
   }
 
   /// Update inventory stock count (الجرد)
@@ -235,7 +219,10 @@ class MerchantSupabaseService {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .get(Uri.parse('$backendBaseUrl/orders?store_id=$targetStoreId'))
+            .get(
+              Uri.parse('$backendBaseUrl/orders?store_id=$targetStoreId'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 12));
 
         if (res.statusCode == 200) {
@@ -430,7 +417,7 @@ class MerchantSupabaseService {
       try {
         await http.post(
           Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-          headers: {'Content-Type': 'application/json'},
+          headers: backendHeaders,
           body: jsonEncode({
             'status': 'accepted',
             // ignore: use_null_aware_elements
@@ -445,7 +432,7 @@ class MerchantSupabaseService {
       final res = await http
           .post(
             Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 4));
@@ -478,7 +465,7 @@ class MerchantSupabaseService {
       final res = await http
           .post(
             Uri.parse('$backendBaseUrl/orders/$orderId/handover'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
@@ -497,7 +484,10 @@ class MerchantSupabaseService {
     // 1. Try Live Unified Backend First
     try {
       final res = await http
-          .get(Uri.parse('$backendBaseUrl/stores/$targetStoreId/menu'))
+          .get(
+            Uri.parse('$backendBaseUrl/stores/$targetStoreId/menu'),
+            headers: backendHeaders,
+          )
           .timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
@@ -608,7 +598,7 @@ class MerchantSupabaseService {
       final res = await http
           .patch(
             Uri.parse('$backendBaseUrl/products/$productId'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 4));
@@ -627,8 +617,8 @@ class MerchantSupabaseService {
       if (res.statusCode == 200 || res.statusCode == 204) return true;
     } catch (_) {}
 
-    // 3. Graceful offline fallback
-    return true;
+    // 3. Purged unconditional true fallback - report real failure
+    return false;
   }
 
   /// Update product inventory quantity directly
@@ -644,7 +634,7 @@ class MerchantSupabaseService {
       final res = await http
           .patch(
             Uri.parse('$backendBaseUrl/products/$productId'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode({'price': price, 'price_lyd': price}),
           )
           .timeout(const Duration(seconds: 4));
@@ -693,7 +683,7 @@ class MerchantSupabaseService {
       final res = await http
           .post(
             Uri.parse('$backendBaseUrl/vouchers'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 4));
@@ -725,7 +715,7 @@ class MerchantSupabaseService {
       final res = await http
           .patch(
             Uri.parse('$backendBaseUrl/stores/$storeId'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode({'is_open': isOpen}),
           )
           .timeout(const Duration(seconds: 4));
@@ -757,7 +747,10 @@ class MerchantSupabaseService {
   static Future<bool?> fetchStoreStatus(String storeId) async {
     try {
       final res = await http
-          .get(Uri.parse('$backendBaseUrl/stores/$storeId'))
+          .get(
+            Uri.parse('$backendBaseUrl/stores/$storeId'),
+            headers: backendHeaders,
+          )
           .timeout(const Duration(seconds: 4));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
@@ -776,7 +769,7 @@ class MerchantSupabaseService {
       final res = await http
           .post(
             Uri.parse('$backendBaseUrl/stores/$storeId/heartbeat'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
           )
           .timeout(const Duration(seconds: 4));
       return res.statusCode == 200;

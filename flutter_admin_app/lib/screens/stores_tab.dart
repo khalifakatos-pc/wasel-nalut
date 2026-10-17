@@ -195,7 +195,7 @@ class _StoresTabState extends State<StoresTab> {
 
   void _showMerchantCredentialsDialog(Map<String, dynamic> store) {
     final phone = store['phone'] ?? '0910000000';
-    final pin = store['pin'] ?? '1234';
+    final pin = store['pin'] ?? 'غير محدد';
     final appMode = (store['type'] == 'grocery' || store['type'] == 'pharmacy') ? 'شاشة تجزئة Pick & Pack' : 'شاشة مطبخ KDS';
 
     showDialog(
@@ -325,7 +325,7 @@ class _StoresTabState extends State<StoresTab> {
     final nameCtrl = TextEditingController();
     final nameEnCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: '091');
-    final pinCtrl = TextEditingController(text: '1234');
+    final pinCtrl = TextEditingController();
     final districtCtrl = TextEditingController(text: 'نالوت - شارع أفريقيا');
     final feeCtrl = TextEditingController(text: '5.0');
     final commissionCtrl = TextEditingController(text: '10.0');

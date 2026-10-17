@@ -118,7 +118,7 @@ async function runTest() {
       // Login customer
       const loginRes = await request('/api/v1/auth/login', {
         method: 'POST',
-        body: { phone: '0910000000', password: 'Password123!' }
+        body: { phone: '0910000000', password: 'Customer@Nalut2026!Secure' }
       });
       const token = loginRes.body?.data?.token;
 
@@ -158,9 +158,18 @@ async function runTest() {
       }
       console.log('✅ CHECKOUT PASSED: Order created as "placed", driver_id is null, captain radar is SILENT.');
 
+      // Login admin for merchant and management status transitions
+      const adminLoginRes = await request('/api/v1/auth/login', {
+        method: 'POST',
+        body: { phone: '0910009832', password: 'Admin@Nalut2026!Secure' }
+      });
+      const adminToken = adminLoginRes.body?.data?.token;
+      const adminAuth = { Authorization: `Bearer ${adminToken}` };
+
       console.log('\n--- Step 2: Merchant accepts and starts preparing ---');
       const acceptRes = await request(`/api/v1/orders/${orderData.id}/status`, {
         method: 'POST',
+        headers: adminAuth,
         body: { status: 'accepted' }
       });
       console.log('Accept response status:', acceptRes.status);
@@ -171,6 +180,7 @@ async function runTest() {
 
       const prepRes = await request(`/api/v1/orders/${orderData.id}/status`, {
         method: 'POST',
+        headers: adminAuth,
         body: { status: 'preparing' }
       });
       console.log('Preparing response status:', prepRes.status);
@@ -185,6 +195,7 @@ async function runTest() {
       console.log('\n--- Step 3: Merchant completes packing -> ready_for_pickup ---');
       const readyRes = await request(`/api/v1/orders/${orderData.id}/status`, {
         method: 'POST',
+        headers: adminAuth,
         body: { status: 'ready_for_pickup' }
       });
       console.log('Ready for pickup response status:', readyRes.status);
@@ -199,6 +210,7 @@ async function runTest() {
       console.log('\n--- Step 4: Captain accepts on radar -> out_for_delivery ---');
       const claimRes = await request(`/api/v1/orders/${orderData.id}/status`, {
         method: 'POST',
+        headers: adminAuth,
         body: {
           status: 'out_for_delivery',
           driver_id: 'driver_nalut_01'
@@ -214,11 +226,14 @@ async function runTest() {
       console.log('✅ OUT_FOR_DELIVERY PASSED: Order claimed by Captain driver_nalut_01.');
 
       console.log('\n--- Step 5: Captain delivers order with OTP ---');
+      const otpCode = orderData.otp_code || orderData.delivery_otp;
       const deliverRes = await request(`/api/v1/orders/${orderData.id}/status`, {
         method: 'POST',
+        headers: adminAuth,
         body: {
           status: 'delivered',
-          driver_id: 'driver_nalut_01'
+          driver_id: 'driver_nalut_01',
+          delivery_otp: otpCode
         }
       });
       console.log('Delivered response status:', deliverRes.status);

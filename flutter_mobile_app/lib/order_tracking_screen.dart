@@ -12,6 +12,7 @@ import 'services/api_service.dart';
 import 'services/customer_notification_service.dart';
 import 'services/socket_service.dart';
 import 'screens/order_rating_screen.dart';
+import 'widgets/no_network_screen.dart';
 
 /// ============================================================================
 /// WASEL REAL-TIME ORDER TRACKING SCREEN (شاشة تتبع الطلب الحية - نالوت)
@@ -47,11 +48,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
   gmap.GoogleMapController? _googleMapController;
   int _mapMode = 0; // 0 = Google Maps, 1 = ArcGIS Satellite, 2 = OpenStreetMap
   bool _isSatelliteMap = true;
+  bool _hasNetworkError = false;
 
   // Order Details from Supabase
-  String _orderNum = 'WAS-9831';
+  String _orderNum = 'WAS-ORD';
   String _storeName = 'مطعم قصر نالوت للمشويات';
-  String _deliveryOtp = '4821';
+  String _deliveryOtp = '----';
   String _deliveryAddress = 'نالوت - حي القلعة';
   double _totalAmount = 42.00;
   int _etaMinutes = 25;
@@ -221,6 +223,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
         final statusStr = liveOrder['status'] ?? 'placed';
 
         setState(() {
+          _hasNetworkError = false;
           _rawStatus = statusStr;
           _orderNum = liveOrder['order_number'] ?? _orderNum;
           _storeName = (liveOrder['store'] is Map ? liveOrder['store']['name'] : null) ?? liveOrder['store_name'] ?? _storeName;
@@ -337,8 +340,18 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
         if (driverId != null && liveOrder['driver'] == null) {
           _fetchDriverProfile(driverId.toString());
         }
+      } else if (mounted) {
+        setState(() {
+          _hasNetworkError = true;
+        });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _hasNetworkError = true;
+        });
+      }
+    }
   }
 
   Future<void> _fetchDriverProfile(String driverId) async {
@@ -525,6 +538,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> with SingleTi
                         ),
                       ),
                       const SizedBox(height: 14),
+
+                      // Mountain Network Signal Drop Warning
+                      if (_hasNetworkError) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          decoration: BoxDecoration(
+                            color: colorScheme.surface,
+                            borderRadius: AppRadius.radiusLg,
+                            border: Border.all(color: colorScheme.outlineVariant),
+                          ),
+                          child: NoNetworkScreen(
+                            isFullScreen: false,
+                            onRetry: () async {
+                              await _fetchLiveTrackingData();
+                            },
+                          ),
+                        ),
+                      ],
 
                       // ETA Header & Security OTP Pin Badge
                       _buildEtaAndOtpBanner(),

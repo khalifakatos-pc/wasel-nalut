@@ -163,12 +163,6 @@ class WhatsAppAuthService {
       debugPrint('Supabase verification lookup error: $e');
     }
 
-    // 3. Dev / Test fallback: Accept 4821 or 1234 or any 4 digits if offline
-    if (trimmedOtp.length == 4) {
-      await _persistSuccessfulLogin(cleanPhone);
-      return true;
-    }
-
     return false;
   }
 

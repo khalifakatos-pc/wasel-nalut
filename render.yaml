@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # WASEL NALUT - RENDER CLOUD BLUEPRINT (render.yaml)
 # Zero-downtime deployment for Express + Socket.io Server + Managed PostgreSQL
 # ==============================================================================
@@ -31,6 +31,6 @@ services:
       - key: PORT
         value: 10000
       - key: JWT_SECRET
-        value: wasel-nalut-secure-jwt-key-2026-prod-983284
+        generateValue: true
       - key: ADMIN_DEFAULT_PIN
-        value: 9832
+        sync: false

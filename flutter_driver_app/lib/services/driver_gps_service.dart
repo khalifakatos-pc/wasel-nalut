@@ -4,33 +4,63 @@ import 'package:geolocator/geolocator.dart';
 import 'driver_supabase_service.dart';
 
 /// Live GPS Telemetry and Device Location Service for Wasel Captain App.
-/// Handles high-precision device GPS streaming with graceful simulated fallback for Nalut.
+/// Streams genuine device GPS coordinates exclusively from Geolocator sensor.
 class DriverGpsService {
   DriverGpsService._internal();
   static final DriverGpsService instance = DriverGpsService._internal();
 
   StreamSubscription<Position>? _positionSubscription;
-  Timer? _fallbackSimulationTimer;
+  StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
   String? _activeOrderId;
   bool _isTracking = false;
   bool _isUsingRealGps = false;
+  bool _isServiceEnabled = true;
 
   double _currentLat = 31.8686;
   double _currentLng = 10.9818;
   double _currentHeading = 0.0;
   double _currentSpeedKmh = 0.0;
-  int _simulationStep = 0;
 
   final StreamController<Map<String, dynamic>> _locationStreamController =
       StreamController<Map<String, dynamic>>.broadcast();
+  final StreamController<bool> _gpsStatusController =
+      StreamController<bool>.broadcast();
 
   Stream<Map<String, dynamic>> get onLocationUpdate => _locationStreamController.stream;
+  Stream<bool> get onGpsStatusChanged => _gpsStatusController.stream;
   bool get isTracking => _isTracking;
   bool get isUsingRealGps => _isUsingRealGps;
+  bool get isServiceEnabled => _isServiceEnabled;
+  bool get isLocationServiceEnabled => _isServiceEnabled;
   double get currentLat => _currentLat;
   double get currentLng => _currentLng;
   double get currentHeading => _currentHeading;
   double get currentSpeedKmh => _currentSpeedKmh;
+
+  /// Open device system location settings
+  Future<bool> openLocationSettings() => Geolocator.openLocationSettings();
+
+  /// Open application permission settings
+  Future<bool> openAppSettings() => Geolocator.openAppSettings();
+
+  /// Check whether GPS service is actively enabled and authorized
+  Future<bool> checkGpsAvailability() async {
+    try {
+      final enabled = await Geolocator.isLocationServiceEnabled();
+      _isServiceEnabled = enabled;
+      if (!enabled) {
+        _isUsingRealGps = false;
+        _gpsStatusController.add(false);
+        return false;
+      }
+      final permission = await Geolocator.checkPermission();
+      final hasPerm = permission == LocationPermission.always || permission == LocationPermission.whileInUse;
+      _gpsStatusController.add(hasPerm);
+      return hasPerm;
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// Start live location tracking
   Future<void> startTracking({String? orderId}) async {
@@ -41,57 +71,67 @@ class DriverGpsService {
     }
 
     _isTracking = true;
-    bool hasPermission = await _checkAndRequestPermissions();
+
+    // Monitor continuous service status stream (enabled / disabled)
+    _serviceStatusSubscription?.cancel();
+    _serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((status) {
+      final enabled = status == ServiceStatus.enabled;
+      _isServiceEnabled = enabled;
+      if (!enabled) {
+        _isUsingRealGps = false;
+      }
+      _gpsStatusController.add(enabled);
+    });
+
+    final bool hasPermission = await _checkAndRequestPermissions();
 
     if (hasPermission && !kIsWeb) {
       try {
         _isUsingRealGps = true;
-        // Listen to continuous high-accuracy position updates
+        _isServiceEnabled = true;
+        _gpsStatusController.add(true);
+
         const locationSettings = LocationSettings(
           accuracy: LocationAccuracy.high,
-          distanceFilter: 5, // update every 5 meters
+          distanceFilter: 10, // Update every 10 meters
         );
 
+        _positionSubscription?.cancel();
         _positionSubscription = Geolocator.getPositionStream(
           locationSettings: locationSettings,
         ).listen(
           _handleRealGpsPosition,
           onError: (err) {
-            debugPrint('[DriverGpsService] GPS stream error: $err. Falling back to simulation.');
-            _startFallbackSimulation();
+            debugPrint('[DriverGpsService] Real GPS sensor stream error: $err');
+            _isUsingRealGps = false;
+            _gpsStatusController.add(false);
           },
         );
 
-        // Fetch initial immediate fix
-        final initialPos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-        ).timeout(const Duration(seconds: 4), onTimeout: () => Position(
-          latitude: _currentLat,
-          longitude: _currentLng,
-          timestamp: DateTime.now(),
-          accuracy: 10,
-          altitude: 0,
-          altitudeAccuracy: 0,
-          heading: 0,
-          headingAccuracy: 0,
-          speed: 0,
-          speedAccuracy: 0,
-        ));
-        _handleRealGpsPosition(initialPos);
+        // Fetch initial immediate location fix
+        try {
+          final initialPos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+          ).timeout(const Duration(seconds: 4));
+          _handleRealGpsPosition(initialPos);
+        } catch (_) {}
         return;
       } catch (e) {
-        debugPrint('[DriverGpsService] Could not start real GPS: $e');
+        debugPrint('[DriverGpsService] Failed to initialize real GPS: $e');
+        _isUsingRealGps = false;
+        _gpsStatusController.add(false);
       }
+    } else {
+      _isUsingRealGps = false;
+      _gpsStatusController.add(false);
     }
-
-    // Fallback: Real GPS unavailable or permission denied
-    _startFallbackSimulation();
   }
 
   /// Request permissions cleanly
   Future<bool> _checkAndRequestPermissions() async {
     try {
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      _isServiceEnabled = serviceEnabled;
       if (!serviceEnabled) {
         debugPrint('[DriverGpsService] Location services are disabled.');
         return false;
@@ -113,7 +153,7 @@ class DriverGpsService {
 
       return true;
     } catch (e) {
-      debugPrint('[DriverGpsService] Permission error: $e');
+      debugPrint('[DriverGpsService] Permission check error: $e');
       return false;
     }
   }
@@ -123,28 +163,9 @@ class DriverGpsService {
     _currentLng = position.longitude;
     _currentHeading = position.heading >= 0 ? position.heading : _currentHeading;
     _currentSpeedKmh = position.speed >= 0 ? (position.speed * 3.6) : _currentSpeedKmh;
+    _isUsingRealGps = true;
 
     _dispatchTelemetry();
-  }
-
-  void _startFallbackSimulation() {
-    _isUsingRealGps = false;
-    _fallbackSimulationTimer?.cancel();
-    _fallbackSimulationTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (!_isTracking) return;
-      _simulationStep++;
-
-      // Smooth realistic movement along Nalut thoroughfare (31.8686, 10.9818)
-      final latOffset = ((_simulationStep % 12) - 6) * 0.00015;
-      final lngOffset = ((_simulationStep % 10) - 5) * 0.00018;
-
-      _currentLat = 31.8686 + latOffset;
-      _currentLng = 10.9818 + lngOffset;
-      _currentHeading = (_simulationStep * 30.0) % 360.0;
-      _currentSpeedKmh = 35.0 + (_simulationStep % 15);
-
-      _dispatchTelemetry();
-    });
   }
 
   void _dispatchTelemetry() {
@@ -181,14 +202,16 @@ class DriverGpsService {
   /// Stop live location tracking
   void stopTracking() {
     _isTracking = false;
+    _isUsingRealGps = false;
     _positionSubscription?.cancel();
     _positionSubscription = null;
-    _fallbackSimulationTimer?.cancel();
-    _fallbackSimulationTimer = null;
+    _serviceStatusSubscription?.cancel();
+    _serviceStatusSubscription = null;
   }
 
   void dispose() {
     stopTracking();
     _locationStreamController.close();
+    _gpsStatusController.close();
   }
 }

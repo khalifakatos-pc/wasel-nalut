@@ -35,14 +35,6 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     super.dispose();
   }
 
-  void _fillQuickCredentials(String phone, String pin) {
-    setState(() {
-      _phoneController.text = phone;
-      _pinController.text = pin;
-      _errorMessage = null;
-    });
-  }
-
   Future<void> _handleLogin() async {
     final phone = _phoneController.text.trim();
     final pin = _pinController.text.trim();
@@ -293,41 +285,6 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-
-                // Quick Select / Test Captains of Nalut
-                const Text(
-                  'كباتن نالوت المسجلون (اختيار سريع للتجربة):',
-                  style: TextStyle(fontSize: 12, color: DriverColors.darkTextMuted, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    ActionChip(
-                      backgroundColor: DriverColors.darkSurface,
-                      side: const BorderSide(color: DriverColors.darkBorder),
-                      avatar: const Icon(Icons.directions_car_rounded, size: 16, color: DriverColors.primary),
-                      label: const Text('خالد الكاتب (0912345678)', style: TextStyle(color: Colors.white, fontSize: 11)),
-                      onPressed: () => _fillQuickCredentials('0912345678', '1234'),
-                    ),
-                    ActionChip(
-                      backgroundColor: DriverColors.darkSurface,
-                      side: const BorderSide(color: DriverColors.darkBorder),
-                      avatar: const Icon(Icons.two_wheeler_rounded, size: 16, color: DriverColors.onlineGreen),
-                      label: const Text('عمر القلعاوي (0923456789)', style: TextStyle(color: Colors.white, fontSize: 11)),
-                      onPressed: () => _fillQuickCredentials('0923456789', '1234'),
-                    ),
-                    ActionChip(
-                      backgroundColor: DriverColors.darkSurface,
-                      side: const BorderSide(color: DriverColors.darkBorder),
-                      avatar: const Icon(Icons.directions_car_rounded, size: 16, color: DriverColors.tadawulTeal),
-                      label: const Text('طارق النالوتي (0915544332)', style: TextStyle(color: Colors.white, fontSize: 11)),
-                      onPressed: () => _fillQuickCredentials('0915544332', '1234'),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 28),
 

@@ -186,98 +186,6 @@ class ApiService {
   // STORES & CATALOG
   // -------------------------------------------------------------------------
 
-  /// Authentic Nalut stores available offline/cached on frame 0
-  static const List<Map<String, dynamic>> realNalutStores = [
-    {
-      'id': 'store_nalut_alhanaa',
-      'name': 'صيدلية الهناء',
-      'name_en': 'Al-Hanaa Pharmacy',
-      'type': 'pharmacy',
-      'rating': 4.9,
-      'review_count': 94,
-      'delivery_time_min': 15,
-      'delivery_time_max': 30,
-      'min_order_lyd': 10.0,
-      'base_delivery_fee_lyd': 5.0,
-      'latitude': 31.877755,
-      'longitude': 10.978004,
-      'city': 'nalut',
-      'district': 'مقابل جزيرة مصرف الجمهورية، نالوت',
-      'phone': '0912345001',
-      'logo_url': 'https://images.unsplash.com/photo-1587854692152-cbe660dbde88?auto=format&fit=crop&w=400&q=80',
-      'banner_url': 'https://images.unsplash.com/photo-1576602976047-174e57a47881?auto=format&fit=crop&w=800&q=80',
-      'is_open': true,
-      'is_featured': true,
-      'badge': 'صيدلية معتمدة',
-    },
-    {
-      'id': 'store_nalut_ranchello',
-      'name': 'مطعم ومقهى رانشيلو',
-      'name_en': 'Ranchello Restaurant & Cafe',
-      'type': 'restaurant',
-      'rating': 4.8,
-      'review_count': 165,
-      'delivery_time_min': 25,
-      'delivery_time_max': 45,
-      'min_order_lyd': 15.0,
-      'base_delivery_fee_lyd': 5.0,
-      'latitude': 31.86213,
-      'longitude': 10.986878,
-      'city': 'nalut',
-      'district': 'شارع أفريقيا، نالوت',
-      'phone': '0912345002',
-      'logo_url': 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=400&q=80',
-      'banner_url': 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80',
-      'is_open': true,
-      'is_featured': true,
-      'badge': 'الأكثر طلباً بنالوت',
-    },
-    {
-      'id': 'store_nalut_akakus',
-      'name': 'بيتزا أكاكوس',
-      'name_en': 'Pizza Akakus',
-      'type': 'restaurant',
-      'rating': 4.7,
-      'review_count': 142,
-      'delivery_time_min': 20,
-      'delivery_time_max': 35,
-      'min_order_lyd': 15.0,
-      'base_delivery_fee_lyd': 5.0,
-      'latitude': 31.881501,
-      'longitude': 10.975753,
-      'city': 'nalut',
-      'district': 'شارع تونس، نالوت',
-      'phone': '0912345003',
-      'logo_url': 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=400&q=80',
-      'banner_url': 'https://images.unsplash.com/photo-1579751626657-72bc17010498?auto=format&fit=crop&w=800&q=80',
-      'is_open': true,
-      'is_featured': true,
-      'badge': 'بيتزا إيطالية على الحطب',
-    },
-    {
-      'id': 'store_nalut_rixos',
-      'name': 'ريكسوس للتسوق',
-      'name_en': 'Rixos Shopping Market',
-      'type': 'grocery',
-      'rating': 4.8,
-      'review_count': 210,
-      'delivery_time_min': 30,
-      'delivery_time_max': 50,
-      'min_order_lyd': 20.0,
-      'base_delivery_fee_lyd': 5.0,
-      'latitude': 31.892879,
-      'longitude': 10.965377,
-      'city': 'nalut',
-      'district': 'المدخل الرئيسي - نالوت',
-      'phone': '0912345004',
-      'logo_url': 'https://images.unsplash.com/photo-1578916171728-46686eac8d58?auto=format&fit=crop&w=400&q=80',
-      'banner_url': 'https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=800&q=80',
-      'is_open': true,
-      'is_featured': true,
-      'badge': 'سوبرماركت متكامل',
-    },
-  ];
-
   /// Fetch stores by type: 'restaurant', 'grocery', 'marketplace', or all.
   static Future<ApiResult> getStores({String? type}) async {
     // 1. Try Live Unified Backend Server First (Cloud 24/7 / Local)
@@ -301,8 +209,7 @@ class ApiService {
       }
     }
 
-    final filtered = type == null ? realNalutStores : realNalutStores.where((s) => s['type'] == type).toList();
-    return ApiResult.success({'data': filtered, 'count': filtered.length});
+    return ApiResult.failure('لا يوجد اتصال بالخادم');
   }
 
   /// Fetch a store's full menu (categories + products).
@@ -331,16 +238,11 @@ class ApiService {
       }
     }
 
-    return ApiResult.success({
-      'data': {
-        'store_id': storeId,
-        'products': <Map<String, dynamic>>[],
-      }
-    });
+    return ApiResult.failure('لا يوجد اتصال بالخادم');
   }
 
   /// Get accurate server dynamic delivery quote (5.00 - 7.00+ LYD curve for Nalut).
-  static Future<double> getPricingQuote({
+  static Future<double?> getPricingQuote({
     required String storeId,
     required double lat,
     required double lng,
@@ -356,7 +258,7 @@ class ApiService {
         }
       }
     } catch (_) {}
-    return 5.00; // Realistic Nalut baseline
+    return null;
   }
 
   // -------------------------------------------------------------------------
@@ -406,74 +308,13 @@ class ApiService {
           await saveActiveOrderId(resOrderId);
         }
         return ApiResult.success(payloadData);
-      } else if (res.statusCode == 400 || res.statusCode == 404 || res.statusCode == 403) {
+      } else {
         final errMsg = data['error'] ?? data['message'] ?? 'تعذر إتمام الطلب من المتجر';
         return ApiResult.error(errMsg.toString());
       }
     } catch (_) {
-      // Fallback
+      return ApiResult.failure('فشل في إنشاء الطلب — تحقق من اتصالك بالإنترنت');
     }
-
-    // 2. Try 24/7 Supabase Cloud
-    try {
-      final orderNum = 'WAS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-      final orderId = 'ord_${DateTime.now().millisecondsSinceEpoch}';
-      final subtotal = items.fold<double>(0.0, (sum, i) => sum + ((i['price'] ?? 0.0) * (i['quantity'] ?? 1)));
-      final deliveryFee = 5.00;
-      final total = subtotal + deliveryFee;
-
-      final orderPayload = {
-        'id': orderId,
-        'order_number': orderNum,
-        'customer_name': effectiveName,
-        'customer_phone': effectivePhone,
-        'store_id': storeId,
-        'status': 'placed',
-        'payment_method': paymentMethod,
-        'subtotal_lyd': subtotal,
-        'delivery_fee_lyd': deliveryFee,
-        'total_amount_lyd': total,
-        'otp_code': (1000 + (DateTime.now().millisecond % 9000)).toString(),
-        'delivery_latitude': deliveryLocation['latitude'] ?? 31.8687,
-        'delivery_longitude': deliveryLocation['longitude'] ?? 10.9818,
-        'notes': couponCode != null ? 'كوبون: $couponCode' : '',
-      };
-
-      final res = await http.post(
-        Uri.parse('$_supabaseUrl/orders'),
-        headers: {
-          'apikey': _supabaseApiKey,
-          'Authorization': 'Bearer $_supabaseApiKey',
-          'Content-Type': 'application/json',
-          'Prefer': 'return=representation',
-        },
-        body: jsonEncode(orderPayload),
-      ).timeout(const Duration(seconds: 3));
-
-      if (res.statusCode == 200 || res.statusCode == 201) {
-        await saveActiveOrderId(orderId);
-        return ApiResult.success({
-          'order_id': orderId,
-          'order_number': orderNum,
-          'status': 'placed',
-          'total': total,
-        });
-      }
-    } catch (_) {
-      // Fallback
-    }
-
-    // 3. Fallback mock generation for zero-latency testing
-    final orderNum = 'WAS-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}';
-    final orderId = 'ord_${DateTime.now().millisecondsSinceEpoch}';
-    final subtotal = items.fold<double>(0.0, (sum, i) => sum + ((i['price'] ?? 0.0) * (i['quantity'] ?? 1)));
-    await saveActiveOrderId(orderId);
-    return ApiResult.success({
-      'order_id': orderId,
-      'order_number': orderNum,
-      'status': 'placed',
-      'total': subtotal + 5.0,
-    });
   }
 
   /// Get a specific order's details and status.
@@ -530,83 +371,11 @@ class ApiService {
 
   /// Top up wallet balance.
   // -------------------------------------------------------------------------
-  // USER ADDRESSES & NALUT DISTRICTS (أماكني وأحياء نالوت)
+  // USER ADDRESSES (أماكني وأحياء نالوت)
   // -------------------------------------------------------------------------
-  static const List<Map<String, dynamic>> nalutDistricts = [
-    {
-      'id': 'dist_nalut_01',
-      'name': 'وسط المدينة',
-      'name_en': 'City Center',
-      'latitude': 31.8687,
-      'longitude': 10.9818,
-      'details': 'نالوت - وسط المدينة، السوق القديم والشارع العام',
-    },
-    {
-      'id': 'dist_nalut_02',
-      'name': 'حي سيدي خليفة',
-      'name_en': 'Sidi Khalifa',
-      'latitude': 31.8650,
-      'longitude': 10.9780,
-      'details': 'نالوت - حي سيدي خليفة، بجوار المسجد والحي السكني',
-    },
-    {
-      'id': 'dist_nalut_03',
-      'name': 'طريق القلعة',
-      'name_en': 'Al-Qalaa Road',
-      'latitude': 31.8695,
-      'longitude': 10.9835,
-      'details': 'نالوت - طريق القلعة الأثرية، المرتفع الغربي',
-    },
-    {
-      'id': 'dist_nalut_04',
-      'name': 'الحوامد/كاباو',
-      'name_en': 'Al-Hawamid / Kabaw Connector',
-      'latitude': 31.8820,
-      'longitude': 10.9950,
-      'details': 'طريق الحوامد / كاباو، مفرق الاستراحات والمزارع',
-    },
-  ];
+  static final List<Map<String, dynamic>> _userAddresses = [];
 
-  static final List<Map<String, dynamic>> _userAddresses = [
-    {
-      'id': 'addr_demo_01',
-      'tag': 'home',
-      'title': 'المنزل - وسط المدينة',
-      'details': 'نالوت - وسط المدينة، الشارع الرئيسي، الباب الأبيض',
-      'latitude': 31.8687,
-      'longitude': 10.9818,
-      'is_default': true,
-    },
-    {
-      'id': 'addr_demo_02',
-      'tag': 'home',
-      'title': 'حي سيدي خليفة',
-      'details': 'نالوت - حي سيدي خليفة، بجانب المسجد والمحطة',
-      'latitude': 31.8650,
-      'longitude': 10.9780,
-      'is_default': false,
-    },
-    {
-      'id': 'addr_demo_03',
-      'tag': 'work',
-      'title': 'طريق القلعة الأثرية',
-      'details': 'نالوت - طريق القلعة، مستشفى نالوت المركزي / البلدية',
-      'latitude': 31.8695,
-      'longitude': 10.9835,
-      'is_default': false,
-    },
-    {
-      'id': 'addr_demo_04',
-      'tag': 'chalet',
-      'title': 'الاستراحة - الحوامد/كاباو',
-      'details': 'طريق الحوامد / كاباو، مزارع الزيتون والسور الأخضر',
-      'latitude': 31.8820,
-      'longitude': 10.9950,
-      'is_default': false,
-    },
-  ];
-
-  static Map<String, dynamic> activeAddress = _userAddresses.first;
+  static Map<String, dynamic> activeAddress = {};
 
   static Future<List<Map<String, dynamic>>> getUserAddresses() async {
     try {
@@ -621,16 +390,17 @@ class ApiService {
 
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          final fetched = List<Map<String, dynamic>>.from(list);
-          _userAddresses.clear();
-          _userAddresses.addAll(fetched);
-          return List<Map<String, dynamic>>.from(_userAddresses);
+        final fetched = List<Map<String, dynamic>>.from(list);
+        _userAddresses.clear();
+        _userAddresses.addAll(fetched);
+        if (activeAddress.isEmpty && _userAddresses.isNotEmpty) {
+          activeAddress = _userAddresses.first;
         }
+        return List<Map<String, dynamic>>.from(_userAddresses);
       }
     } catch (_) {}
 
-    return List<Map<String, dynamic>>.from(_userAddresses);
+    return [];
   }
 
   static Future<bool> saveUserAddress(Map<String, dynamic> address) async {
@@ -667,14 +437,14 @@ class ApiService {
       ).timeout(const Duration(seconds: 4));
       return res.statusCode == 200 || res.statusCode == 201;
     } catch (_) {
-      return true;
+      return false;
     }
   }
 
   static Future<bool> deleteUserAddress(String addressId) async {
     _userAddresses.removeWhere((a) => a['id'] == addressId);
-    if (activeAddress['id'] == addressId && _userAddresses.isNotEmpty) {
-      activeAddress = _userAddresses.first;
+    if (activeAddress['id'] == addressId) {
+      activeAddress = _userAddresses.isNotEmpty ? _userAddresses.first : {};
     }
     try {
       await http.delete(
@@ -739,62 +509,55 @@ class ApiService {
     };
   }
 
-  /// Get current loyalty points from persistent database with local cache fallback
-  static Future<int> getLoyaltyPoints() async {
+  /// Get current loyalty points from backend API
+  static Future<ApiResult> getLoyaltyPoints() async {
     final phone = _userPhone;
-    final prefs = await SharedPreferences.getInstance();
-
-    if (phone != null && phone.isNotEmpty) {
-      // 1. Try Backend API
-      try {
-        final res = await http.get(
-          Uri.parse('$_baseUrl/loyalty/$phone'),
-          headers: _headers,
-        ).timeout(const Duration(seconds: 4));
-
-        if (res.statusCode == 200) {
-          final Map<String, dynamic> body = jsonDecode(res.body);
-          if (body['success'] == true && body['data'] != null) {
-            final int balance = (body['data']['points_balance'] as num?)?.toInt() ?? 0;
-            await prefs.setInt('wasel_loyalty_points', balance);
-            return balance;
-          }
-        }
-      } catch (_) {}
-
-      // 2. Try Supabase direct query
-      try {
-        final sRes = await http.get(
-          Uri.parse('$_supabaseUrl/loyalty_points?user_phone=eq.$phone&select=*'),
-          headers: {
-            'apikey': _supabaseApiKey,
-            'Authorization': 'Bearer $_supabaseApiKey',
-          },
-        ).timeout(const Duration(seconds: 4));
-
-        if (sRes.statusCode == 200) {
-          final List<dynamic> list = jsonDecode(sRes.body);
-          if (list.isNotEmpty) {
-            final int balance = (list.first['points_balance'] as num?)?.toInt() ?? 0;
-            await prefs.setInt('wasel_loyalty_points', balance);
-            return balance;
-          }
-        }
-      } catch (_) {}
+    if (phone == null || phone.isEmpty) {
+      return ApiResult.failure('لا يمكن تحميل نقاط الولاء');
     }
 
-    // Return cached balance or 0 if brand-new
-    return prefs.getInt('wasel_loyalty_points') ?? 0;
+    // 1. Query Backend API
+    try {
+      final res = await http.get(
+        Uri.parse('$_baseUrl/loyalty/$phone'),
+        headers: _headers,
+      ).timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final Map<String, dynamic> body = jsonDecode(res.body);
+        if (body['success'] == true && body['data'] != null) {
+          final int balance = (body['data']['points_balance'] as num?)?.toInt() ?? 0;
+          return ApiResult.success(balance);
+        }
+      }
+    } catch (_) {}
+
+    // 2. Query Supabase direct query
+    try {
+      final sRes = await http.get(
+        Uri.parse('$_supabaseUrl/loyalty_points?user_phone=eq.$phone&select=*'),
+        headers: {
+          'apikey': _supabaseApiKey,
+          'Authorization': 'Bearer $_supabaseApiKey',
+        },
+      ).timeout(const Duration(seconds: 4));
+
+      if (sRes.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(sRes.body);
+        if (list.isNotEmpty) {
+          final int balance = (list.first['points_balance'] as num?)?.toInt() ?? 0;
+          return ApiResult.success(balance);
+        }
+        return ApiResult.success(0);
+      }
+    } catch (_) {}
+
+    return ApiResult.failure('لا يمكن تحميل نقاط الولاء');
   }
 
   /// Add loyalty points after an order to persistent database
   static Future<void> addLoyaltyPoints(int points, {String? orderId}) async {
     final phone = _userPhone;
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt('wasel_loyalty_points') ?? 0;
-    final newBalance = current + points;
-    await prefs.setInt('wasel_loyalty_points', newBalance);
-
     if (phone != null && phone.isNotEmpty) {
       try {
         await http.post(
@@ -814,11 +577,6 @@ class ApiService {
   /// Deduct redeemed loyalty points from persistent database
   static Future<void> deductLoyaltyPoints(int points, {String? orderId}) async {
     final phone = _userPhone;
-    final prefs = await SharedPreferences.getInstance();
-    final current = prefs.getInt('wasel_loyalty_points') ?? 0;
-    final newBalance = (current - points) > 0 ? (current - points) : 0;
-    await prefs.setInt('wasel_loyalty_points', newBalance);
-
     if (phone != null && phone.isNotEmpty) {
       try {
         await http.post(
@@ -890,25 +648,6 @@ class ApiService {
       }
     } catch (_) {}
 
-    // Fallback 3: try Supabase patch
-    try {
-      final res = await http.patch(
-        Uri.parse('$_supabaseUrl/orders?id=eq.$orderId'),
-        headers: {
-          'apikey': _supabaseApiKey,
-          'Authorization': 'Bearer $_supabaseApiKey',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'status': 'cancelled',
-          'notes': 'ملغى: ${reason ?? "إلغاء من قبل الزبون"}',
-        }),
-      ).timeout(const Duration(seconds: 4));
-      if (res.statusCode == 200 || res.statusCode == 204) {
-        return ApiResult.success({'status': 'cancelled'});
-      }
-    } catch (_) {}
-
     return ApiResult.error('تعذر الاتصال بالخادم لإلغاء الطلب');
   }
 
@@ -921,7 +660,7 @@ class ApiService {
     required double deliveryScore,
     required String comment,
   }) async {
-    // 1. Try Live Backend Real Reviews API
+    // 1. Live Backend Real Reviews API
     try {
       final res = await http.post(
         Uri.parse('$_baseUrl/reviews'),
@@ -943,34 +682,7 @@ class ApiService {
       }
     } catch (_) {}
 
-    // 2. Fallback: Supabase direct reviews table insert
-    try {
-      await http.post(
-        Uri.parse('$_supabaseUrl/reviews'),
-        headers: {
-          'apikey': _supabaseApiKey,
-          'Authorization': 'Bearer $_supabaseApiKey',
-          'Content-Type': 'application/json',
-          'Prefer': 'return=minimal',
-        },
-        body: jsonEncode({
-          'id': 'rev_${DateTime.now().millisecondsSinceEpoch}',
-          'order_id': orderId,
-          'customer_phone': _userPhone ?? '0910000000',
-          'store_id': storeId,
-          'driver_id': driverId,
-          'store_rating': foodScore,
-          'driver_rating': deliveryScore,
-          'comment': comment,
-          'created_at': DateTime.now().toIso8601String(),
-        }),
-      ).timeout(const Duration(seconds: 4));
-
-      await addLoyaltyPoints(20, orderId: orderId);
-      return true;
-    } catch (_) {
-      return true;
-    }
+    return false;
   }
 }
 
@@ -986,5 +698,8 @@ class ApiResult {
       ApiResult._(isSuccess: true, data: data);
 
   factory ApiResult.error(String message) =>
+      ApiResult._(isSuccess: false, errorMessage: message);
+
+  factory ApiResult.failure(String message) =>
       ApiResult._(isSuccess: false, errorMessage: message);
 }

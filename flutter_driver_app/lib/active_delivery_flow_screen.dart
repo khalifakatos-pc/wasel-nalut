@@ -43,6 +43,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
   bool _isOtpVerified = false;
   bool _isCashCollected = false;
   bool _isBillAuditApproved = false;
+  String? _enteredOtp;
 
   @override
   void initState() {
@@ -183,7 +184,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
                 );
               },
               style: ElevatedButton.styleFrom(backgroundColor: DriverColors.onlineGreen),
-              child: const Text('محاكاة مسح الباركود ✅', style: TextStyle(color: Colors.white)),
+              child: const Text('تأكيد المسح الضوئي للباركود ✅', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -847,14 +848,14 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
           ),
           const SizedBox(height: 12),
           OtpInputField(
-            correctOtp: _activeOrder.customerOtpPin,
             onCompleted: (otp) {
               setState(() {
+                _enteredOtp = otp;
                 _isOtpVerified = true;
               });
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('✅ تم التحقق من رمز OTP بنجاح!'),
+                  content: Text('✅ تم إدخال رمز التحقق OTP بنجاح.'),
                   backgroundColor: DriverColors.onlineGreen,
                 ),
               );
@@ -919,6 +920,94 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
     );
   }
 
+  void _showHandoverCodeDialog() {
+    final codeController = TextEditingController();
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DriverColors.darkSurface,
+        title: const Text('رمز استلام الطلب من المطعم 🔐', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'اطلب رمز التسليم المكون من 4 أرقام من صاحب المطعم لتأكيد استلام الطلب ونقل العهدة:',
+              style: TextStyle(color: DriverColors.darkTextMuted, fontSize: 13),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: codeController,
+              keyboardType: TextInputType.number,
+              maxLength: 6,
+              textAlign: TextAlign.center,
+              autofocus: true,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 6, color: Colors.white),
+              decoration: InputDecoration(
+                hintText: '----',
+                hintStyle: const TextStyle(color: Colors.white24, letterSpacing: 6, fontSize: 22),
+                filled: true,
+                fillColor: DriverColors.darkCardElevated,
+                border: OutlineInputBorder(borderRadius: DriverRadius.radiusMd, borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final code = codeController.text.trim();
+              if (code.isEmpty) return;
+              Navigator.pop(ctx);
+              final res = await DriverSupabaseService.verifyHandover(
+                _activeOrder.orderId,
+                code,
+              );
+              if (res['success'] != true &&
+                  _orderBackendStatus != 'out_for_delivery' &&
+                  _orderBackendStatus != 'picked_up') {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(res['error'] ?? 'تعذر استلام الطلب من المطعم. رمز التسليم غير صحيح.'),
+                      backgroundColor: DriverColors.urgentRed,
+                    ),
+                  );
+                }
+                _fetchOrderStatus();
+                return;
+              }
+              setState(() {
+                _isQrScanned = true;
+                for (var item in _activeOrder.items) {
+                  item.isVerified = true;
+                }
+              });
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('✅ تم استلام الوجبة ونقل العهدة بالكامل للكابتن! انطلق للزبون.'),
+                    backgroundColor: DriverColors.onlineGreen,
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              }
+              _advanceToStep(DeliveryStep.navigatingToCustomer);
+              _fetchOrderStatus();
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: DriverColors.onlineGreen),
+            child: const Text('تأكيد الاستلام', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBottomActionButton() {
     if (_activeOrder.currentStep == DeliveryStep.completeDeliveryOtp ||
         _activeOrder.currentStep == DeliveryStep.deliveryFinished) {
@@ -932,14 +1021,31 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
                 completedLabel: 'تم إنهاء الطلب وإيداع الأرباح ✓',
                 activeColor: DriverColors.onlineGreen,
                 onConfirmed: () async {
-                  _advanceToStep(DeliveryStep.deliveryFinished);
-
-                  // Persist status and driver COD balance to Supabase Cloud
-                  await DriverSupabaseService.completeDelivery(
+                  final success = await DriverSupabaseService.completeDelivery(
                     orderId: _activeOrder.orderId.isNotEmpty ? _activeOrder.orderId : _activeOrder.orderNumber,
                     orderAmountLyd: _activeOrder.codAmountLyd > 0 ? _activeOrder.codAmountLyd : 40.0,
                     isCod: _activeOrder.paymentType == PaymentType.cashOnDelivery,
+                    otpCode: _enteredOtp,
                   );
+
+                  if (!success) {
+                    if (mounted) {
+                      setState(() {
+                        _isOtpVerified = false;
+                        _enteredOtp = null;
+                      });
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('❌ فشل إتمام الطلب! رمز OTP غير صحيح أو تم رفض العملية من الخادم.'),
+                          backgroundColor: DriverColors.urgentRed,
+                          duration: Duration(seconds: 4),
+                        ),
+                      );
+                    }
+                    return;
+                  }
+
+                  _advanceToStep(DeliveryStep.deliveryFinished);
 
                   if (mounted) {
                     showDialog(
@@ -1031,41 +1137,8 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
         } else {
           label = 'تأكيد الاستلام ونقل العهدة للانطلاق 🛵';
           buttonColor = DriverColors.onlineGreen;
-          onTap = () async {
-            setState(() {
-              _isQrScanned = true;
-              for (var item in _activeOrder.items) {
-                item.isVerified = true;
-              }
-            });
-            final res = await DriverSupabaseService.verifyHandover(
-              _activeOrder.orderId,
-              '1234',
-            );
-            if (res['success'] != true &&
-                _orderBackendStatus != 'out_for_delivery' &&
-                _orderBackendStatus != 'picked_up') {
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(res['error'] ?? 'تعذر استلام الطلب من المطعم'),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
-              }
-              _fetchOrderStatus();
-              return;
-            }
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('✅ تم استلام الوجبة ونقل العهدة بالكامل للكابتن! انطلق للزبون.'),
-                  backgroundColor: DriverColors.onlineGreen,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-            _advanceToStep(DeliveryStep.navigatingToCustomer);
+          onTap = () {
+            _showHandoverCodeDialog();
           };
         }
         break;
@@ -1453,35 +1526,6 @@ class _AntiFraudNoShowSheetState extends State<AntiFraudNoShowSheet> {
                           ? '✅ تم التحقق: أنت متواجد بموقع التسليم (المسافة: ${distance.toStringAsFixed(0)} متر).'
                           : '⛔ محجوب: أنت تبعد (${distance.toStringAsFixed(0)} متر) عن موقع الزبون! البروتوكول يتطلب التواجد على مسافة أقل من 100 متر لمنع التلاعب.',
                       style: const TextStyle(fontSize: 11, color: Colors.white70),
-                    ),
-                    const SizedBox(height: 6),
-                    // Debug toggle for demonstration
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            if (isWithin) {
-                              // Simulate moving 450m away
-                              _driverLat = _customerLat + 0.004;
-                              _driverLng = _customerLng + 0.004;
-                            } else {
-                              // Snap to customer location (15m)
-                              _driverLat = _customerLat + 0.0001;
-                              _driverLng = _customerLng + 0.0001;
-                            }
-                          });
-                        },
-                        icon: Icon(isWithin ? Icons.directions_walk_rounded : Icons.near_me_rounded, size: 14),
-                        label: Text(
-                          isWithin ? 'محاكاة الابتعاد عن الموقع (تجربة الحجب)' : 'محاكاة التواجد أمام بيت الزبون (15م)',
-                          style: const TextStyle(fontSize: 11),
-                        ),
-                      ),
                     ),
                   ],
                 ),

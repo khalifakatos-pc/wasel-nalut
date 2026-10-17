@@ -36,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> _liveStores = [];
   bool _isLoadingStores = false;
   bool _hasNetworkError = false;
-  int _userLoyaltyPoints = 140;
+  int _userLoyaltyPoints = 0;
   Timer? _orderWatchTimer;
   Timer? _storeWatchTimer;
   bool _isCheckingOrder = false;
@@ -78,10 +78,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _loadLoyaltyAndReferral() async {
-    final pts = await ApiService.getLoyaltyPoints();
-    if (mounted) {
+    final res = await ApiService.getLoyaltyPoints();
+    if (mounted && res.isSuccess && res.data is int) {
       setState(() {
-        _userLoyaltyPoints = pts;
+        _userLoyaltyPoints = res.data as int;
       });
     }
   }
@@ -1063,7 +1063,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     final colorScheme = Theme.of(context).colorScheme;
-    final orderNum = _activeOrder!['order_number'] ?? 'WAS-9831';
+    final orderNum = _activeOrder!['order_number'] ??
+        (_activeOrder!['id'] != null
+            ? 'WAS-${_activeOrder!['id'].toString().substring(0, _activeOrder!['id'].toString().length >= 4 ? 4 : _activeOrder!['id'].toString().length).toUpperCase()}'
+            : 'WAS-ORD');
     final statusStr = _activeOrder!['status'] ?? 'placed';
     final dynamic rawOtp = _activeOrder!['otp_code'] ?? _activeOrder!['delivery_pin'] ?? _activeOrder!['handover_code'] ?? _activeOrder!['pickup_code'];
     final String? otpCode = rawOtp?.toString();

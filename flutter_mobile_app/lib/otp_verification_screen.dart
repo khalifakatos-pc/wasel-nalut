@@ -40,7 +40,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   late AuthMethod _currentMethod;
   String? _verificationId;
   int? _resendToken;
-  String? _activeWhatsAppOtp;
 
   bool _isLoading = false;
   bool _canResend = false;
@@ -54,7 +53,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     _currentMethod = widget.initialMethod;
     _verificationId = widget.verificationId;
     _resendToken = widget.resendToken;
-    _activeWhatsAppOtp = widget.generatedOtp;
     _startCountdown();
   }
 
@@ -225,10 +223,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         },
       );
     } else {
-      final newOtp = await WhatsAppAuthService.requestWhatsAppOtp(widget.phoneNumber);
+      await WhatsAppAuthService.requestWhatsAppOtp(widget.phoneNumber);
       if (!mounted) return;
       setState(() {
-        _activeWhatsAppOtp = newOtp;
         _isLoading = false;
       });
       _startCountdown();
@@ -247,12 +244,11 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
       _errorMessage = null;
     });
 
-    final otp = await WhatsAppAuthService.requestWhatsAppOtp(widget.phoneNumber);
+    await WhatsAppAuthService.requestWhatsAppOtp(widget.phoneNumber);
     if (!mounted) return;
 
     setState(() {
       _currentMethod = AuthMethod.whatsapp;
-      _activeWhatsAppOtp = otp;
       _otpController.clear();
       _isLoading = false;
     });
@@ -455,82 +451,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
 
                 const SizedBox(height: 16),
-
-                // WhatsApp helper card if in WhatsApp mode
-                if (!isSms) ...[
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25D366).withValues(alpha: 0.12),
-                      borderRadius: AppRadius.radiusLg,
-                      border: Border.all(color: const Color(0xFF25D366).withValues(alpha: 0.4)),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.verified_rounded, color: Color(0xFF25D366), size: 20),
-                            const SizedBox(width: 8),
-                            Text(
-                              'رمز التحقق الخاص بك: ${_activeWhatsAppOtp ?? "1234"}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 44,
-                          child: ElevatedButton.icon(
-                            onPressed: () {
-                              final code = _activeWhatsAppOtp ?? '1234';
-                              _otpController.text = code;
-                              _verifyOtp(code);
-                            },
-                            icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
-                            label: const Text(
-                              'تعبئة الرمز تلقائياً وتأكيد الدخول ⚡',
-                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF25D366),
-                              foregroundColor: Colors.white,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        SizedBox(
-                          width: double.infinity,
-                          height: 40,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              WhatsAppAuthService.openWhatsAppVerificationChat(
-                                phone: widget.phoneNumber,
-                                otpCode: _activeWhatsAppOtp ?? '1234',
-                              );
-                            },
-                            icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 18),
-                            label: const Text(
-                              'مراسلة إدارة واصل عبر واتساب (0918207786) 💬',
-                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF25D366)),
-                              shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                ],
 
                 // Resend timer / button
                 Center(

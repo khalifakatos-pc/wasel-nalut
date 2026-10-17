@@ -43,6 +43,8 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
   bool _isRadarShowing = false;
   final Set<String> _dismissedOrderIds = {};
   final Set<String> _notifiedOrderIds = {};
+  bool _isGpsEnabled = true;
+  StreamSubscription<bool>? _gpsStatusSub;
   Map<String, dynamic> _profile = {};
   Map<String, dynamic> _systemConfig = {
     'captain_bonus_enabled': true,
@@ -53,7 +55,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
   @override
   void initState() {
     super.initState();
-    _stats = DriverMockData.initialStats;
+    _stats = DriverStats.initial;
+    _isGpsEnabled = DriverGpsService.instance.isLocationServiceEnabled;
+    _gpsStatusSub = DriverGpsService.instance.onGpsStatusChanged.listen((enabled) {
+      if (mounted) {
+        setState(() {
+          _isGpsEnabled = enabled;
+          if (!enabled && _onlineStatus != DriverOnlineStatus.offline) {
+            _onlineStatus = DriverOnlineStatus.offline;
+            DriverSupabaseService.updateStatus('offline');
+            DriverGpsService.instance.stopTracking();
+          }
+        });
+      }
+    });
+
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 2),
@@ -112,6 +128,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
 
   @override
   void dispose() {
+    _gpsStatusSub?.cancel();
     _radarTimer?.cancel();
     _telemetryTimer?.cancel();
     _pulseController.dispose();
@@ -124,6 +141,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
   Future<void> _loadLiveProfile() async {
     try {
       final p = await DriverSupabaseService.fetchDriverProfile();
+      final statement = await DriverSupabaseService.fetchDriverStatement(DriverSupabaseService.activeDriverId);
       if (mounted) {
         setState(() {
           _profile = p;
@@ -140,16 +158,19 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
             _profile['plate_number'] = DriverSupabaseService.activeDriverPlate;
           }
 
-          final double balance = (p['wallet_balance_lyd'] is num)
-              ? (p['wallet_balance_lyd'] as num).toDouble()
+          final double netEarnings = (statement != null && statement['net_payable_remaining_lyd'] is num)
+              ? (statement['net_payable_remaining_lyd'] as num).toDouble()
+              : ((p['wallet_balance_lyd'] is num) ? (p['wallet_balance_lyd'] as num).toDouble() : 0.0);
+          final double cashInHand = (p['cash_in_hand_lyd'] is num)
+              ? (p['cash_in_hand_lyd'] as num).toDouble()
               : 0.0;
           final int trips = (p['total_trips'] is int) ? (p['total_trips'] as int) : 0;
           final double rating = (p['rating'] is num) ? (p['rating'] as num).toDouble() : 5.0;
           _stats = DriverStats(
-            netEarningsTodayLyd: balance * 0.80, // 80% of COD cash = captain's real delivery earnings
+            netEarningsTodayLyd: netEarnings,
             netEarningsYesterdayLyd: 0.0,
             completedTripsToday: trips,
-            cashInHandCodLyd: balance,
+            cashInHandCodLyd: cashInHand,
             rating: rating,
             totalReviews: trips,
             acceptanceRate: 1.0,
@@ -220,11 +241,6 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         ? (ord['total_amount_lyd'] as num).toDouble()
         : ((ord['total_amount'] is num) ? (ord['total_amount'] as num).toDouble() : 35.0);
     final String paymentMethod = ord['payment_method']?.toString() ?? 'cash';
-    final String otp = (ord['otp_code'] != null && ord['otp_code'].toString().isNotEmpty)
-        ? ord['otp_code'].toString()
-        : ((ord['delivery_pin'] != null && ord['delivery_pin'].toString().isNotEmpty)
-            ? ord['delivery_pin'].toString()
-            : '1234');
     final bool isCod = paymentMethod == 'cash' || paymentMethod == 'cod';
     final String status = ord['status']?.toString() ?? 'ready_for_pickup';
     final prepMinutes = ord['prep_time_minutes'] ?? 15;
@@ -232,6 +248,12 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         (status == 'preparing'
             ? '⏳ جاري التحضير بالمطعم (يجهز بعد $prepMinutes دقيقة) - تحرّك للاستلام'
             : '🟢 جاهز للاستلام والتسليم فوراً');
+
+    final double dynamicPayout = (ord['driver_payout_lyd'] is num)
+        ? (ord['driver_payout_lyd'] as num).toDouble()
+        : ((ord['delivery_fee_lyd'] is num)
+            ? (ord['delivery_fee_lyd'] as num).toDouble()
+            : 5.0);
 
     final radarOrder = RadarOrder(
       orderId: orderId,
@@ -245,10 +267,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
       customerArea: 'نالوت',
       tripDistanceKm: 2.8,
       tripEtaMinutes: 12,
-      basePayoutLyd: ((ord['delivery_fee_lyd'] is num)
-              ? (ord['delivery_fee_lyd'] as num).toDouble()
-              : 5.0) *
-          0.80,
+      basePayoutLyd: dynamicPayout,
       surgeBonusLyd: 0.0,
       tipLyd: 0.0,
       paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
@@ -303,8 +322,7 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           customerLongitude: 10.9780,
           paymentType: isCod ? PaymentType.cashOnDelivery : PaymentType.prepaidSadad,
           codAmountLyd: totalAmount,
-          customerOtpPin: otp,
-          driverPayoutLyd: 7.5,
+          driverPayoutLyd: dynamicPayout > 0 ? dynamicPayout : 7.5,
           items: [
             DeliveryItem(
               name: 'طلب وجبة / مشتريات نالوت',
@@ -336,6 +354,21 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         const SnackBar(
           content: Text('⚠️ لديك مشوار نشط حالياً، لا يمكن إيقاف الاتصال حتى تسليم الطلب للزبون.'),
           backgroundColor: DriverColors.primary,
+        ),
+      );
+      return;
+    }
+
+    if (_onlineStatus == DriverOnlineStatus.offline && !_isGpsEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('خدمة تحديد المواقع (GPS) معطلة. يرجى تفعيل الموقع للانطلاق واستقبال الطلبات.'),
+          backgroundColor: DriverColors.urgentRed,
+          action: SnackBarAction(
+            label: 'تفعيل',
+            textColor: Colors.white,
+            onPressed: () => DriverGpsService.instance.openLocationSettings(),
+          ),
         ),
       );
       return;
@@ -458,6 +491,41 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
           ),
 
           const SizedBox(height: 16),
+
+          // Sticky Arabic Warning Banner when GPS is disabled
+          if (!_isGpsEnabled) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: DriverColors.urgentRed.withValues(alpha: 0.15),
+                borderRadius: DriverRadius.radiusLg,
+                border: Border.all(color: DriverColors.urgentRed, width: 1.5),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.location_off_rounded, color: DriverColors.urgentRed, size: 28),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'خدمة تحديد المواقع (GPS) معطلة. يرجى تفعيل الموقع للانطلاق واستقبال الطلبات.',
+                      style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ElevatedButton(
+                    onPressed: () => DriverGpsService.instance.openLocationSettings(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: DriverColors.urgentRed,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      minimumSize: Size.zero,
+                    ),
+                    child: const Text('تفعيل', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
           // 1.1 Sticky Active Delivery Alert Banner (Protects against losing active order)
           if (widget.activeDelivery != null) ...[

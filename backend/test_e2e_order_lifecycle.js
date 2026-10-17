@@ -204,11 +204,28 @@ async function getCustomerToken() {
   try {
     const loginRes = await apiRequest('POST', '/api/v1/auth/login', {
       phone: '0910000000',
-      password: 'Password123!'
+      password: 'Customer@Nalut2026!Secure'
     });
     if (loginRes.body && loginRes.body.data && loginRes.body.data.token) {
       authToken = loginRes.body.data.token;
       return authToken;
+    }
+  } catch (_) {}
+  return null;
+}
+
+// Authenticate admin helper
+let adminToken = null;
+async function getAdminToken() {
+  if (adminToken) return adminToken;
+  try {
+    const loginRes = await apiRequest('POST', '/api/v1/auth/login', {
+      phone: '0910009832',
+      password: 'Admin@Nalut2026!Secure'
+    });
+    if (loginRes.body && loginRes.body.data && loginRes.body.data.token) {
+      adminToken = loginRes.body.data.token;
+      return adminToken;
     }
   } catch (_) {}
   return null;
@@ -222,6 +239,8 @@ async function runTier1() {
 
   const token = await getCustomerToken();
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const admToken = await getAdminToken();
+  const adminAuthHeader = admToken ? { Authorization: `Bearer ${admToken}` } : {};
 
   // Discover stores & products
   const storesRes = await apiRequest('GET', '/api/v1/stores?city=nalut');
@@ -425,7 +444,7 @@ async function runTier1() {
 
   await recordTest('tier1', 'T1.12_FSM_PlacedToAccepted', 'Order transitions from "placed" to "accepted"', async () => {
     assert(fsmOrder, 'FSM order not available');
-    const res = await apiRequest('POST', `/api/v1/orders/${fsmOrder.id}/status`, { status: 'accepted' });
+    const res = await apiRequest('POST', `/api/v1/orders/${fsmOrder.id}/status`, { status: 'accepted' }, authHeader);
     assert(res.status === 200, `Transition to accepted failed: ${res.status} ${JSON.stringify(res.body)}`);
     const updated = res.body?.data || res.body;
     assert(updated.status === 'accepted', `Expected status "accepted", got "${updated.status}"`);
@@ -436,7 +455,7 @@ async function runTier1() {
     const res = await apiRequest('POST', `/api/v1/orders/${fsmOrder.id}/status`, {
       status: 'preparing',
       prep_time_minutes: 20
-    });
+    }, authHeader);
     assert(res.status === 200, `Transition to preparing failed: ${res.status}`);
     const updated = res.body?.data || res.body;
     assert(updated.status === 'preparing', `Expected status "preparing", got "${updated.status}"`);
@@ -444,7 +463,7 @@ async function runTier1() {
 
   await recordTest('tier1', 'T1.14_FSM_PreparingToReadyForPickup', 'Order transitions from "preparing" to "ready_for_pickup"', async () => {
     assert(fsmOrder, 'FSM order not available');
-    const res = await apiRequest('POST', `/api/v1/orders/${fsmOrder.id}/status`, { status: 'ready_for_pickup' });
+    const res = await apiRequest('POST', `/api/v1/orders/${fsmOrder.id}/status`, { status: 'ready_for_pickup' }, authHeader);
     assert(res.status === 200, `Transition to ready_for_pickup failed: ${res.status}`);
     const updated = res.body?.data || res.body;
     assert(updated.status === 'ready_for_pickup', `Expected status "ready_for_pickup", got "${updated.status}"`);
@@ -455,7 +474,7 @@ async function runTier1() {
     const res = await apiRequest('POST', `/api/v1/orders/${fsmOrder.id}/status`, {
       status: 'picked_up',
       driver_id: 'driver_nalut_01'
-    });
+    }, authHeader);
     assert(res.status === 200, `Transition to picked_up failed: ${res.status}`);
     const updated = res.body?.data || res.body;
     assert(updated.status === 'picked_up' || updated.status === 'out_for_delivery',
@@ -491,19 +510,20 @@ async function runTier1() {
     settlementOrder = orderRes.body?.data || orderRes.body;
 
     // Advance to delivered
-    await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, { status: 'preparing' });
-    await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, { status: 'ready_for_pickup' });
+    await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, { status: 'preparing' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, { status: 'ready_for_pickup' }, authHeader);
     await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, {
       status: 'picked_up',
       driver_id: 'driver_nalut_01'
-    });
+    }, authHeader);
 
     const deliverRes = await apiRequest('POST', `/api/v1/orders/${settlementOrder.id}/status`, {
       status: 'delivered',
       driver_id: 'driver_nalut_01',
+      otp_code: settlementOrder.otp_code,
       otp_verified: true
-    });
+    }, authHeader);
     assert(deliverRes.status === 200, `Delivered transition failed: ${deliverRes.status}`);
 
     // Check driver wallet
@@ -596,7 +616,7 @@ async function runTier1() {
 
     const res = await apiRequest('POST', '/api/v1/drivers/driver_nalut_01/settle', {
       notes: 'تسوية نقدية شاملة للمناوبة'
-    });
+    }, adminAuthHeader);
     assert(res.status === 200, `Settlement failed with status ${res.status}: ${JSON.stringify(res.body)}`);
     settleResult = res.body;
     assert(settleResult.success === true, 'Settlement success flag is not true');
@@ -642,6 +662,8 @@ async function runTier2() {
 
   const token = await getCustomerToken();
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const admToken = await getAdminToken();
+  const adminAuthHeader = admToken ? { Authorization: `Bearer ${admToken}` } : {};
 
   const storesRes = await apiRequest('GET', '/api/v1/stores?city=nalut');
   const stores = storesRes.body?.data || storesRes.body || dbInstance?.stores || [];
@@ -705,17 +727,17 @@ async function runTier2() {
     const invalidRes = await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'picked_up',
       driver_id: 'driver_nalut_01'
-    });
+    }, authHeader);
     assert(invalidRes.status === 400, `Expected 400 Bad Request for skipping kitchen prep, got ${invalidRes.status}`);
   });
 
   await recordTest('tier2', 'T2.7_FSM_DisallowPreparingToPlaced_Backward', 'Backward transition from "preparing" to "placed" is disallowed', async () => {
-    await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, { status: 'preparing' });
+    await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, { status: 'preparing' }, authHeader);
 
     const backwardRes = await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'placed'
-    });
+    }, authHeader);
     // Either rejects with 400 or status stays unchanged
     if (backwardRes.status === 200) {
       const order = backwardRes.body?.data || backwardRes.body;
@@ -728,26 +750,28 @@ async function runTier2() {
   await recordTest('tier2', 'T2.8_FSM_IdempotentDuplicateStatus', 'Duplicate status update to "preparing" is idempotent and safe', async () => {
     const dupRes = await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'preparing'
-    });
+    }, authHeader);
     assert(dupRes.status === 200, `Duplicate status update failed: ${dupRes.status}`);
     const order = dupRes.body?.data || dupRes.body;
     assert(order.status === 'preparing', `Expected status "preparing", got ${order.status}`);
   });
 
   await recordTest('tier2', 'T2.9_FSM_DisallowTransitionAfterDelivered', 'State transition after order is "delivered" is strictly rejected', async () => {
-    await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, { status: 'ready_for_pickup' });
+    await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, { status: 'ready_for_pickup' }, authHeader);
     await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'picked_up',
       driver_id: 'driver_nalut_01'
-    });
+    }, authHeader);
     await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'delivered',
-      driver_id: 'driver_nalut_01'
-    });
+      driver_id: 'driver_nalut_01',
+      otp_code: fsmBoundaryOrder.otp_code,
+      otp_verified: true
+    }, authHeader);
 
     const mutateRes = await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'preparing'
-    });
+    }, authHeader);
     // Delivered is terminal: cannot transition back to preparing
     if (mutateRes.status === 200) {
       const order = mutateRes.body?.data || mutateRes.body;
@@ -760,7 +784,7 @@ async function runTier2() {
   await recordTest('tier2', 'T2.10_FSM_RejectUnknownStatus', 'Completely unrecognized order status (e.g. "teleporting") is rejected (400)', async () => {
     const badRes = await apiRequest('POST', `/api/v1/orders/${fsmBoundaryOrder.id}/status`, {
       status: 'teleporting'
-    });
+    }, authHeader);
     assert(badRes.status === 400, `Expected 400 Bad Request for bogus status, got ${badRes.status}`);
   });
 
@@ -823,7 +847,7 @@ async function runTier2() {
 
   await recordTest('tier2', 'T2.15_Precision_ZeroCashSettlementIdempotency', 'Driver settlement when liability is 0.00 LYD completes safely with 0.00 settled', async () => {
     // Settle again when driver liability is already 0
-    const res = await apiRequest('POST', '/api/v1/drivers/driver_nalut_01/settle');
+    const res = await apiRequest('POST', '/api/v1/drivers/driver_nalut_01/settle', {}, adminAuthHeader);
     assert(res.status === 200, `Zero settlement failed: ${res.status}`);
     const driverRes = await apiRequest('GET', '/api/v1/drivers/driver_nalut_01');
     const driver = driverRes.body?.data || driverRes.body || {};
@@ -863,18 +887,18 @@ async function runTier3() {
     assert(Number(order.delivery_fee_lyd) >= 5.00, 'Delivery fee must be >= 5.00');
 
     // 2. Kitchen accepts
-    const acceptRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
+    const acceptRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
     assert(acceptRes.status === 200, 'Accept failed');
 
     // 3. Kitchen starts prep
     const prepRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
       status: 'preparing',
       prep_time_minutes: 15
-    });
+    }, authHeader);
     assert(prepRes.status === 200, 'Prep failed');
 
     // 4. Kitchen finishes packing -> ready_for_pickup
-    const readyRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' });
+    const readyRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' }, authHeader);
     assert(readyRes.status === 200, 'Ready failed');
 
     // 5. Captain claims & picks up
@@ -882,16 +906,17 @@ async function runTier3() {
       status: 'picked_up',
       driver_id: 'driver_nalut_01',
       note: 'تم فحص ومطابقة أصناف الفاتورة بالكامل (تجريد الفاتورة)'
-    });
+    }, authHeader);
     assert(pickupRes.status === 200, 'Pickup failed');
 
     // 6. Captain delivers order with COD collection
     const deliverRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
       status: 'delivered',
       driver_id: 'driver_nalut_01',
+      otp_code: order.otp_code,
       otp_verified: true,
       note: 'تم تسلم المبلغ نقداً من الزبون'
-    });
+    }, authHeader);
     assert(deliverRes.status === 200, 'Delivery completion failed');
 
     // 7. Verify ledger balance
@@ -921,11 +946,16 @@ async function runTier3() {
     assert(order && order.id, 'Heavy order checkout failed');
 
     // Transition directly to delivered via lifecycle
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'delivered', driver_id: 'driver_nalut_01' });
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
+      status: 'delivered',
+      driver_id: 'driver_nalut_01',
+      otp_code: order.otp_code,
+      otp_verified: true
+    }, authHeader);
 
     const getRes = await apiRequest('GET', `/api/v1/orders/${order.id}`);
     const completed = getRes.body?.data || getRes.body;
@@ -947,7 +977,7 @@ async function runTier3() {
     const cancelRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
       status: 'cancelled',
       notes: 'الزبون قام بالإلغاء قبل قبول المتجر'
-    });
+    }, authHeader);
     assert(cancelRes.status === 200, 'Cancellation failed');
     const cancelled = cancelRes.body?.data || cancelRes.body;
     assert(cancelled.status === 'cancelled', 'Order status not cancelled');
@@ -966,8 +996,8 @@ async function runTier3() {
     }, authHeader);
     const order = res.body?.data || res.body;
 
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
-    const cancelRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'cancelled' });
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
+    const cancelRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'cancelled' }, authHeader);
     assert(cancelRes.status === 200, 'Cancellation from accepted failed');
     const cancelled = cancelRes.body?.data || cancelRes.body;
     assert(cancelled.status === 'cancelled', 'Status not cancelled');
@@ -1012,6 +1042,8 @@ async function runTier4() {
 
   const token = await getCustomerToken();
   const authHeader = token ? { Authorization: `Bearer ${token}` } : {};
+  const admToken = await getAdminToken();
+  const adminAuthHeader = admToken ? { Authorization: `Bearer ${admToken}` } : {};
 
   const storesRes = await apiRequest('GET', '/api/v1/stores?city=nalut');
   const stores = storesRes.body?.data || storesRes.body || dbInstance?.stores || [];
@@ -1038,15 +1070,16 @@ async function runTier4() {
     assert(Number(order.delivery_fee_lyd) === 5.00, `Expected 5.00 LYD downtown fee, got ${order.delivery_fee_lyd}`);
 
     // Complete lifecycle
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' });
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' }, authHeader);
     const deliverRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
       status: 'delivered',
       driver_id: 'driver_nalut_01',
+      otp_code: order.otp_code,
       otp_verified: true
-    });
+    }, authHeader);
     assert(deliverRes.status === 200, 'Scenario 4.1 delivery failed');
   });
 
@@ -1071,11 +1104,16 @@ async function runTier4() {
     assert(order && order.id, 'Scenario 4.2 checkout failed');
     assert(Number(order.delivery_fee_lyd) >= 7.00, `Expected mountain fee >= 7.00 LYD, got ${order.delivery_fee_lyd}`);
 
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'delivered', driver_id: 'driver_nalut_01' });
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
+      status: 'delivered',
+      driver_id: 'driver_nalut_01',
+      otp_code: order.otp_code,
+      otp_verified: true
+    }, authHeader);
   });
 
   // Scenario 4.3: Captain Batch Deliveries & Admin Settle
@@ -1102,11 +1140,16 @@ async function runTier4() {
       }, authHeader);
       const ord = chkRes.body?.data || chkRes.body;
 
-      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'accepted' });
-      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'preparing' });
-      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'ready_for_pickup' });
-      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'picked_up', driver_id: driverId });
-      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'delivered', driver_id: driverId });
+      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'accepted' }, authHeader);
+      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'preparing' }, authHeader);
+      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'ready_for_pickup' }, authHeader);
+      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, { status: 'picked_up', driver_id: driverId }, authHeader);
+      await apiRequest('POST', `/api/v1/orders/${ord.id}/status`, {
+        status: 'delivered',
+        driver_id: driverId,
+        otp_code: ord.otp_code,
+        otp_verified: true
+      }, authHeader);
 
       totalCashAccumulated += Number(ord.total_amount_lyd || ord.total);
       totalEarningsAccumulated += Number(ord.delivery_fee_lyd || 5.0) * 0.80;
@@ -1121,7 +1164,7 @@ async function runTier4() {
     // Admin settles driver cash
     const settleRes = await apiRequest('POST', `/api/v1/drivers/${driverId}/settle`, {
       notes: 'توريد عهدة 3 طلبات من كابتن خالد'
-    });
+    }, adminAuthHeader);
     assert(settleRes.status === 200, 'Batch cash settlement failed');
 
     // Verify liability zeroed while earnings preserved
@@ -1154,15 +1197,16 @@ async function runTier4() {
     const order = chkRes.body?.data || chkRes.body;
     assert(order && order.id, 'Pharmacy order creation failed');
 
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' });
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' }, authHeader);
     const deliverRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
       status: 'delivered',
       driver_id: 'driver_nalut_01',
+      otp_code: order.otp_code,
       otp_verified: true
-    });
+    }, authHeader);
     assert(deliverRes.status === 200, 'Pharmacy delivery failed');
   });
 
@@ -1182,14 +1226,16 @@ async function runTier4() {
     const order = chkRes.body?.data || chkRes.body;
     assert(order && order.id, 'Grocery checkout failed');
 
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' });
-    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' });
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'accepted' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'preparing' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'ready_for_pickup' }, authHeader);
+    await apiRequest('POST', `/api/v1/orders/${order.id}/status`, { status: 'picked_up', driver_id: 'driver_nalut_01' }, authHeader);
     const delRes = await apiRequest('POST', `/api/v1/orders/${order.id}/status`, {
       status: 'delivered',
-      driver_id: 'driver_nalut_01'
-    });
+      driver_id: 'driver_nalut_01',
+      otp_code: order.otp_code,
+      otp_verified: true
+    }, authHeader);
     assert(delRes.status === 200, 'Grocery delivery failed');
   });
 }

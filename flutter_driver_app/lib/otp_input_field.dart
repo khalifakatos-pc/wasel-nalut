@@ -6,13 +6,11 @@ import 'driver_theme.dart';
 /// ============================================================================
 
 class OtpInputField extends StatefulWidget {
-  final String correctOtp;
   final ValueChanged<String> onCompleted;
   final VoidCallback? onResend;
 
   const OtpInputField({
     super.key,
-    required this.correctOtp,
     required this.onCompleted,
     this.onResend,
   });
@@ -67,31 +65,31 @@ class _OtpInputFieldState extends State<OtpInputField> with SingleTickerProvider
         _focusNodes[index + 1].requestFocus();
       } else {
         _focusNodes[index].unfocus();
-        _verifyOtp();
+        _submitOtp();
       }
     } else if (index > 0) {
       _focusNodes[index - 1].requestFocus();
     }
   }
 
-  void _verifyOtp() {
+  void _submitOtp() {
     final entered = _controllers.map((c) => c.text).join();
     if (entered.length == 4) {
-      if (entered == widget.correctOtp || entered.isNotEmpty) {
-        widget.onCompleted(entered);
-      } else {
-        setState(() {
-          _isInvalid = true;
-        });
-        _shakeController.forward(from: 0.0);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('رمز التحقق غير صحيح! رمز التحقق للتجربة: ${widget.correctOtp}'),
-            backgroundColor: DriverColors.urgentRed,
-            duration: const Duration(seconds: 3),
-          ),
-        );
-      }
+      widget.onCompleted(entered);
+    }
+  }
+
+  /// Exposed helper if parent wants to trigger invalid state shake
+  void triggerError() {
+    setState(() {
+      _isInvalid = true;
+    });
+    _shakeController.forward(from: 0.0);
+    for (var c in _controllers) {
+      c.clear();
+    }
+    if (_focusNodes.isNotEmpty) {
+      _focusNodes[0].requestFocus();
     }
   }
 
@@ -155,9 +153,9 @@ class _OtpInputFieldState extends State<OtpInputField> with SingleTickerProvider
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            'أدخل رمز الـ OTP المكون من 4 أرقام من هاتف الزبون (${widget.correctOtp})',
-            style: const TextStyle(fontSize: 12, color: DriverColors.darkTextMuted),
+          const Text(
+            'أدخل رمز الـ OTP المكون من 4 أرقام من هاتف الزبون',
+            style: TextStyle(fontSize: 12, color: DriverColors.darkTextMuted),
           ),
         ],
       ),

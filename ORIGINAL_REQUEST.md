@@ -146,3 +146,51 @@ Please resume/revive the orchestrator to mark Milestone 2 completed, re-create m
 
 Server restarted. Please resume immediately: continue Milestone 3 (Captain / Driver App: flutter_driver_app). Re-create monitoring crons and drive Milestone 3 through completion.
 
+
+
+## 2026-10-17T01:19:32Z
+
+# Teamwork Project Prompt — Production Release Packaging (All 4 Apps)
+
+> Status: Launched
+> Goal: Build, verify, and export production release APKs for all 4 Wasel Nalut applications
+> Requested team: Full team (Specialized Flutter Build & Release Packaging Agents)
+
+بناء وتجميع حزم الإنتاج الموحدة (Universal Production Release APKs) لتطبيقات منظومة "واصل نالوت" الأربعة بعد اكتمال الترحيل الإنتاجي، والتحقق من سلامتها وتصديرها إلى مجلد التوزيع المكتبي المعتمد `C:\Users\kalifa\Desktop\Wasel_Android_APKs\`.
+
+Working directory: c:\Users\kalifa\Desktop\wasel-app
+Integrity mode: development
+
+## Requirements
+
+### R1. Pre-Build Cleanliness & Dependency Resolution
+- تنفيذ تنظيف مسبق للكاش وإعادة حل التبعيات بالكامل (`flutter clean` و `flutter pub get`) عبر حزمة `wasel_ui` المشتركة وجميع التطبيقات الأربعة.
+- التحقق المسبق من اجتياز الفحص الساكن (`flutter analyze lib`) بنتيجة 0 أخطاء لضمان نظافة الحزم البرمجية قبل التجميع.
+
+### R2. Production Universal Release APK Packaging
+- تجميع حزم الإنتاج الكاملة (`flutter build apk --release`) المتوافقة عالمياً مع كافة أجهزة أندرويد لجميع التطبيقات الأربعة:
+  1. تطبيق الزبون (`c:\Users\kalifa\Desktop\wasel-app\flutter_mobile_app` -> `Wasel_Customer_App.apk`)
+  2. تطبيق الكابتن والسائق (`c:\Users\kalifa\Desktop\wasel-app\flutter_driver_app` -> `Wasel_Captain_App.apk`)
+  3. تطبيق المتجر والمطبخ KDS (`c:\Users\kalifa\Desktop\wasel-app\flutter_merchant_app` -> `Wasel_Kitchen_App.apk`)
+  4. تطبيق لوحة الإدارة العامة (`c:\Users\kalifa\Desktop\wasel-app\flutter_admin_app` -> `Wasel_Admin_App.apk`)
+
+### R3. Output Distribution & Asset Centralization
+- التأكد من إنشاء مجلد التوزيع المستهدف `C:\Users\kalifa\Desktop\Wasel_Android_APKs\` في حال عدم وجوده.
+- نسخ وإعادة تسمية الحزم الأربعة المجمعة بدقة ونقلها إلى المجلد المذكور مع التحقق من عدم تلفها.
+
+### R4. Release Manifest & Documentation
+- إنشاء وتحديث تقرير فني شامل ومفصل (`APKS_BUILD_SUMMARY.md`) في جذر المشروع ومجلد الحزم، يوضح تفاصيل كل حزمة (الاسم، الحجم بالميجابايت، توقيت الإنشاء، التحديثات المضمنة، وحالة الجاهزية الميدانية).
+
+## Acceptance Criteria
+
+### Build Execution & Integrity
+- [ ] انتهاء أمر البناء `flutter build apk --release` برمز نجاح (Exit Code 0) لجميع التطبيقات الأربعة دون أي أخطاء تجميع Gradle أو NDK.
+- [ ] تواجد الحزم الأربعة المكتملة في مجلد `C:\Users\kalifa\Desktop\Wasel_Android_APKs\`:
+  - `Wasel_Customer_App.apk` (الحجم > 40 MB)
+  - `Wasel_Captain_App.apk` (الحجم > 40 MB)
+  - `Wasel_Kitchen_App.apk` (الحجم > 40 MB)
+  - `Wasel_Admin_App.apk` (الحجم > 40 MB)
+
+### Verification & Delivery
+- [ ] التحقق البرمجي التلقائي المستقل (Independent Verification) من صلاحية الملفات الناتجة وتطابق أحجامها وتواريخ بنائها مع الجلسة الحالية.
+- [ ] توثيق كامل لكافة تفاصيل الحزم والروابط في تقرير `APKS_BUILD_SUMMARY.md`.

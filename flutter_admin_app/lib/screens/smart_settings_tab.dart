@@ -869,7 +869,7 @@ class _SmartSettingsTabState extends State<SmartSettingsTab> {
                 maxLength: 4,
                 obscureText: true,
                 decoration: const InputDecoration(
-                  labelText: 'رمز PIN الرئيسي للإدارة (7788)',
+                  labelText: 'رمز الأمان الإداري',
                   prefixIcon: Icon(Icons.lock_outline),
                 ),
               ),

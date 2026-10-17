@@ -8,7 +8,7 @@ import 'merchant_models.dart';
 
 class CatalogScreen extends StatefulWidget {
   final List<CatalogProduct> catalog;
-  final Function(CatalogProduct) onProductUpdated;
+  final Future<bool> Function(CatalogProduct) onProductUpdated;
 
   const CatalogScreen({
     super.key,
@@ -40,20 +40,38 @@ class _CatalogScreenState extends State<CatalogScreen> {
     }).toList();
   }
 
-  void _toggleProductStock(CatalogProduct product) {
+  Future<void> _toggleProductStock(CatalogProduct product) async {
+    final prevInStock = product.inStock;
+
     setState(() {
-      product.inStock = !product.inStock;
+      product.inStock = !prevInStock;
     });
-    widget.onProductUpdated(product);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(product.inStock
-            ? '🟢 تم تفعيل الصنف: ${product.nameAr} (متوفر الآن للطلب)'
-            : '🔴 تم إيقاف الصنف: ${product.nameAr} (نفدت الكمية)'),
-        backgroundColor: product.inStock ? MerchantColors.readyGreen : MerchantColors.rejectedRed,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+
+    final success = await widget.onProductUpdated(product);
+    if (!mounted) return;
+
+    if (!success) {
+      setState(() {
+        product.inStock = prevInStock;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('❌ تعذر تحديث المخزون على الخادم - يرجى التحقق من الاتصال'),
+          backgroundColor: MerchantColors.rejectedRed,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(product.inStock
+              ? '🟢 تم تفعيل الصنف: ${product.nameAr} (متوفر الآن للطلب)'
+              : '🔴 تم إيقاف الصنف: ${product.nameAr} (نفدت الكمية)'),
+          backgroundColor: product.inStock ? MerchantColors.readyGreen : MerchantColors.rejectedRed,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 
   void _editProductPrice(CatalogProduct product) {
@@ -92,20 +110,35 @@ class _CatalogScreenState extends State<CatalogScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: MerchantColors.primary, foregroundColor: Colors.white),
-            onPressed: () {
+            onPressed: () async {
               final newPrice = double.tryParse(priceController.text);
               if (newPrice != null && newPrice > 0) {
+                final prevPrice = product.priceLyd;
                 setState(() {
                   product.priceLyd = newPrice;
                 });
-                widget.onProductUpdated(product);
                 Navigator.pop(ctx);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('✅ تم تحديث سعر ${product.nameAr} إلى ${newPrice.toStringAsFixed(2)} د.ل'),
-                    backgroundColor: MerchantColors.readyGreen,
-                  ),
-                );
+                final success = await widget.onProductUpdated(product);
+                if (!mounted) return;
+                if (!success) {
+                  setState(() {
+                    product.priceLyd = prevPrice;
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('❌ تعذر تحديث السعر على الخادم - يرجى التحقق من الاتصال'),
+                      backgroundColor: MerchantColors.rejectedRed,
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('✅ تم تحديث سعر ${product.nameAr} إلى ${newPrice.toStringAsFixed(2)} د.ل'),
+                      backgroundColor: MerchantColors.readyGreen,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('حفظ السعر'),

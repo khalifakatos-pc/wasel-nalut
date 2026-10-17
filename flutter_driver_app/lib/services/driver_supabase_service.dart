@@ -22,6 +22,14 @@ class DriverSupabaseService {
         'Prefer': 'return=representation',
       };
 
+  static String? activeToken;
+
+  static Map<String, String> get backendHeaders => {
+        'Content-Type': 'application/json',
+        if (activeToken != null && activeToken!.isNotEmpty)
+          'Authorization': 'Bearer $activeToken',
+      };
+
   // Active Captain Profile in Nalut
   static String activeDriverId = 'driver_nalut_01';
   static String activeDriverName = 'خالد الكاتب (كابتن نالوت)';
@@ -41,6 +49,7 @@ class DriverSupabaseService {
         activeDriverPhone = prefs.getString('wasel_captain_phone') ?? '';
         activeDriverVehicle = prefs.getString('wasel_captain_vehicle') ?? 'سيارة';
         activeDriverPlate = prefs.getString('wasel_captain_plate') ?? 'نالوت';
+        activeToken = prefs.getString('wasel_captain_token');
         isLoggedIn = true;
         return true;
       }
@@ -62,14 +71,13 @@ class DriverSupabaseService {
     return phone;
   }
 
-  /// Authenticates captain using phone number and PIN
+  /// Authenticates captain using phone number and PIN solely against Unified Backend
   static Future<bool> authenticateCaptain(String phoneInput, String pinInput) async {
     final phone = normalizePhone(phoneInput);
     final pin = pinInput.trim();
 
     if (phone.isEmpty || pin.isEmpty) return false;
 
-    // 1. Try Live Unified Backend
     try {
       final res = await http.post(
         Uri.parse('$backendBaseUrl/auth/login'),
@@ -79,17 +87,18 @@ class DriverSupabaseService {
           'password': pin,
           'role': 'driver',
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 6));
 
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body);
         if (data is Map && data['data'] != null) {
           final user = data['data']['user'] ?? {};
           final driverInfo = data['data']['driver'] ?? {};
-          final driverId = driverInfo['id'] ?? user['id'] ?? 'driver_nalut_01';
-          final driverName = user['full_name'] ?? driverInfo['full_name'] ?? 'كابتن نالوت';
-          final vehicle = driverInfo['vehicle_type'] ?? 'سيارة';
-          final plate = driverInfo['vehicle_plate'] ?? 'نالوت';
+          final token = data['data']['token']?.toString() ?? data['token']?.toString();
+          final driverId = driverInfo['id']?.toString() ?? user['id']?.toString() ?? 'driver_nalut_01';
+          final driverName = user['full_name']?.toString() ?? driverInfo['full_name']?.toString() ?? 'كابتن نالوت';
+          final vehicle = driverInfo['vehicle_type']?.toString() ?? 'سيارة';
+          final plate = driverInfo['vehicle_plate']?.toString() ?? driverInfo['plate_number']?.toString() ?? 'نالوت';
 
           await _persistCaptainSession(
             id: driverId,
@@ -97,95 +106,12 @@ class DriverSupabaseService {
             phone: phone,
             vehicle: vehicle,
             plate: plate,
+            token: token,
           );
           return true;
         }
       }
     } catch (_) {}
-
-    // 2. Try Supabase Cloud
-    try {
-      final res = await http.get(
-        Uri.parse('$supabaseUrl/drivers?phone=eq.$phone&select=*'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 4));
-
-      if (res.statusCode == 200) {
-        final List<dynamic> list = jsonDecode(res.body);
-        if (list.isNotEmpty) {
-          final row = list.first as Map<String, dynamic>;
-          // Strict PIN authentication against database
-          final expectedPin = row['pin']?.toString();
-          if (expectedPin != null && expectedPin.isNotEmpty && pin == expectedPin) {
-            await _persistCaptainSession(
-              id: row['id']?.toString() ?? 'driver_nalut_01',
-              name: row['full_name']?.toString() ?? 'كابتن واصل',
-              phone: phone,
-              vehicle: row['vehicle_type']?.toString() ?? 'سيارة',
-              plate: row['plate_number']?.toString() ?? row['vehicle_plate']?.toString() ?? 'نالوت',
-            );
-            return true;
-          }
-        }
-      }
-    } catch (_) {}
-
-    // 3. Fallback verification for Nalut Registered Captains (Nalut Fleet Registry)
-    final registeredCaptains = [
-      {
-        'id': 'driver_nalut_01',
-        'name': 'خالد الكاتب (كابتن نالوت)',
-        'phone': '0912345678',
-        'vehicle': 'سيارة',
-        'plate': 'نالوت 5 - 12849',
-        'pin': '1234',
-      },
-      {
-        'id': 'driver_nalut_02',
-        'name': 'عمر القلعاوي',
-        'phone': '0923456789',
-        'vehicle': 'دراجة نارية',
-        'plate': 'نالوت 2 - 8812',
-        'pin': '1234',
-      },
-      {
-        'id': 'drv_01',
-        'name': 'طارق النالوتي',
-        'phone': '0915544332',
-        'vehicle': 'سيارة',
-        'plate': '14-88492',
-        'pin': '1234',
-      },
-      {
-        'id': 'drv_02',
-        'name': 'أنيس الجبالي',
-        'phone': '0923322110',
-        'vehicle': 'دراجة نارية',
-        'plate': '14-33201',
-        'pin': '1234',
-      },
-      {
-        'id': 'drv_03',
-        'name': 'محمد خليفة',
-        'phone': '0947766554',
-        'vehicle': 'سيارة تويوتا',
-        'plate': '14-11928',
-        'pin': '1234',
-      },
-    ];
-
-    for (final captain in registeredCaptains) {
-      if (captain['phone'] == phone && captain['pin'] == pin) {
-        await _persistCaptainSession(
-          id: captain['id']!,
-          name: captain['name']!,
-          phone: captain['phone']!,
-          vehicle: captain['vehicle']!,
-          plate: captain['plate']!,
-        );
-        return true;
-      }
-    }
 
     return false;
   }
@@ -196,12 +122,14 @@ class DriverSupabaseService {
     required String phone,
     required String vehicle,
     required String plate,
+    String? token,
   }) async {
     activeDriverId = id;
     activeDriverName = name;
     activeDriverPhone = phone;
     activeDriverVehicle = vehicle;
     activeDriverPlate = plate;
+    if (token != null) activeToken = token;
     isLoggedIn = true;
 
     try {
@@ -212,12 +140,16 @@ class DriverSupabaseService {
       await prefs.setString('wasel_captain_phone', phone);
       await prefs.setString('wasel_captain_vehicle', vehicle);
       await prefs.setString('wasel_captain_plate', plate);
+      if (token != null) {
+        await prefs.setString('wasel_captain_token', token);
+      }
     } catch (_) {}
   }
 
   /// Logs out the captain and clears local session
   static Future<void> logoutCaptain() async {
     isLoggedIn = false;
+    activeToken = null;
     activeDriverId = 'driver_nalut_01';
     activeDriverName = 'كابتن واصل';
     activeDriverPhone = '';
@@ -232,6 +164,7 @@ class DriverSupabaseService {
       await prefs.remove('wasel_captain_phone');
       await prefs.remove('wasel_captain_vehicle');
       await prefs.remove('wasel_captain_plate');
+      await prefs.remove('wasel_captain_token');
       await clearActiveOrderLocally();
     } catch (_) {}
   }
@@ -284,7 +217,10 @@ class DriverSupabaseService {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .get(Uri.parse('$backendBaseUrl/drivers/$id'))
+            .get(
+              Uri.parse('$backendBaseUrl/drivers/$id'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 15));
 
         if (res.statusCode == 200) {
@@ -301,6 +237,9 @@ class DriverSupabaseService {
               'rating': (profile['rating'] as num?)?.toDouble() ?? 5.0,
               'total_trips': profile['total_trips'] ?? 0,
               'wallet_balance_lyd': (profile['wallet_balance_lyd'] as num?)?.toDouble() ?? 0.0,
+              'cash_in_hand_lyd': (profile['cash_in_hand_lyd'] as num?)?.toDouble() ??
+                  ((profile['cod_balance_lyd'] as num?)?.toDouble() ?? 0.0),
+              'max_cod_limit_lyd': (profile['max_cod_limit_lyd'] as num?)?.toDouble() ?? 500.0,
             };
           }
         }
@@ -320,7 +259,74 @@ class DriverSupabaseService {
       'rating': 5.0,
       'total_trips': 0,
       'wallet_balance_lyd': 0.0,
+      'cash_in_hand_lyd': 0.0,
+      'max_cod_limit_lyd': 500.0,
     };
+  }
+
+  /// Fetches authentic double-entry ledger statement for driver from accounting engine
+  static Future<Map<String, dynamic>?> fetchDriverStatement(String driverId) async {
+    final id = driverId.isNotEmpty ? driverId : activeDriverId;
+    try {
+      final res = await http.get(
+        Uri.parse('$backendBaseUrl/accounting/statement/driver/$id'),
+        headers: backendHeaders,
+      ).timeout(const Duration(seconds: 6));
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (data is Map && (data['success'] == true || data['transaction_lines'] != null)) {
+          return Map<String, dynamic>.from(data);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Settles driver physical COD cash custody with Vault / Admin
+  static Future<Map<String, dynamic>> settleDriverCash({
+    required String driverId,
+    double? amount,
+    String? notes,
+  }) async {
+    final id = driverId.isNotEmpty ? driverId : activeDriverId;
+    try {
+      final res = await http.post(
+        Uri.parse('$backendBaseUrl/drivers/$id/settle'),
+        headers: backendHeaders,
+        body: jsonEncode({
+          ...?amount != null ? {'amount_lyd': amount} : null,
+          ...?notes != null ? {'notes': notes} : null,
+        }),
+      ).timeout(const Duration(seconds: 8));
+
+      if (res.statusCode == 200 || res.statusCode == 201) {
+        final data = jsonDecode(res.body);
+        return {
+          'success': true,
+          'message': data['message'] ?? 'تمت تسوية الكاش بنجاح',
+          'voucher': data['voucher'],
+        };
+      } else {
+        try {
+          final err = jsonDecode(res.body);
+          return {
+            'success': false,
+            'message': err['error'] ?? 'فشلت تسوية الكاش',
+          };
+        } catch (_) {
+          return {
+            'success': false,
+            'message': 'فشلت تسوية الكاش (رمز: ${res.statusCode})',
+          };
+        }
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'خطأ في الاتصال بالخادم: $e',
+      };
+    }
   }
 
   /// Fetch active and available orders in Nalut
@@ -449,7 +455,7 @@ class DriverSupabaseService {
       final res = await http
           .post(
             Uri.parse('$backendBaseUrl/orders/$orderId/handover'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode({
               'handover_code': handoverCode,
               'driver_id': activeDriverId,
@@ -550,7 +556,7 @@ class DriverSupabaseService {
     try {
       final res = await http.post(
         Uri.parse('$backendBaseUrl/drivers/$activeDriverId/telemetry'),
-        headers: {'Content-Type': 'application/json'},
+        headers: backendHeaders,
         body: jsonEncode(payload),
       ).timeout(const Duration(seconds: 3));
       if (res.statusCode == 200 || res.statusCode == 201) return true;
@@ -596,7 +602,7 @@ class DriverSupabaseService {
       final res = await http
           .post(
             Uri.parse('$backendBaseUrl/drivers/$activeDriverId/heartbeat'),
-            headers: {'Content-Type': 'application/json'},
+            headers: backendHeaders,
             body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 4));
@@ -607,70 +613,34 @@ class DriverSupabaseService {
     }
   }
 
-  /// Complete a delivery: marks order delivered & updates captain's COD cash
+  /// Complete a delivery: marks order delivered & submits customer OTP code to backend
   static Future<bool> completeDelivery({
     required String orderId,
     required double orderAmountLyd,
     required bool isCod,
+    String? otpCode,
   }) async {
-    await clearActiveOrderLocally();
-    // 1. Try Live Unified Backend First
+    final payload = <String, dynamic>{
+      'status': 'delivered',
+      if (otpCode != null && otpCode.isNotEmpty) 'otp_code': otpCode,
+    };
+
+    // 1. Try Live Unified Backend
     try {
-      await http.post(
+      final res = await http.post(
         Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'status': 'delivered'}),
-      ).timeout(const Duration(seconds: 4));
+        headers: backendHeaders,
+        body: jsonEncode(payload),
+      ).timeout(const Duration(seconds: 5));
 
-      if (isCod) {
-        final profile = await fetchDriverProfile();
-        final double currentBalance = (profile['wallet_balance_lyd'] is num)
-            ? (profile['wallet_balance_lyd'] as num).toDouble()
-            : 0.0;
-        final int currentTrips = profile['total_trips'] is int ? profile['total_trips'] as int : 0;
-
-        await http.patch(
-          Uri.parse('$backendBaseUrl/drivers/$activeDriverId'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'wallet_balance_lyd': currentBalance + orderAmountLyd,
-            'total_trips': currentTrips + 1,
-            'status': 'available',
-          }),
-        ).timeout(const Duration(seconds: 4));
+      if (res.statusCode == 200) {
+        await clearActiveOrderLocally();
+        return true;
       }
-      return true;
+      return false;
     } catch (_) {}
 
-    // 2. Fallback to Supabase Cloud
-    try {
-      await http.patch(
-        Uri.parse('$supabaseUrl/orders?id=eq.$orderId'),
-        headers: _headers,
-        body: jsonEncode({'status': 'delivered'}),
-      ).timeout(const Duration(seconds: 3));
-
-      if (isCod) {
-        final profile = await fetchDriverProfile();
-        final double currentBalance = (profile['wallet_balance_lyd'] is num)
-            ? (profile['wallet_balance_lyd'] as num).toDouble()
-            : 0.0;
-        final int currentTrips = profile['total_trips'] is int ? profile['total_trips'] as int : 0;
-
-        await http.patch(
-          Uri.parse('$supabaseUrl/drivers?id=eq.$activeDriverId'),
-          headers: _headers,
-          body: jsonEncode({
-            'wallet_balance_lyd': currentBalance + orderAmountLyd,
-            'total_trips': currentTrips + 1,
-            'status': 'available',
-          }),
-        ).timeout(const Duration(seconds: 3));
-      }
-      return true;
-    } catch (_) {
-      return true;
-    }
+    return false;
   }
 
   /// Fetch vouchers / settlements recorded for this captain
@@ -678,7 +648,10 @@ class DriverSupabaseService {
     // 1. Try Live Unified Backend First
     try {
       final res = await http
-          .get(Uri.parse('$backendBaseUrl/vouchers'))
+          .get(
+            Uri.parse('$backendBaseUrl/vouchers'),
+            headers: backendHeaders,
+          )
           .timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {

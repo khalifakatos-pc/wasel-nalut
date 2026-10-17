@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/admin_theme.dart';
+import '../services/admin_supabase_service.dart';
 import 'admin_main_screen.dart';
 
 class PinLockScreen extends StatefulWidget {
@@ -11,10 +12,11 @@ class PinLockScreen extends StatefulWidget {
 
 class _PinLockScreenState extends State<PinLockScreen> {
   String _enteredPin = '';
-  final String _correctPin = '7788';
   bool _isError = false;
+  bool _isLoading = false;
 
   void _onKeyPress(String digit) {
+    if (_isLoading) return;
     if (_enteredPin.length < 4) {
       setState(() {
         _isError = false;
@@ -28,6 +30,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
   }
 
   void _onDelete() {
+    if (_isLoading) return;
     if (_enteredPin.isNotEmpty) {
       setState(() {
         _isError = false;
@@ -36,8 +39,16 @@ class _PinLockScreenState extends State<PinLockScreen> {
     }
   }
 
-  void _verifyPin() {
-    if (_enteredPin == _correctPin) {
+  Future<void> _verifyPin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final res = await AdminSupabaseService.authenticateAdmin(_enteredPin);
+
+    if (!mounted) return;
+
+    if (res['success'] == true) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const AdminMainScreen()),
       );
@@ -45,12 +56,13 @@ class _PinLockScreenState extends State<PinLockScreen> {
       setState(() {
         _isError = true;
         _enteredPin = '';
+        _isLoading = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('❌ رمز PIN غير صحيح! الرمز الافتراضي للمدير: 7788', textAlign: TextAlign.center),
+        SnackBar(
+          content: Text(res['error'] ?? '❌ رمز الأمان الإداري غير صحيح', textAlign: TextAlign.center),
           backgroundColor: AdminColors.alertRed,
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -100,7 +112,7 @@ class _PinLockScreenState extends State<PinLockScreen> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'يرجى إدخال رمز الأمان للمدير (رمز المشرف: 7788)',
+                    'يرجى إدخال رمز الأمان للمدير',
                     style: TextStyle(fontSize: 14, color: AdminColors.textSecondary),
                   ),
                   const SizedBox(height: 36),
@@ -130,62 +142,62 @@ class _PinLockScreenState extends State<PinLockScreen> {
 
                   const SizedBox(height: 28),
 
-                // Number Pad
-                Column(
-                  children: [
-                    _buildPadRow(['1', '2', '3']),
-                    const SizedBox(height: 16),
-                    _buildPadRow(['4', '5', '6']),
-                    const SizedBox(height: 16),
-                    _buildPadRow(['7', '8', '9']),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        const SizedBox(width: 75, height: 75), // Spacer
-                        _buildPadButton('0'),
-                        SizedBox(
-                          width: 75,
-                          height: 75,
-                          child: IconButton(
-                            icon: const Icon(Icons.backspace_outlined, color: AdminColors.textSecondary, size: 28),
-                            onPressed: _onDelete,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                // Security Notice
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AdminColors.surface,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: AdminColors.divider),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
+                  // Number Pad
+                  Column(
                     children: [
-                      Icon(Icons.shield_outlined, color: AdminColors.emeraldGreen, size: 16),
-                      SizedBox(width: 8),
-                      Text(
-                        'سحابة Supabase نشطة ومحمية 24/7',
-                        style: TextStyle(fontSize: 12, color: AdminColors.textSecondary),
+                      _buildPadRow(['1', '2', '3']),
+                      const SizedBox(height: 16),
+                      _buildPadRow(['4', '5', '6']),
+                      const SizedBox(height: 16),
+                      _buildPadRow(['7', '8', '9']),
+                      const SizedBox(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          const SizedBox(width: 75, height: 75), // Spacer
+                          _buildPadButton('0'),
+                          SizedBox(
+                            width: 75,
+                            height: 75,
+                            child: IconButton(
+                              icon: const Icon(Icons.backspace_outlined, color: AdminColors.textSecondary, size: 28),
+                              onPressed: _onDelete,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                  const SizedBox(height: 24),
+                  // Security Notice
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AdminColors.surface,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: AdminColors.divider),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.shield_outlined, color: AdminColors.emeraldGreen, size: 16),
+                        SizedBox(width: 8),
+                        Text(
+                          'سحابة Supabase نشطة ومحمية 24/7',
+                          style: TextStyle(fontSize: 12, color: AdminColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
             ),
           ),
         ),
       ),
-    ),
-  );
-}
+    );
+  }
 
   Widget _buildPadRow(List<String> digits) {
     return Row(

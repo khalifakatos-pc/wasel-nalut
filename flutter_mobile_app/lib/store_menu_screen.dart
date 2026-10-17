@@ -5,6 +5,7 @@ import 'cart_checkout_screen.dart';
 import 'product_detail_sheet.dart';
 import 'services/api_service.dart';
 import 'widgets/fly_to_cart_overlay.dart';
+import 'widgets/no_network_screen.dart';
 
 /// ============================================================================
 /// WASEL STORE & RESTAURANT MENU SCREEN (قائمة المتجر الحقيقية - نالوت)
@@ -21,6 +22,7 @@ class StoreMenuScreen extends StatefulWidget {
 class _StoreMenuScreenState extends State<StoreMenuScreen> {
   final GlobalKey _cartBarKey = GlobalKey();
   bool _isLoading = true;
+  bool _hasNetworkError = false;
   List<Map<String, dynamic>> _products = [];
   late bool _isOpen;
   Timer? _statusTimer;
@@ -102,160 +104,42 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
   }
 
   Future<void> _loadMenu() async {
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _hasNetworkError = false;
+    });
     _refreshStoreStatus();
     final storeId = widget.store['id']?.toString() ?? 'store_nalut_01';
-    final res = await ApiService.getStoreMenu(storeId);
+    try {
+      final res = await ApiService.getStoreMenu(storeId);
 
-    if (mounted) {
-      if (res.isSuccess && res.data != null && res.data['data'] != null) {
-        final rawProducts = res.data['data']['products'];
-        if (rawProducts is List && rawProducts.isNotEmpty) {
-          setState(() {
-            _products = List<Map<String, dynamic>>.from(rawProducts);
-            _isLoading = false;
-          });
-          return;
+      if (mounted) {
+        if (res.isSuccess && res.data != null && res.data['data'] != null) {
+          final rawProducts = res.data['data']['products'];
+          if (rawProducts is List) {
+            setState(() {
+              _products = List<Map<String, dynamic>>.from(rawProducts);
+              _isLoading = false;
+              _hasNetworkError = false;
+            });
+            return;
+          }
         }
+
+        // When menu API returns empty or fails, flag network error instead of injecting fake items
+        setState(() {
+          _hasNetworkError = true;
+          _isLoading = false;
+        });
       }
-
-      // Fallback authentic Libyan catalog if store items not seeded yet
-      setState(() {
-        _products = _getFallbackProducts(storeId);
-        _isLoading = false;
-      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _hasNetworkError = true;
+          _isLoading = false;
+        });
+      }
     }
-  }
-
-  List<Map<String, dynamic>> _getFallbackProducts(String storeId) {
-    if (storeId == 'store_nalut_02') {
-      return [
-        {
-          'id': 'prod_04',
-          'name_ar': 'بيتزا تونة بالجبنة وزيتون نالوت عائلي',
-          'price_lyd': 22.00,
-          'desc_ar': 'بيتزا إيطالية محشوة بقطع التونة وجبنة الموزاريلا وزيتون الجبل',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'عائلي',
-        },
-        {
-          'id': 'prod_05',
-          'name_ar': 'سندوتش شاورما عربي دجاج مع ثومية',
-          'price_lyd': 12.00,
-          'desc_ar': 'سندوتش شاورما بخبز الصاج مع الثومية والبطاطا المقرمشة',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'وجبة',
-        },
-        {
-          'id': 'prod_13',
-          'name_ar': 'بيتزا شاورما لحم وطني بالجبنة',
-          'price_lyd': 25.00,
-          'desc_ar': 'صلصة طماطم خاصة، شرائح شاورما لحم بلدي، جبنة موزاريلا وصوص طحينة',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'كبير',
-        },
-        {
-          'id': 'prod_16',
-          'name_ar': 'فطيرة جبنة وزعتر جبلي ساخنة',
-          'price_lyd': 6.00,
-          'desc_ar': 'فطيرة مخبوزة في الفرن بجبنة الحلوم والزعتر الجبلي البري',
-          'in_stock': true,
-          'is_popular': false,
-          'unit': 'قطعة',
-        },
-      ];
-    } else if (storeId == 'store_nalut_03') {
-      return [
-        {
-          'id': 'prod_20',
-          'name_ar': 'صندوق مياه نالوت المعدنية (12 قارورة 1.5 لتر)',
-          'price_lyd': 12.00,
-          'desc_ar': 'صندوق مياه شرب نالوت النقية 12 عبوة عائلية',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'صندوق',
-        },
-        {
-          'id': 'prod_21',
-          'name_ar': 'كرتونة حليب معقم كامل الدسم (12 عبوة)',
-          'price_lyd': 18.00,
-          'desc_ar': 'حليب معقم كامل الدسم صحي ومغذي',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'كرتونة',
-        },
-        {
-          'id': 'prod_22',
-          'name_ar': 'سلة خضار مشكلة طازجة (طماطم، خيار، بطاطا)',
-          'price_lyd': 15.00,
-          'desc_ar': 'تشكيلة خضروات طازجة يومية من مزارع الجبل',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'سلة',
-        },
-        {
-          'id': 'prod_27',
-          'name_ar': 'زيت زيتون نالوت الحر النخب الأول (5 لتر)',
-          'price_lyd': 135.00,
-          'desc_ar': 'زيت زيتون بكر ممتاز معصور على البارد من أشجار نالوت',
-          'in_stock': true,
-          'is_popular': true,
-          'unit': 'صفيحة',
-        },
-      ];
-    }
-
-    // Default: store_nalut_01 (مطعم قصر نالوت)
-    return [
-      {
-        'id': 'prod_01',
-        'name_ar': 'صحن مشكل كباب وشقف لحم وطني',
-        'price_lyd': 34.00,
-        'desc_ar': 'مشكل كباب وشقف لحم خروف بلدي مشوي على الفحم مع الخبز والبطاطا والسلاطة',
-        'in_stock': true,
-        'is_popular': true,
-        'unit': 'صحن',
-      },
-      {
-        'id': 'prod_02',
-        'name_ar': 'أسياخ كباب لحم خروف (4 قطع)',
-        'price_lyd': 28.00,
-        'desc_ar': 'أربعة أسياخ كباب لحم وطني متبل على الطريقة الليبية التقليدية',
-        'in_stock': true,
-        'is_popular': true,
-        'unit': 'وجبة',
-      },
-      {
-        'id': 'prod_03',
-        'name_ar': 'سلطة مشوية بزيت زيتون نالوت الحر',
-        'price_lyd': 8.00,
-        'desc_ar': 'سلطة مشوية على الفحم مع فلفل وثوم وزيت زيتون الجبل الأصلي',
-        'in_stock': true,
-        'is_popular': false,
-        'unit': 'صحن',
-      },
-      {
-        'id': 'prod_06',
-        'name_ar': 'شقف لحم خروف مشوي على الفحم',
-        'price_lyd': 36.00,
-        'desc_ar': 'قطع لحم خروف بلدي طازجة مشوية على الجمر مع تتبيلة الجبل الخاصة',
-        'in_stock': true,
-        'is_popular': true,
-        'unit': 'وجبة',
-      },
-      {
-        'id': 'prod_08',
-        'name_ar': 'نصف دجاجة شواية مع أرز أصفر وبطاطا',
-        'price_lyd': 18.00,
-        'desc_ar': 'دجاج وطني متبل ومحمر مع أرز مبوخ بالزعفران وبطاطا مقرمشة',
-        'in_stock': true,
-        'is_popular': true,
-        'unit': 'وجبة',
-      },
-    ];
   }
 
   void _openProductCustomization(Map<String, dynamic> product) {
@@ -433,6 +317,15 @@ class _StoreMenuScreenState extends State<StoreMenuScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_hasNetworkError) {
+      return NoNetworkScreen(
+        isFullScreen: true,
+        onRetry: () async {
+          await _loadMenu();
+        },
+      );
+    }
+
     final colorScheme = Theme.of(context).colorScheme;
     final storeName = widget.store['name'] ?? 'متجر نالوت';
     final rating = widget.store['rating']?.toString() ?? '4.9';

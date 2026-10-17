@@ -125,45 +125,6 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
     );
   }
 
-  void _simulateNewIncomingOrder() {
-    final newOrd = KdsOrder(
-      id: 'ord_kds_${DateTime.now().millisecondsSinceEpoch}',
-      orderNumber: '#W-${(100 + widget.orders.length + 1)}',
-      customerName: 'محمد التارغي',
-      customerPhone: '091-8877665',
-      deliveryAddress: 'نالوت - حي الزهور، قرب المسجد العتيق',
-      customerNotes: 'يرجى التوصيل سريعاً للأهمية، الطعام للأطفال',
-      status: KdsTicketStatus.newOrder,
-      timePlaced: DateTime.now(),
-      prepTimeMinutes: 15,
-      totalAmountLyd: 42.00,
-      paymentMethod: 'كاش عند الاستلام (COD)',
-      items: [
-        KdsOrderItem(
-          name: 'سندوتش شاورما دجاج (دبل)',
-          quantity: 2,
-          priceLyd: 14.00,
-          notes: '🌶️ زيادة هريسة (حارة هلبا) • 🚫 بدون كاتشب • ✨ كثر بطاطا 🍟',
-        ),
-        KdsOrderItem(name: 'صحن مشويات مشكل قصر نالوت', quantity: 1, priceLyd: 28.00, notes: 'سلطة مشوية زيادة'),
-        KdsOrderItem(name: 'عصير ليمون ونعناع طبيعي', quantity: 1, priceLyd: 5.50),
-      ],
-    );
-
-    setState(() {
-      widget.orders.insert(0, newOrd);
-    });
-    _tabController.animateTo(0);
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('🔔 ورد طلب تحضير جديد: ${newOrd.orderNumber}'),
-        backgroundColor: MerchantColors.primary,
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final bool isTabletLandscape = MediaQuery.of(context).size.width >= 720;
@@ -337,14 +298,6 @@ class _KdsScreenState extends State<KdsScreen> with SingleTickerProviderStateMix
                 _buildOrderList(_completedOrders, isCompleted: true),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _simulateNewIncomingOrder,
-        backgroundColor: MerchantColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 3,
-        icon: const Icon(Icons.add_alert_rounded),
-        label: const Text('طلب تجريبي للمطبخ 🔔', style: TextStyle(fontWeight: FontWeight.bold)),
-      ),
     );
   }
 

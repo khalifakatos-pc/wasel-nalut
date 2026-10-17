@@ -45,17 +45,24 @@ class LedgerService {
 
     const deliveryFee = this.round(order.delivery_fee_lyd || 0);
     const subtotal = this.round(order.subtotal_lyd || (order.total_amount_lyd - deliveryFee) || 0);
-    const discountLyd = this.round(order.discount_amount_lyd || 0);
+    const grossOrderValue = this.round(subtotal + deliveryFee + (order.service_fee_lyd || 0));
+
+    const rawDiscountLyd = this.round(order.discount_amount_lyd || order.discount_lyd || 0);
     const pointsDiscountLyd = this.round(order.loyalty_points_discount_lyd || 0);
     const freeDeliveryDiscountLyd = this.round(order.free_delivery_discount_lyd || 0);
+
+    // Clamp promotional discount so Account 5010 is debited only up to gross order value,
+    // maintaining Total Debits == Total Credits when promotional discounts exceed order subtotal/gross
+    const availableForDiscount = Math.max(0, this.round(grossOrderValue - pointsDiscountLyd - freeDeliveryDiscountLyd));
+    const discountLyd = this.round(Math.min(rawDiscountLyd, availableForDiscount));
     const totalPromotions = this.round(discountLyd + pointsDiscountLyd + freeDeliveryDiscountLyd);
 
-    const grossOrderValue = this.round(subtotal + deliveryFee + (order.service_fee_lyd || 0));
     let customerBilledAmount = this.round(order.total_amount_lyd !== undefined ? order.total_amount_lyd : (grossOrderValue - totalPromotions));
     // If order.total_amount_lyd was passed as gross, reduce it by promotions:
     if (Math.abs(customerBilledAmount - grossOrderValue) < 0.01 && totalPromotions > 0) {
       customerBilledAmount = this.round(grossOrderValue - totalPromotions);
     }
+    customerBilledAmount = Math.max(0, Math.min(customerBilledAmount, this.round(grossOrderValue - totalPromotions)));
 
     const isCod = ['cash_on_delivery', 'cash', 'cod'].includes(String(order.payment_method || '').toLowerCase());
 
@@ -163,8 +170,8 @@ class LedgerService {
     if (!isCod && order.payment_method === 'wallet') {
       customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
       if (customerWallet) {
-        customerWallet.locked_balance = Math.max(0, this.round((customerWallet.locked_balance || 0) - totalAmount));
-        customerWallet.balance = Math.max(0, this.round((customerWallet.balance || 0) - totalAmount));
+        customerWallet.locked_balance = Math.max(0, this.round((customerWallet.locked_balance || 0) - customerBilledAmount));
+        customerWallet.balance = Math.max(0, this.round((customerWallet.balance || 0) - customerBilledAmount));
       }
     }
 
@@ -438,13 +445,14 @@ class LedgerService {
       });
     } catch (jErr) {
       console.warn('[AccountingEngine Entry Warning]:', jErr.message);
+      if (pgPool) throw jErr;
     }
 
     // Commit to in-memory ledger
     db.wallet_transactions.push(...txRows);
 
     // Commit to PostgreSQL if active
-    if (pgPool) {
+    if (pgPool && typeof pgPool.query === 'function') {
       try {
         for (const row of txRows) {
           await pgPool.query(`
@@ -474,9 +482,46 @@ class LedgerService {
             driver.cod_balance_lyd || 0,
             driver.id
           ]);
+
+          // Update/Upsert Driver Wallet in PostgreSQL
+          await pgPool.query(`
+            INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
+            VALUES ($1, $2, 'driver_earnings', 'LYD', $3, 0.00, 'active')
+            ON CONFLICT (user_id, wallet_type, currency)
+            DO UPDATE SET balance = wallets.balance + EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP
+          `, [`wallet_${driver.user_id || driver.id}`, driver.user_id || driver.id, driverEarnings]);
+        }
+
+        // Update/Upsert Merchant Wallet in PostgreSQL
+        if (merchantId) {
+          await pgPool.query(`
+            INSERT INTO wallets (id, user_id, wallet_type, currency, balance, locked_balance, status)
+            VALUES ($1, $2, 'merchant_payouts', 'LYD', $3, 0.00, 'active')
+            ON CONFLICT (user_id, wallet_type, currency)
+            DO UPDATE SET balance = wallets.balance + EXCLUDED.balance, updated_at = CURRENT_TIMESTAMP
+          `, [`wallet_${merchantId}`, merchantId, merchantNet]);
+        }
+
+        // Update Platform Revenue Wallet in PostgreSQL
+        await pgPool.query(`
+          UPDATE wallets 
+          SET balance = balance + $1, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2 OR (user_id = 'system_revenue' AND wallet_type = 'platform_revenue')
+        `, [platformRevenue, SYSTEM_WALLETS.REVENUE]);
+
+        // Release/Debit Customer Wallet in PostgreSQL if paid by wallet
+        if (!isCod && order.payment_method === 'wallet' && order.customer_id) {
+          await pgPool.query(`
+            UPDATE wallets
+            SET balance = GREATEST(0, balance - $1),
+                locked_balance = GREATEST(0, locked_balance - $1),
+                updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2 AND wallet_type = 'customer_wallet'
+          `, [customerBilledAmount, order.customer_id]);
         }
       } catch (err) {
         console.error('[Ledger PG commit error]:', err.message);
+        if (pgPool) throw err;
       }
     }
 
@@ -625,11 +670,28 @@ class LedgerService {
       });
     } catch (jErr) {
       console.warn('[AccountingEngine Settle Warning]:', jErr.message);
+      if (pgPool) throw jErr;
     }
 
     // PostgreSQL sync if available
-    if (pgPool) {
+    if (pgPool && typeof pgPool.query === 'function') {
       try {
+        // 1. Insert official receipt voucher into PostgreSQL
+        await pgPool.query(`
+          INSERT INTO vouchers (
+            id, voucher_number, type, beneficiary_name, beneficiary_role,
+            beneficiary_id, amount_lyd, payment_method, destination_account,
+            notes, created_by, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          ON CONFLICT (id) DO NOTHING
+        `, [
+          voucher.id, voucher.voucher_number, voucher.type, voucher.beneficiary_name,
+          voucher.beneficiary_role, voucher.beneficiary_id, voucher.amount_lyd,
+          voucher.payment_method, voucher.destination_account || null,
+          voucher.notes, voucher.created_by, voucher.created_at
+        ]);
+
+        // 2. Clear driver custody in PostgreSQL
         await pgPool.query(`
           UPDATE drivers
           SET cash_in_hand_lyd = $1,
@@ -637,6 +699,7 @@ class LedgerService {
           WHERE id = $3
         `, [driver.cash_in_hand_lyd, driver.cod_balance_lyd, driver.id]);
 
+        // 3. Insert balanced settlement ledger transactions
         for (const row of txRows) {
           await pgPool.query(`
             INSERT INTO wallet_transactions (
@@ -650,8 +713,16 @@ class LedgerService {
             row.status, row.description, row.created_at
           ]);
         }
+
+        // 4. Update Platform Vault Wallet balance
+        await pgPool.query(`
+          UPDATE wallets 
+          SET balance = balance + $1, updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2 OR (user_id = 'system_vault' AND wallet_type = 'platform_vault')
+        `, [settledAmount, SYSTEM_WALLETS.VAULT]);
       } catch (err) {
         console.error('[Ledger PG settlement error]:', err.message);
+        if (pgPool) throw err;
       }
     }
 
@@ -741,6 +812,37 @@ class LedgerService {
       console.warn('[AccountingEngine Payout Warning]:', jErr.message);
     }
 
+    // PostgreSQL sync if available
+    if (pgPool && typeof pgPool.query === 'function') {
+      try {
+        // 1. Insert official payment voucher into PostgreSQL
+        await pgPool.query(`
+          INSERT INTO vouchers (
+            id, voucher_number, type, beneficiary_name, beneficiary_role,
+            beneficiary_id, amount_lyd, payment_method, destination_account,
+            notes, created_by, created_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          ON CONFLICT (id) DO NOTHING
+        `, [
+          voucher.id, voucher.voucher_number, voucher.type, voucher.beneficiary_name,
+          voucher.beneficiary_role, voucher.beneficiary_id, voucher.amount_lyd,
+          voucher.payment_method, voucher.destination_account || null,
+          voucher.notes, voucher.created_by, voucher.created_at
+        ]);
+
+        // 2. Deduct payout amount from merchant wallet in PostgreSQL
+        if (merchantId) {
+          await pgPool.query(`
+            UPDATE wallets
+            SET balance = GREATEST(0, balance - $1), updated_at = CURRENT_TIMESTAMP
+            WHERE user_id = $2 AND wallet_type = 'merchant_payouts'
+          `, [payoutAmount, merchantId]);
+        }
+      } catch (err) {
+        console.error('[Ledger PG payout error]:', err.message);
+      }
+    }
+
     return {
       success: true,
       voucher,
@@ -748,6 +850,380 @@ class LedgerService {
       store_name: storeName,
       payout_amount: payoutAmount,
       remaining_wallet_balance: merchantWallet ? merchantWallet.balance : 0
+    };
+  }
+
+  /**
+   * Reverses financial settlement when a delivered order is cancelled or refunded (F9).
+   * Clears driver COD custody (Account 1040), debits driver net earnings (Account 2030),
+   * debits merchant payable (Account 2020), debits platform revenue (Accounts 4010/4020),
+   * refunds customer wallet if charged, and commits a balanced reverse journal entry.
+   *
+   * @param {Object} db In-memory database cache
+   * @param {Object} order The cancelled order object
+   * @param {Object} [pgPool] Optional PostgreSQL pool or client
+   * @returns {Object} Reversal summary
+   */
+  async reverseOrderSettlement(db, order, pgPool = null) {
+    if (!order) throw new Error('Order is required for settlement reversal');
+    if (!db.wallet_transactions) db.wallet_transactions = [];
+    if (!db.wallets) db.wallets = [];
+
+    const deliveryFee = this.round(order.delivery_fee_lyd || 0);
+    const subtotal = this.round(order.subtotal_lyd || (order.total_amount_lyd - deliveryFee) || 0);
+    const grossOrderValue = this.round(subtotal + deliveryFee + (order.service_fee_lyd || 0));
+
+    const rawDiscountLyd = this.round(order.discount_amount_lyd || order.discount_lyd || 0);
+    const pointsDiscountLyd = this.round(order.loyalty_points_discount_lyd || 0);
+    const freeDeliveryDiscountLyd = this.round(order.free_delivery_discount_lyd || 0);
+
+    const availableForDiscount = Math.max(0, this.round(grossOrderValue - pointsDiscountLyd - freeDeliveryDiscountLyd));
+    const discountLyd = this.round(Math.min(rawDiscountLyd, availableForDiscount));
+    const totalPromotions = this.round(discountLyd + pointsDiscountLyd + freeDeliveryDiscountLyd);
+
+    let customerBilledAmount = this.round(order.total_amount_lyd !== undefined ? order.total_amount_lyd : (grossOrderValue - totalPromotions));
+    if (Math.abs(customerBilledAmount - grossOrderValue) < 0.01 && totalPromotions > 0) {
+      customerBilledAmount = this.round(grossOrderValue - totalPromotions);
+    }
+    customerBilledAmount = Math.max(0, Math.min(customerBilledAmount, this.round(grossOrderValue - totalPromotions)));
+
+    const isCod = ['cash_on_delivery', 'cash', 'cod'].includes(String(order.payment_method || '').toLowerCase());
+
+    const store = db.stores ? db.stores.find(s => s.id === order.store_id) : null;
+    const commissionPct = (store && store.commission_rate !== undefined)
+      ? Number(store.commission_rate) / 100
+      : 0.10;
+
+    const commissionLyd = this.round(subtotal * commissionPct);
+    const merchantNet = this.round(subtotal - commissionLyd);
+    const driverEarnings = this.round(deliveryFee * 0.80);
+    const platformDeliveryShare = this.round(deliveryFee * 0.20);
+    const serviceFee = this.round(order.service_fee_lyd || 0);
+    const platformRevenue = this.round(platformDeliveryShare + commissionLyd + serviceFee);
+
+    const merchantId = store ? (store.merchant_id || store.owner_user_id || store.id) : order.store_id;
+
+    // Mutate state: reverse driver balances
+    let driver = null;
+    let driverWallet = null;
+    if (order.driver_id && db.drivers) {
+      driver = db.drivers.find(d => d.id === order.driver_id);
+      if (driver) {
+        if (isCod) {
+          driver.cash_in_hand_lyd = Math.max(0, this.round((driver.cash_in_hand_lyd || 0) - customerBilledAmount));
+          driver.cod_balance_lyd = Math.max(0, this.round((driver.cod_balance_lyd || 0) - customerBilledAmount));
+        }
+        driver.wallet_balance_lyd = Math.max(0, this.round((driver.wallet_balance_lyd || 0) - driverEarnings));
+
+        driverWallet = db.wallets.find(w => w.user_id === driver.user_id || w.id === `wallet_${driver.id}`);
+        if (driverWallet) {
+          driverWallet.balance = Math.max(0, this.round((driverWallet.balance || 0) - driverEarnings));
+        }
+      }
+    }
+
+    // Mutate state: reverse merchant wallet
+    let merchantWallet = null;
+    if (merchantId) {
+      merchantWallet = db.wallets.find(w => w.user_id === merchantId || w.id === `wallet_${merchantId}`);
+      if (merchantWallet) {
+        merchantWallet.balance = Math.max(0, this.round((merchantWallet.balance || 0) - merchantNet));
+      }
+    }
+
+    // Mutate state: reverse platform revenue wallet
+    let revWallet = db.wallets.find(w => w.wallet_type === 'platform_revenue' || w.id === SYSTEM_WALLETS.REVENUE);
+    if (revWallet) {
+      revWallet.balance = Math.max(0, this.round((revWallet.balance || 0) - platformRevenue));
+    }
+
+    // Mutate state: refund customer wallet
+    let customerWallet = null;
+    if (order.customer_id && db.wallets) {
+      customerWallet = db.wallets.find(w => w.user_id === order.customer_id);
+      if (customerWallet) {
+        customerWallet.balance = this.round((customerWallet.balance || 0) + customerBilledAmount);
+        customerWallet.locked_balance = Math.max(0, this.round((customerWallet.locked_balance || 0) - customerBilledAmount));
+      }
+    }
+
+    // Balanced wallet transaction rows
+    const nowIso = new Date().toISOString();
+    const batchId = `batch_reversal_${order.id}_${Date.now()}`;
+    const txRows = [];
+
+    if (isCod) {
+      txRows.push({
+        id: `txn_${uuidv4().substring(0, 8)}`,
+        batch_id: batchId,
+        order_id: order.id,
+        wallet_id: driverWallet ? driverWallet.id : `wallet_driver_${order.driver_id}`,
+        entry_type: 'CREDIT',
+        account_type: 'cash_in_hand_reversal',
+        entity_type: 'driver',
+        entity_id: order.driver_id,
+        amount: customerBilledAmount,
+        currency: 'LYD',
+        status: 'completed',
+        description: `تصفير عهدة الكاش (COD) لإلغاء طلب رقم ${order.order_number || order.id}`,
+        created_at: nowIso
+      });
+    } else {
+      txRows.push({
+        id: `txn_${uuidv4().substring(0, 8)}`,
+        batch_id: batchId,
+        order_id: order.id,
+        wallet_id: customerWallet ? customerWallet.id : SYSTEM_WALLETS.ESCROW,
+        entry_type: 'CREDIT',
+        account_type: 'customer_wallet_refund',
+        entity_type: 'customer',
+        entity_id: order.customer_id,
+        amount: customerBilledAmount,
+        currency: 'LYD',
+        status: 'completed',
+        description: `استرجاع رصيد المحفظة لإلغاء طلب رقم ${order.order_number || order.id}`,
+        created_at: nowIso
+      });
+    }
+
+    txRows.push({
+      id: `txn_${uuidv4().substring(0, 8)}`,
+      batch_id: batchId,
+      order_id: order.id,
+      wallet_id: merchantWallet ? merchantWallet.id : `wallet_${merchantId}`,
+      entry_type: 'DEBIT',
+      account_type: 'merchant_payable_reversal',
+      entity_type: 'merchant',
+      entity_id: merchantId,
+      amount: merchantNet,
+      currency: 'LYD',
+      status: 'completed',
+      description: `عكس مستحقات المتجر لإلغاء طلب رقم ${order.order_number || order.id}`,
+      created_at: nowIso
+    });
+
+    txRows.push({
+      id: `txn_${uuidv4().substring(0, 8)}`,
+      batch_id: batchId,
+      order_id: order.id,
+      wallet_id: driverWallet ? driverWallet.id : `wallet_driver_${order.driver_id}`,
+      entry_type: 'DEBIT',
+      account_type: 'driver_earnings_reversal',
+      entity_type: 'driver',
+      entity_id: order.driver_id,
+      amount: driverEarnings,
+      currency: 'LYD',
+      status: 'completed',
+      description: `عكس أرباح الكابتن لإلغاء طلب رقم ${order.order_number || order.id}`,
+      created_at: nowIso
+    });
+
+    txRows.push({
+      id: `txn_${uuidv4().substring(0, 8)}`,
+      batch_id: batchId,
+      order_id: order.id,
+      wallet_id: revWallet ? revWallet.id : SYSTEM_WALLETS.REVENUE,
+      entry_type: 'DEBIT',
+      account_type: 'platform_revenue_reversal',
+      entity_type: 'platform',
+      entity_id: 'platform',
+      amount: platformRevenue,
+      currency: 'LYD',
+      status: 'completed',
+      description: `عكس إيراد المنصة لإلغاء طلب رقم ${order.order_number || order.id}`,
+      created_at: nowIso
+    });
+
+    db.wallet_transactions.push(...txRows);
+
+    // Build balanced reverse journal entry
+    const journalLines = [];
+
+    // DEBITS: Reclaim credited earnings/revenue
+    journalLines.push({
+      accountCode: '2020',
+      debit: merchantNet,
+      credit: 0,
+      entityType: 'store',
+      entityId: merchantId,
+      note: `عكس مستحقات المتجر لإلغاء طلب #${order.order_number || order.id}`
+    });
+
+    journalLines.push({
+      accountCode: '2030',
+      debit: driverEarnings,
+      credit: 0,
+      entityType: 'driver',
+      entityId: order.driver_id,
+      note: `عكس أرباح الكابتن لإلغاء طلب #${order.order_number || order.id}`
+    });
+
+    journalLines.push({
+      accountCode: '4010',
+      debit: commissionLyd,
+      credit: 0,
+      entityType: 'platform',
+      entityId: 'platform',
+      note: `عكس عمولة بيع الوجبات لإلغاء طلب #${order.order_number || order.id}`
+    });
+
+    journalLines.push({
+      accountCode: '4020',
+      debit: platformDeliveryShare,
+      credit: 0,
+      entityType: 'platform',
+      entityId: 'platform',
+      note: `عكس حصة المنصة من رسوم التوصيل لإلغاء طلب #${order.order_number || order.id}`
+    });
+
+    if (serviceFee > 0) {
+      journalLines.push({
+        accountCode: '4030',
+        debit: serviceFee,
+        credit: 0,
+        entityType: 'platform',
+        entityId: 'platform',
+        note: `عكس رسوم الخدمة لإلغاء طلب #${order.order_number || order.id}`
+      });
+    }
+
+    // CREDITS: Reverse debited customer payment / promotions
+    if (isCod) {
+      journalLines.push({
+        accountCode: '1040',
+        debit: 0,
+        credit: customerBilledAmount,
+        entityType: 'driver',
+        entityId: order.driver_id,
+        note: `تصفير عهدة الكاش المعلقة للكابتن (COD) بعد إلغاء طلب #${order.order_number || order.id}`
+      });
+    } else {
+      const pMethod = String(order.payment_method || '').toLowerCase();
+      let accountCode = '1033';
+      if (pMethod.includes('sadad')) accountCode = '1031';
+      else if (pMethod.includes('lypay')) accountCode = '1032';
+      else if (pMethod.includes('wallet')) accountCode = '2040';
+
+      journalLines.push({
+        accountCode: accountCode,
+        debit: 0,
+        credit: customerBilledAmount,
+        entityType: pMethod.includes('wallet') ? 'customer' : 'bank',
+        entityId: pMethod.includes('wallet') ? order.customer_id : pMethod,
+        note: `إرجاع قيمة الطلب للزبون بعد الإلغاء لطلب #${order.order_number || order.id}`
+      });
+    }
+
+    if (discountLyd > 0) {
+      journalLines.push({
+        accountCode: '5010',
+        debit: 0,
+        credit: discountLyd,
+        entityType: 'platform',
+        entityId: 'marketing',
+        note: `عكس كوبون الخصم بعد إلغاء طلب #${order.order_number || order.id}`
+      });
+    }
+
+    if (pointsDiscountLyd > 0) {
+      journalLines.push({
+        accountCode: '5020',
+        debit: 0,
+        credit: pointsDiscountLyd,
+        entityType: 'customer',
+        entityId: order.customer_id,
+        note: `عكس خصم نقاط الولاء بعد إلغاء طلب #${order.order_number || order.id}`
+      });
+    }
+
+    if (freeDeliveryDiscountLyd > 0) {
+      journalLines.push({
+        accountCode: '5030',
+        debit: 0,
+        credit: freeDeliveryDiscountLyd,
+        entityType: 'platform',
+        entityId: 'marketing',
+        note: `عكس دعم التوصيل المجاني بعد إلغاء طلب #${order.order_number || order.id}`
+      });
+    }
+
+    let journalEntry = null;
+    try {
+      journalEntry = await accountingEngine.recordJournalEntry(db, {
+        referenceId: order.id,
+        transactionType: 'order_cancellation_reversal',
+        narration: `قيد عكسي لتسوية إلغاء طلب رقم ${order.order_number || order.id} في نالوت`,
+        lines: journalLines,
+        pgPool
+      });
+    } catch (jErr) {
+      console.warn('[AccountingEngine Reversal Warning]:', jErr.message);
+      if (pgPool) throw jErr;
+    }
+
+    // Persist to PostgreSQL if active
+    if (pgPool && typeof pgPool.query === 'function') {
+      try {
+        if (driver) {
+          await pgPool.query(`
+            UPDATE drivers
+            SET wallet_balance_lyd = $1,
+                cash_in_hand_lyd = $2,
+                cod_balance_lyd = $3
+            WHERE id = $4
+          `, [driver.wallet_balance_lyd, driver.cash_in_hand_lyd, driver.cod_balance_lyd, driver.id]);
+
+          await pgPool.query(`
+            UPDATE wallets
+            SET balance = GREATEST(0, balance - $1), updated_at = CURRENT_TIMESTAMP
+            WHERE (user_id = $2 OR id = $3) AND wallet_type = 'driver_earnings'
+          `, [driverEarnings, driver.user_id || driver.id, `wallet_${driver.id}`]);
+        }
+
+        if (merchantId) {
+          await pgPool.query(`
+            UPDATE wallets
+            SET balance = GREATEST(0, balance - $1), updated_at = CURRENT_TIMESTAMP
+            WHERE (user_id = $2 OR id = $3) AND wallet_type = 'merchant_payouts'
+          `, [merchantNet, merchantId, `wallet_${merchantId}`]);
+        }
+
+        await pgPool.query(`
+          UPDATE wallets
+          SET balance = GREATEST(0, balance - $1), updated_at = CURRENT_TIMESTAMP
+          WHERE id = $2 OR (user_id = 'system_revenue' AND wallet_type = 'platform_revenue')
+        `, [platformRevenue, SYSTEM_WALLETS.REVENUE]);
+
+        if (order.customer_id) {
+          if (order.payment_method === 'wallet') {
+            await pgPool.query(`
+              UPDATE wallets
+              SET balance = balance + $1,
+                  locked_balance = GREATEST(0, locked_balance - $1),
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE user_id = $2 AND wallet_type = 'customer_wallet'
+            `, [customerBilledAmount, order.customer_id]);
+          } else {
+            await pgPool.query(`
+              UPDATE wallets
+              SET locked_balance = GREATEST(0, locked_balance - $1),
+                  updated_at = CURRENT_TIMESTAMP
+              WHERE user_id = $2 AND wallet_type = 'customer_wallet'
+            `, [customerBilledAmount, order.customer_id]);
+          }
+        }
+      } catch (err) {
+        console.error('[Ledger PG reversal commit error]:', err.message);
+        if (pgPool) throw err;
+      }
+    }
+
+    return {
+      success: true,
+      order_id: order.id,
+      reversed_cod: isCod ? customerBilledAmount : 0,
+      refunded_wallet: !isCod && order.payment_method === 'wallet' ? customerBilledAmount : 0,
+      journal_entry: journalEntry
     };
   }
 

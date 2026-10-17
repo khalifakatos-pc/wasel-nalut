@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service connecting Wasel Admin Mobile App to Unified Backend & Supabase Cloud 24/7.
 class AdminSupabaseService {
@@ -13,12 +14,100 @@ class AdminSupabaseService {
   static const String supabaseUrl = 'https://yfhvuatssuylrkbthosa.supabase.co/rest/v1';
   static const String apiKey = 'sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD';
 
+  static String? _jwtToken;
+  static Map<String, dynamic>? _currentAdmin;
+  static const String _prefTokenKey = 'wasel_admin_jwt';
+
+  static String? get jwtToken => _jwtToken;
+  static Map<String, dynamic>? get currentAdmin => _currentAdmin;
+  static bool get isAuthenticated => _jwtToken != null && _jwtToken!.isNotEmpty;
+
+  static Map<String, String> get backendHeaders => {
+        'Content-Type': 'application/json',
+        if (_jwtToken != null && _jwtToken!.isNotEmpty)
+          'Authorization': 'Bearer $_jwtToken',
+      };
+
   static Map<String, String> get _headers => {
         'apikey': apiKey,
-        'Authorization': 'Bearer $apiKey',
+        if (_jwtToken != null && _jwtToken!.isNotEmpty)
+          'Authorization': 'Bearer $_jwtToken'
+        else
+          'Authorization': 'Bearer $apiKey',
         'Content-Type': 'application/json',
         'Prefer': 'return=representation',
       };
+
+  static Future<bool> restoreSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_prefTokenKey);
+      if (token != null && token.isNotEmpty) {
+        _jwtToken = token;
+        return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  static Future<void> logout() async {
+    _jwtToken = null;
+    _currentAdmin = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefTokenKey);
+    } catch (_) {}
+  }
+
+  static Future<Map<String, dynamic>> authenticateAdmin(String secret) async {
+    final candidateUrls = <String>[
+      backendBaseUrl,
+      'http://localhost:3000/api/v1',
+      localBackendUrl,
+    ];
+
+    for (final base in candidateUrls) {
+      try {
+        final res = await http.post(
+          Uri.parse('$base/auth/admin-login'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'pin': secret,
+            'password': secret,
+          }),
+        ).timeout(const Duration(seconds: 5));
+
+        final dynamic body = jsonDecode(res.body);
+        if (res.statusCode == 200 && body is Map && body['success'] == true) {
+          final token = body['data']?['token']?.toString();
+          final user = body['data']?['user'] as Map<String, dynamic>?;
+          if (token != null && token.isNotEmpty) {
+            _jwtToken = token;
+            _currentAdmin = user;
+            try {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setString(_prefTokenKey, token);
+            } catch (_) {}
+            return {
+              'success': true,
+              'token': token,
+              'user': user,
+            };
+          }
+        } else if (res.statusCode == 401 || res.statusCode == 403) {
+          return {
+            'success': false,
+            'error': body['error'] ?? 'رمز الأمان الإداري غير صحيح',
+          };
+        }
+      } catch (_) {}
+    }
+
+    return {
+      'success': false,
+      'error': 'تعذر الاتصال بخادم الإدارة. تحقق من الاتصال بالشبكة.',
+    };
+  }
 
   static final List<Map<String, dynamic>> _dynamicStores = [];
   static final List<Map<String, dynamic>> _dynamicDrivers = [];
@@ -37,7 +126,10 @@ class AdminSupabaseService {
     for (final base in candidateUrls) {
       try {
         final res = await http
-            .get(Uri.parse('$base/admin/overview?admin_key=7788'))
+            .get(
+              Uri.parse('$base/admin/overview'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 4));
 
         if (res.statusCode == 200) {
@@ -177,8 +269,8 @@ class AdminSupabaseService {
         final res = await http
             .post(
               Uri.parse('$backendBaseUrl/orders/$orderId/status'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'status': newStatus}),
+              headers: backendHeaders,
+              body: jsonEncode({'status': newStatus, 'adminOverride': true}),
             )
             .timeout(const Duration(seconds: 15));
 
@@ -189,6 +281,102 @@ class AdminSupabaseService {
     }
     return false;
   }
+
+  static Future<bool> cancelOrder(String orderId, {String? reason}) async {
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/orders/$orderId/cancel'),
+              headers: backendHeaders,
+              body: jsonEncode({
+                if (reason != null && reason.isNotEmpty) 'reason': reason,
+                'adminOverride': true,
+              }),
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (res.statusCode == 200 || res.statusCode == 201) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
+    }
+    return false;
+  }
+
+  static Future<bool> reassignOrder(String orderId, String newDriverId) async {
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/orders/$orderId/reassign'),
+              headers: backendHeaders,
+              body: jsonEncode({'driver_id': newDriverId}),
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (res.statusCode == 200 || res.statusCode == 201) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
+    }
+    return false;
+  }
+
+  static Future<bool> deleteOrder(String orderId) async {
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .delete(
+              Uri.parse('$backendBaseUrl/admin/orders/$orderId'),
+              headers: backendHeaders,
+            )
+            .timeout(const Duration(seconds: 15));
+
+        if (res.statusCode == 200 || res.statusCode == 204) return true;
+      } catch (_) {
+        if (attempt == 1) break;
+      }
+    }
+    return false;
+  }
+
+  static Future<Map<String, dynamic>> purgeOrders(String adminPin) async {
+    for (int attempt = 0; attempt < 2; attempt++) {
+      try {
+        final res = await http
+            .post(
+              Uri.parse('$backendBaseUrl/admin/orders/purge'),
+              headers: backendHeaders,
+              body: jsonEncode({'pin': adminPin}),
+            )
+            .timeout(const Duration(seconds: 15));
+
+        final dynamic data = jsonDecode(res.body);
+        if (res.statusCode == 200) {
+          return {
+            'success': true,
+            'message': data is Map && data['message'] != null
+                ? data['message']
+                : 'تم تصفير كافة الطلبات وسجل الحركات بنجاح',
+          };
+        } else {
+          return {
+            'success': false,
+            'message': data is Map && data['error'] != null
+                ? data['error']
+                : 'فشل تصفير الطلبات (رمز الخطأ: ${res.statusCode})',
+          };
+        }
+      } catch (e) {
+        if (attempt == 1) {
+          return {'success': false, 'message': 'خطأ في الاتصال بالخادم: $e'};
+        }
+      }
+    }
+    return {'success': false, 'message': 'تعذر الاتصال بخادم الإدارة'};
+  }
+
 
   // --------------------------------------------------------------------------
   // DRIVERS & SETTLEMENTS
@@ -228,7 +416,7 @@ class AdminSupabaseService {
         final res = await http
             .post(
               Uri.parse('$backendBaseUrl/drivers/$driverId/settle'),
-              headers: {'Content-Type': 'application/json'},
+              headers: backendHeaders,
             )
             .timeout(const Duration(seconds: 15));
 
@@ -247,18 +435,21 @@ class AdminSupabaseService {
   static Future<bool> addDriver({
     required String fullName,
     required String phone,
-    String pin = '1234',
+    required String pin,
     required String vehicleType,
     required String plateNumber,
     double maxCodLimit = 250.0,
   }) async {
+    if (pin.length < 4) {
+      return false; // PIN must be at least 4 digits
+    }
     final id = 'drv_${DateTime.now().millisecondsSinceEpoch}';
     final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
     final driverMap = {
       'id': id,
       'full_name': fullName,
       'phone': cleanPhone.isNotEmpty ? cleanPhone : phone,
-      'pin': pin.isNotEmpty ? pin : '1234',
+      'pin': pin,
       'vehicle_type': vehicleType,
       'plate_number': plateNumber,
       'status': 'available',
@@ -277,7 +468,7 @@ class AdminSupabaseService {
         final res = await http
             .post(
               Uri.parse('$backendBaseUrl/drivers'),
-              headers: {'Content-Type': 'application/json'},
+              headers: backendHeaders,
               body: jsonEncode(driverMap),
             )
             .timeout(const Duration(seconds: 15));
@@ -298,7 +489,10 @@ class AdminSupabaseService {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .delete(Uri.parse('$backendBaseUrl/drivers/$driverId'))
+            .delete(
+              Uri.parse('$backendBaseUrl/drivers/$driverId'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 15));
         if (res.statusCode == 200 || res.statusCode == 204) return true;
       } catch (_) {
@@ -314,16 +508,18 @@ class AdminSupabaseService {
     required String type,
     required String district,
     required double baseDeliveryFee,
-    String? phone,
-    String? pin,
+    required String phone,
+    required String pin,
     double commissionRate = 10.0,
     double minOrderLyd = 10.00,
     double? latitude,
     double? longitude,
   }) async {
     final id = 'store_nalut_${DateTime.now().millisecondsSinceEpoch}';
-    final cleanPhone = (phone ?? '0910000000').replaceAll(RegExp(r'[^0-9]'), '');
-    final cleanPin = (pin != null && pin.isNotEmpty) ? pin : '1234';
+    final cleanPhone = phone.replaceAll(RegExp(r'[^0-9]'), '');
+    if (pin.length < 4) {
+      return null; // PIN must be at least 4 digits
+    }
 
     final appMode = (type == 'grocery' || type == 'pharmacy') ? 'retail' : 'kitchen';
 
@@ -335,7 +531,7 @@ class AdminSupabaseService {
       'district': district,
       'city': 'nalut',
       'phone': cleanPhone,
-      'pin': cleanPin,
+      'pin': pin,
       'app_mode': appMode,
       'commission_rate': commissionRate,
       'rating': 5.0,
@@ -357,7 +553,7 @@ class AdminSupabaseService {
         final res = await http
             .post(
               Uri.parse('$backendBaseUrl/stores'),
-              headers: {'Content-Type': 'application/json'},
+              headers: backendHeaders,
               body: jsonEncode(payload),
             )
             .timeout(const Duration(seconds: 15));
@@ -378,7 +574,10 @@ class AdminSupabaseService {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .delete(Uri.parse('$backendBaseUrl/stores/$storeId'))
+            .delete(
+              Uri.parse('$backendBaseUrl/stores/$storeId'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 15));
         if (res.statusCode == 200 || res.statusCode == 204) return true;
       } catch (_) {
@@ -391,89 +590,33 @@ class AdminSupabaseService {
   // --------------------------------------------------------------------------
   // NALUT DELIVERY ZONES & TARIFFS (إدارة نطاقات وأسعار التوصيل في نالوت)
   // --------------------------------------------------------------------------
-  static final List<Map<String, dynamic>> _deliveryZones = [
-    {
-      'id': 'zone_nalut_center',
-      'name': 'نالوت - المركز والبلدة القديمة',
-      'fee_lyd': 3.00,
-      'min_minutes': 15,
-      'max_minutes': 25,
-      'is_active': true,
-    },
-    {
-      'id': 'zone_nalut_qalaa',
-      'name': 'نالوت - حي القلعة وسيدي خليفة',
-      'fee_lyd': 3.50,
-      'min_minutes': 20,
-      'max_minutes': 30,
-      'is_active': true,
-    },
-    {
-      'id': 'zone_nalut_africa',
-      'name': 'نالوت - شارع أفريقيا والمنطقة الحرفية',
-      'fee_lyd': 4.00,
-      'min_minutes': 20,
-      'max_minutes': 30,
-      'is_active': true,
-    },
-    {
-      'id': 'zone_nalut_airport',
-      'name': 'نالوت - طريق المطار والمدخل الشرقي',
-      'fee_lyd': 5.00,
-      'min_minutes': 25,
-      'max_minutes': 35,
-      'is_active': true,
-    },
-    {
-      'id': 'zone_nalut_talat',
-      'name': 'منطقة تالات وضواحي نالوت الجبلية',
-      'fee_lyd': 6.50,
-      'min_minutes': 30,
-      'max_minutes': 45,
-      'is_active': true,
-    },
-    {
-      'id': 'zone_nalut_kabaw_road',
-      'name': 'خط طريق كاباو والمزارع المجاورة',
-      'fee_lyd': 8.50,
-      'min_minutes': 35,
-      'max_minutes': 50,
-      'is_active': true,
-    },
-  ];
-
   static Future<List<Map<String, dynamic>>> fetchDeliveryZones() async {
-    // 1. Try Backend API
     try {
       final res = await http.get(
         Uri.parse('$backendBaseUrl/delivery-zones'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 4));
+        headers: backendHeaders,
+      ).timeout(const Duration(seconds: 5));
 
       if (res.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(res.body);
         if (body['success'] == true && body['data'] is List) {
           final List<dynamic> list = body['data'];
-          if (list.isNotEmpty) {
-            final zones = list.map((item) {
-              final m = Map<String, dynamic>.from(item);
-              return {
-                'id': m['id'] ?? '',
-                'name': m['name_ar'] ?? m['name'] ?? '',
-                'fee_lyd': (m['base_fee_lyd'] as num?)?.toDouble() ?? 5.0,
-                'min_minutes': (m['min_delivery_time'] as num?)?.toInt() ?? 20,
-                'max_minutes': (m['max_delivery_time'] as num?)?.toInt() ?? 35,
-                'is_active': m['is_active'] != false,
-              };
-            }).toList();
-            return zones;
-          }
+          return list.map((item) {
+            final m = Map<String, dynamic>.from(item);
+            return {
+              'id': m['id'] ?? '',
+              'name': m['name_ar'] ?? m['name'] ?? '',
+              'fee_lyd': (m['base_fee_lyd'] as num?)?.toDouble() ?? 5.0,
+              'min_minutes': (m['min_delivery_time'] as num?)?.toInt() ?? 20,
+              'max_minutes': (m['max_delivery_time'] as num?)?.toInt() ?? 35,
+              'is_active': m['is_active'] != false,
+            };
+          }).toList();
         }
       }
     } catch (_) {}
 
-    // 2. Fallback to local default zones
-    return _deliveryZones;
+    return const [];
   }
 
   static Future<bool> updateDeliveryZoneFee({
@@ -482,27 +625,19 @@ class AdminSupabaseService {
     required int minMinutes,
     required int maxMinutes,
   }) async {
-    final idx = _deliveryZones.indexWhere((z) => z['id'] == zoneId);
-    if (idx != -1) {
-      _deliveryZones[idx]['fee_lyd'] = newFee;
-      _deliveryZones[idx]['min_minutes'] = minMinutes;
-      _deliveryZones[idx]['max_minutes'] = maxMinutes;
-    }
-
-    // Persist to Backend PostgreSQL
     try {
       final res = await http.patch(
         Uri.parse('$backendBaseUrl/delivery-zones/$zoneId'),
-        headers: _headers,
+        headers: backendHeaders,
         body: jsonEncode({
           'base_fee_lyd': newFee,
           'min_delivery_time': minMinutes,
           'max_delivery_time': maxMinutes,
         }),
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 5));
       return res.statusCode == 200;
     } catch (_) {
-      return idx != -1;
+      return false;
     }
   }
 
@@ -510,40 +645,36 @@ class AdminSupabaseService {
   // PURGE TEST DATA & PRODUCTION LIVE SLATE (تطهير البيانات الوهمية وتفعيل النمط الحي)
   // --------------------------------------------------------------------------
   static Future<Map<String, dynamic>> purgeTestData(String adminPin) async {
-    if (adminPin.trim() != '7788') {
-      return {'success': false, 'message': 'رمز الـ PIN الإداري غير صحيح'};
+    if (!isAuthenticated) {
+      final authRes = await authenticateAdmin(adminPin);
+      if (authRes['success'] != true) {
+        return {'success': false, 'message': authRes['error'] ?? 'رمز الأمان الإداري غير صحيح'};
+      }
     }
 
     try {
-      // 1. Purge test orders
-      await http.delete(
-        Uri.parse('$supabaseUrl/orders?id=neq.none'),
-        headers: _headers,
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
+      final res = await http.post(
+        Uri.parse('$backendBaseUrl/admin/purge'),
+        headers: backendHeaders,
+        body: jsonEncode({'pin': adminPin}),
+      ).timeout(const Duration(seconds: 8));
 
-    try {
-      // 2. Reset drivers balances and trip counters
-      await http.patch(
-        Uri.parse('$supabaseUrl/drivers?wallet_balance_lyd=gt.0'),
-        headers: _headers,
-        body: jsonEncode({
-          'wallet_balance_lyd': 0.0,
-          'total_trips': 0,
-          'status': 'available',
-        }),
-      ).timeout(const Duration(seconds: 4));
-    } catch (_) {}
-
-    for (var d in _dynamicDrivers) {
-      d['wallet_balance_lyd'] = 0.0;
-      d['total_trips'] = 0;
+      if (res.statusCode == 200) {
+        final dynamic data = jsonDecode(res.body);
+        return {
+          'success': true,
+          'message': data['message'] ?? '✅ تم تطهير كافة البيانات التجريبية بنجاح! المنظومة جاهزة للتشغيل الحقيقي.',
+        };
+      } else {
+        final dynamic data = jsonDecode(res.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'فشل طلب تطهير البيانات من الخادم',
+        };
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'خطأ في الاتصال بالخادم: $e'};
     }
-
-    return {
-      'success': true,
-      'message': '✅ تم تطهير كافة البيانات التجريبية بنجاح! المنظومة جاهزة للتشغيل الحقيقي.',
-    };
   }
 
   // --------------------------------------------------------------------------
@@ -1068,14 +1199,14 @@ class AdminSupabaseService {
   }) async {
     // 1. Try Live Unified Backend Server first
     for (final base in [
+      backendBaseUrl,
       'http://localhost:3000/api/v1',
       localBackendUrl,
-      'https://wasel-nalut-api.onrender.com/api/v1',
     ]) {
       try {
         final res = await http.post(
           Uri.parse('$base/admin/disputes/resolve'),
-          headers: {'Content-Type': 'application/json'},
+          headers: backendHeaders,
           body: jsonEncode({
             'order_id': orderId,
             'store_id': storeId,
@@ -1293,7 +1424,10 @@ class AdminSupabaseService {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .get(Uri.parse('$backendBaseUrl/stores/$storeId/menu'))
+            .get(
+              Uri.parse('$backendBaseUrl/stores/$storeId/menu'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 15));
 
         if (res.statusCode == 200) {
@@ -1312,550 +1446,7 @@ class AdminSupabaseService {
       }
     }
 
-    // Authentic menus for each specific Nalut store
-    if (storeId == 'store_nalut_alhanaa') {
-      return [
-        {
-          'id': 'prod_alhanaa_01',
-          'store_id': storeId,
-          'name': 'بنادول إكسترا أحمر (24 قرص)',
-          'price': 5.0,
-          'category': 'أدوية ومسكنات',
-          'description': 'مسكن للصداع والآلام وخافض حرارة سريع المفعول',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_alhanaa_02',
-          'store_id': storeId,
-          'name': 'فيتامين سي فوار 1000 مجم',
-          'price': 12.0,
-          'category': 'فيتامينات ومكملات',
-          'description': 'فوار لتقوية المناعة ومقاومة نزلات البرد بنكهة البرتقال',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_alhanaa_03',
-          'store_id': storeId,
-          'name': 'غسول سيرافي للبشرة CeraVe 236ml',
-          'price': 65.0,
-          'category': 'عناية وتجميل',
-          'description': 'منظف ومرطب للبشرة بحمض الهيالورونيك والسيراميد',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_alhanaa_04',
-          'store_id': storeId,
-          'name': 'كريم ديرميديك واقي شمس SPF 50+',
-          'price': 58.0,
-          'category': 'عناية وتجميل',
-          'description': 'Dermedic حماية فائقة من أشعة الشمس للبشرة الحساسة',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_alhanaa_05',
-          'store_id': storeId,
-          'name': 'بخاخ أوتريفين للأنف للكبار 0.1%',
-          'price': 8.5,
-          'category': 'أدوية ومسكنات',
-          'description': 'مزيل لاحتقان الأنف ومساعد على التنفس السريع',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_alhanaa_06',
-          'store_id': storeId,
-          'name': 'حقيبة إسعافات أولية منزلية متكاملة',
-          'price': 35.0,
-          'category': 'مستلزمات طبية',
-          'description': 'تحتوي على شاش، لاصقات جروح، مطهر، قطن طبي، ومقص',
-          'is_available': true,
-        },
-      ];
-    }
-
-    if (storeId == 'store_nalut_ranchello') {
-      return [
-        // --- البوكسات والعائلي ---
-        {
-          'id': 'prod_ranchello_box_big',
-          'store_id': storeId,
-          'name': 'بوكس كبير',
-          'price': 140.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'بوكس رانشيلو الحجم الكبير المناسب للعزائم والجمعات العائلية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_meal_family',
-          'store_id': storeId,
-          'name': 'وجبة عائلية',
-          'price': 60.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'وجبة مشويات ودجاج تكفي العائلة مع مقبلات وسلطات وبطاطا',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_family_box',
-          'store_id': storeId,
-          'name': 'فاميلي بوكس',
-          'price': 40.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'بوكس عائلي مميز بتشكيلة سندوتشات وسناكس وبطاطا مقلية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_family_mix_box',
-          'store_id': storeId,
-          'name': 'بوكس عائلي مشكل',
-          'price': 40.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'تشكيلة مشاوي مشكلة وسندوتشات عائلية مع الصوصات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_box_shish',
-          'store_id': storeId,
-          'name': 'بوكس شيش',
-          'price': 32.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'بوكس شيش طاووق فاخر مع بطاطا وخبز صاج وثومية رانشيلو',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_happiness_cheese',
-          'store_id': storeId,
-          'name': 'بوكس السعادة بالجبنة',
-          'price': 31.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'بوكس السعادة المميز مغطى بجبنة شيدر وموزاريلا ذائبة ومقرمشات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_happiness_box',
-          'store_id': storeId,
-          'name': 'بوكس السعادة',
-          'price': 29.0,
-          'category': 'البوكسات والعائلي',
-          'description': 'بوكس السعادة الكلاسيكي المفضل لزبائن رانشيلو مع الصوصات الخاصة',
-          'is_available': true,
-        },
-
-        // --- الوجبات الرئيسية ---
-        {
-          'id': 'prod_ranchello_meal_chicken_full',
-          'store_id': storeId,
-          'name': 'وجبة دجاجة كاملة',
-          'price': 45.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'دجاجة كاملة مشوية على الفحم مع الأرز والبطاطا والسلطة',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_meal_half_chicken',
-          'store_id': storeId,
-          'name': 'وجبة نص دجاجة',
-          'price': 25.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'نصف دجاجة مشوية متبلة تقدم مع الأرز والبطاطا والمقبلات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_meal_mix',
-          'store_id': storeId,
-          'name': 'وجبة مشكلة',
-          'price': 23.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'تشكيلة مشاوي رانشيلو المشكلة مع الأرز والخبز والصوصات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_meal_shish_tawook',
-          'store_id': storeId,
-          'name': 'وجبة شيش طاووق',
-          'price': 22.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'أسياخ شيش طاووق صدور دجاج متبلة مع بطاطا وثومية وخبز صاج',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_meal_shawarma',
-          'store_id': storeId,
-          'name': 'وجبة شاورما',
-          'price': 22.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'وجبة شاورما عربي مقطعة مع بطاطا مقلية وثومية ومخللات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_meal_kebab',
-          'store_id': storeId,
-          'name': 'وجبة كباب',
-          'price': 21.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'وجبة كباب لحم مشوي على الفحم تقدم مع الأرز والسلطة المشوية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_half_chicken_plain',
-          'store_id': storeId,
-          'name': 'نص دجاجة حاف',
-          'price': 15.0,
-          'category': 'الوجبات الرئيسية',
-          'description': 'نصف دجاجة مشوية حاف بدون أرز أو إضافات جانبية',
-          'is_available': true,
-        },
-
-        // --- السندوتشات والفطائر ---
-        {
-          'id': 'prod_ranchello_scallop_fatira_big',
-          'store_id': storeId,
-          'name': 'سكالوب فطيرة كبير',
-          'price': 23.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سكالوب دجاج مقرمش في خبز الفطيرة الليبية الطازجة بالحجم الكبير',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_scallop_fatira_small',
-          'store_id': storeId,
-          'name': 'سكالوب فطيرة صغير',
-          'price': 19.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سكالوب دجاج في خبز الفطيرة الليبية الساخنة بحجم فردي',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_shawarma_double',
-          'store_id': storeId,
-          'name': 'شاورما دبل',
-          'price': 18.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش شاورما بحجم مضاعف وإضافات غنية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_scallop_regular',
-          'store_id': storeId,
-          'name': 'سكالوب',
-          'price': 16.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش سكالوب دجاج مقرمش كلاسيكي مع البطاطا والسلطات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_burger_double',
-          'store_id': storeId,
-          'name': 'همبورغر دبل',
-          'price': 16.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'همبورغر قطعتين لحم طازج مع شرائح الجبن والخس وصوص البرجر',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_fajita_regular',
-          'store_id': storeId,
-          'name': 'فاهيتا عادية',
-          'price': 12.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش فاهيتا دجاج متبلة مع الفلفل الرومي والبصل والبهارات',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_shish_cheese',
-          'store_id': storeId,
-          'name': 'شيش بالجبنة',
-          'price': 12.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش شيش طاووق مع جبنة موزاريلا ذائبة',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_scallop_manwi',
-          'store_id': storeId,
-          'name': 'سكالوب مانوي',
-          'price': 11.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش سكالوب دجاج خفيف مع صوص المايونيز والماسترد',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_shawarma_cheese',
-          'store_id': storeId,
-          'name': 'شاورما بالجبنة',
-          'price': 11.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش شاورما دجاج مع جبنة ذائبة وثومية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_diwan_regular',
-          'store_id': storeId,
-          'name': 'ديوان عادي',
-          'price': 11.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش ديوان رانشيلو المتبل الشهير',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_shawarma_regular',
-          'store_id': storeId,
-          'name': 'شاورما',
-          'price': 10.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش شاورما دجاج كلاسيك بالثومية والمخلل والبطاطا',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_burger_regular',
-          'store_id': storeId,
-          'name': 'همبورغر عادية',
-          'price': 9.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'همبورغر لحم فردي كلاسيكي مع الطماطم والخس والمايونيز',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_burger_chicken',
-          'store_id': storeId,
-          'name': 'همبورغر دجاج',
-          'price': 8.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'برجر صدر دجاج مقرمش مع صوص المايونيز والخس',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_eggs_cheese',
-          'store_id': storeId,
-          'name': 'دحي بالجبنة',
-          'price': 4.0,
-          'category': 'السندوتشات والفطائر',
-          'description': 'سندوتش بيض مقلي بالجبنة الطازجة',
-          'is_available': true,
-        },
-
-        // --- الصحون والمقبلات والشوربة ---
-        {
-          'id': 'prod_ranchello_plate_kebab',
-          'store_id': storeId,
-          'name': 'كباب صحن',
-          'price': 18.0,
-          'category': 'الصحون والمقبلات',
-          'description': 'صحن كباب لحم مشوي على الفحم مع الطماطم والفلفل المشوي والخبز',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_shish_rice',
-          'store_id': storeId,
-          'name': 'شيش أرز',
-          'price': 17.0,
-          'category': 'الصحون والمقبلات',
-          'description': 'قطع شيش طاووق متبلة فوق طبق الأرز البسمتي المفلفل',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_rice_fries_plate',
-          'store_id': storeId,
-          'name': 'صحن رز وبطاطا',
-          'price': 15.0,
-          'category': 'الصحون والمقبلات',
-          'description': 'صحن أرز بالخلطة مع بطاطا مقلية مقرمشة',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_plate_shish',
-          'store_id': storeId,
-          'name': 'شيش صحن',
-          'price': 13.0,
-          'category': 'الصحون والمقبلات',
-          'description': 'صحن شيش طاووق مفرد مع الصوص والسلطات والخبز',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_ranchello_lentil_soup',
-          'store_id': storeId,
-          'name': 'شوربة عدس',
-          'price': 5.0,
-          'category': 'الصحون والمقبلات',
-          'description': 'شوربة عدس دافئة ومغذية مع الخبز المحمص والليمون',
-          'is_available': true,
-        },
-      ];
-    }
-
-    if (storeId == 'store_nalut_akakus') {
-      return [
-        {
-          'id': 'prod_akakus_01',
-          'store_id': storeId,
-          'name': 'بيتزا أكاكوس الخاصة (كبير)',
-          'price': 30.0,
-          'category': 'بيتزا خاصة',
-          'description': 'صلصة خاصة، دجاج، لحم، فطر، زيتون، وموزاريلا غنية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_akakus_02',
-          'store_id': storeId,
-          'name': 'بيتزا تونة ليبية بالزيتون',
-          'price': 24.0,
-          'category': 'بيتزا كلاسيك',
-          'description': 'تونة فاخرة، بصل، فلفل أخضر، زيتون أسود، وموزاريلا',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_akakus_03',
-          'store_id': storeId,
-          'name': 'بيتزا باربيكيو تشيكن',
-          'price': 26.0,
-          'category': 'بيتزا دجاج',
-          'description': 'قطع دجاج متبلة بصوص الباربيكيو المدخن مع الموزاريلا',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_akakus_04',
-          'store_id': storeId,
-          'name': 'بيتزا مارغريتا كلاسيك',
-          'price': 20.0,
-          'category': 'بيتزا كلاسيك',
-          'description': 'صلصة الطماطم الإيطالية، ريحان طازج، وموزاريلا أصلية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_akakus_05',
-          'store_id': storeId,
-          'name': 'أصابع جبنة الموزاريلا المقلية (5 قطع)',
-          'price': 12.0,
-          'category': 'مقبلات وسناكات',
-          'description': 'أصابع موزاريلا مقرمشة مع صلصة المارينارا الإيطالية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_akakus_06',
-          'store_id': storeId,
-          'name': 'كالزوني إيطالي محشي لحم وجبن',
-          'price': 18.0,
-          'category': 'فطائر وكالزوني',
-          'description': 'فطيرة كالزوني مخبوزة على الحجر محشية لحم وموزاريلا',
-          'is_available': true,
-        },
-      ];
-    }
-
-    if (storeId == 'store_nalut_rixos') {
-      return [
-        {
-          'id': 'prod_rixos_01',
-          'store_id': storeId,
-          'name': 'زيت زيتون جبل نفوسة البكر الممتاز (1 لتر)',
-          'price': 25.0,
-          'category': 'زيوت ومؤونة',
-          'description': 'زيت زيتون طبيعي معصور على البارد من مزارع الجبل',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_rixos_02',
-          'store_id': storeId,
-          'name': 'كرتونة حليب المعمورة كامل الدسم (12 عبوة)',
-          'price': 45.0,
-          'category': 'ألبان وأجبان',
-          'description': 'حليب معقم ومبستر كامل الدسم عالي الجودة',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_rixos_03',
-          'store_id': storeId,
-          'name': 'طماطم معجون البستان (باكت 10 علب)',
-          'price': 22.0,
-          'category': 'معلبات ومؤونة',
-          'description': 'معجون طماطم مركز للمأكولات الليبية اليومية',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_rixos_04',
-          'store_id': storeId,
-          'name': 'سكر الأسرة ناعم (كيس 5 كجم)',
-          'price': 18.5,
-          'category': 'مواد أساسية',
-          'description': 'سكر أبيض نقي ومصفى عالي الجودة',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_rixos_05',
-          'store_id': storeId,
-          'name': 'مكرونة ليبية مشكلة (باكت 10 أكياس)',
-          'price': 17.5,
-          'category': 'مواد أساسية',
-          'description': 'تشكيلة مكرونة خرز وريشة وسباغيتي من القمح الصلب',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_rixos_06',
-          'store_id': storeId,
-          'name': 'باكيت مياه نالوت المعدنية النقية (6 قوارير)',
-          'price': 6.5,
-          'category': 'مشروبات ومياه',
-          'description': 'مياه شرب طبيعية نقية ومعقمة من ينابيع الجبل',
-          'is_available': true,
-        },
-        {
-          'id': 'prod_rixos_07',
-          'store_id': storeId,
-          'name': 'مسحوق غسيل أوتوماتيك أومو (3 كجم)',
-          'price': 26.0,
-          'category': 'منظفات وعناية',
-          'description': 'تنظيف قوي وإزالة أصعب البقع برائحة الانتعاش',
-          'is_available': true,
-        },
-      ];
-    }
-
-    // Realistic general fallback items for other stores
-    return [
-      {
-        'id': 'prod_fallback_1',
-        'store_id': storeId,
-        'name': 'صحن مشكل مشويات نالوت عائلي',
-        'price': 45.0,
-        'category': 'مشويات جبلية',
-        'description': 'مشويات لحم وطني طازج مع بطاطا وخبز تنور وسلطات',
-        'is_available': true,
-      },
-      {
-        'id': 'prod_fallback_2',
-        'store_id': storeId,
-        'name': 'كباب لحم ضأن طازج (4 أسياخ)',
-        'price': 28.0,
-        'category': 'مشويات جبلية',
-        'description': 'كباب مفروم بلدي متبل على الطريقة الجبلية الأصلية',
-        'is_available': true,
-      },
-      {
-        'id': 'prod_fallback_3',
-        'store_id': storeId,
-        'name': 'بيتزا شاورما واصل الخاصة',
-        'price': 24.0,
-        'category': 'بيتزا وفطائر',
-        'description': 'عجينة رقيقة إيطالية مع جبنة موزاريلا وقطع شاورما وصوص مميز',
-        'is_available': true,
-      },
-      {
-        'id': 'prod_fallback_4',
-        'store_id': storeId,
-        'name': 'ساندوتش كفتة ع الفحم',
-        'price': 12.0,
-        'category': 'سندوتشات سريعة',
-        'description': 'كفتة مشوية على الفحم في خبز صامولي مع بطاطا وسلطة',
-        'is_available': false,
-      },
-      {
-        'id': 'prod_fallback_5',
-        'store_id': storeId,
-        'name': 'مشروب غازي بارد 330 مل',
-        'price': 3.5,
-        'category': 'مشروبات ومقبلات',
-        'description': 'مشروب غازي مثلج متنوع حسب الاختيار',
-        'is_available': true,
-      },
-    ];
+    return const [];
   }
 
   static Future<bool> updateProductStock(String productId, bool inStock) async {
@@ -1864,7 +1455,7 @@ class AdminSupabaseService {
         final res = await http
             .patch(
               Uri.parse('$backendBaseUrl/products/$productId'),
-              headers: {'Content-Type': 'application/json'},
+              headers: backendHeaders,
               body: jsonEncode({'is_available': inStock}),
             )
             .timeout(const Duration(seconds: 15));
@@ -1882,7 +1473,7 @@ class AdminSupabaseService {
         final res = await http
             .patch(
               Uri.parse('$backendBaseUrl/products/$productId'),
-              headers: {'Content-Type': 'application/json'},
+              headers: backendHeaders,
               body: jsonEncode({'price': price, 'price_lyd': price}),
             )
             .timeout(const Duration(seconds: 15));
@@ -1919,7 +1510,7 @@ class AdminSupabaseService {
         final res = await http
             .post(
               Uri.parse('$backendBaseUrl/products'),
-              headers: {'Content-Type': 'application/json'},
+              headers: backendHeaders,
               body: jsonEncode(payload),
             )
             .timeout(const Duration(seconds: 15));
@@ -1935,7 +1526,10 @@ class AdminSupabaseService {
     for (int attempt = 0; attempt < 2; attempt++) {
       try {
         final res = await http
-            .delete(Uri.parse('$backendBaseUrl/products/$productId'))
+            .delete(
+              Uri.parse('$backendBaseUrl/products/$productId'),
+              headers: backendHeaders,
+            )
             .timeout(const Duration(seconds: 15));
         if (res.statusCode == 200 || res.statusCode == 204) return true;
       } catch (_) {

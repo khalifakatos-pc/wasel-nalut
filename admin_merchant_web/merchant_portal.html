@@ -2273,9 +2273,9 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="text-xs font-bold text-slate-700 dark:text-slate-300">رمز PIN السري للمتجر:</label>
-            <span class="text-[10px] text-brand-500 font-mono">PIN الافتراضي: 1234</span>
+            
           </div>
-          <input type="password" id="auth-store-pin" value="1234" required placeholder="أدخل رمز PIN (مثال: 1234)" class="w-full bg-slate-100 dark:bg-dark-900 border border-slate-300 dark:border-dark-700 rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-white text-center" />
+          <input type="password" id="auth-store-pin" value="" required placeholder="أدخل رمز PIN السري للمتجر" class="w-full bg-slate-100 dark:bg-dark-900 border border-slate-300 dark:border-dark-700 rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 dark:text-white text-center" />
         </div>
 
         <div id="merchant-login-error" class="hidden p-3 rounded-xl bg-red-100 dark:bg-red-950/60 text-red-700 dark:text-red-300 text-xs font-semibold flex items-center gap-2">
@@ -2404,21 +2404,9 @@
           errorBox.classList.remove('hidden');
         }
       } catch (err) {
-        // Fallback for offline testing
-        if (pin === '1234' || pin === '9832') {
-          const fallbackStore = storeMap[storeId] || { id: storeId, name: 'متجر واصل نالوت', address: 'نالوت', city: 'نالوت' };
-          localStorage.setItem('wasel_active_store_id', fallbackStore.id);
-          sessionStorage.setItem('wasel_merchant_session', JSON.stringify({
-            token: 'local_token_' + Date.now(),
-            store: fallbackStore
-          }));
-          document.getElementById('merchant-auth-modal').style.display = 'none';
-          applyStoreSession(fallbackStore);
-          showToast('تم الدخول بنجاح لـ ' + fallbackStore.name, 'success');
-        } else {
-          errorMsg.textContent = 'رمز PIN غير صحيح';
-          errorBox.classList.remove('hidden');
-        }
+        errorMsg.textContent = 'تعذر التحقق من رمز PIN أو الاتصال بالخادم';
+        errorBox.classList.remove('hidden');
+      }
       } finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i data-lucide="log-in" class="w-4 h-4"></i><span>دخول إلى شاشة المتجر 🚀</span>';

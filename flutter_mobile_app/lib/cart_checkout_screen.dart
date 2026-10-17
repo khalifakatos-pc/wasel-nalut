@@ -8,6 +8,7 @@ import 'design_system.dart';
 import 'order_tracking_screen.dart';
 import 'address_management_sheet.dart';
 import 'services/api_service.dart';
+import 'widgets/no_network_screen.dart';
 
 class CartCheckoutScreen extends StatefulWidget {
   final VoidCallback? onBackToHome;
@@ -29,7 +30,7 @@ class CartCheckoutScreen extends StatefulWidget {
 
 class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
   late List<CartItem> _cartItems;
-  int _userLoyaltyPoints = 140;
+  int _userLoyaltyPoints = 0;
   bool _usePointsDiscount = false;
   double get _pointsDiscountAmount => _usePointsDiscount ? 5.00 : 0.00;
   bool _useFreeDeliveryVoucher = false;
@@ -101,7 +102,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
   bool _isCouponApplied = false;
   String? _couponMessage;
 
-  double _deliveryFee = 5.00;
+  double _deliveryFee = 0.0;
 
   @override
   void initState() {
@@ -120,8 +121,10 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
         });
       }
     });
-    ApiService.getLoyaltyPoints().then((pts) {
-      if (mounted) setState(() => _userLoyaltyPoints = pts);
+    ApiService.getLoyaltyPoints().then((res) {
+      if (mounted && res.isSuccess && res.data is int) {
+        setState(() => _userLoyaltyPoints = res.data as int);
+      }
     });
   }
 
@@ -131,7 +134,7 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
     final lng = (ApiService.activeAddress['longitude'] as num?)?.toDouble() ?? 10.9818;
 
     final fee = await ApiService.getPricingQuote(storeId: storeId, lat: lat, lng: lng);
-    if (mounted) {
+    if (mounted && fee != null) {
       setState(() {
         _deliveryFee = fee;
       });
@@ -594,6 +597,36 @@ class _CartCheckoutScreenState extends State<CartCheckoutScreen> {
 
     if (!result.isSuccess) {
       if (mounted) {
+        final isNetwork = result.errorMessage != null &&
+            (result.errorMessage!.contains('اتصال') ||
+             result.errorMessage!.contains('إنترنت') ||
+             result.errorMessage!.contains('الشبكة') ||
+             result.errorMessage!.contains('خادم'));
+
+        if (isNetwork) {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Theme.of(context).colorScheme.surface,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            builder: (ctx) => SafeArea(
+              child: SizedBox(
+                height: 480,
+                child: NoNetworkScreen(
+                  isFullScreen: false,
+                  onRetry: () async {
+                    Navigator.pop(ctx);
+                    await _placeOrder();
+                  },
+                ),
+              ),
+            ),
+          );
+          return;
+        }
+
         showDialog(
           context: context,
           builder: (ctx) => AlertDialog(

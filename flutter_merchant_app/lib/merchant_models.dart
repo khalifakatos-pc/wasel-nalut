@@ -340,6 +340,30 @@ class CatalogProduct {
   });
 
   bool get isLowStock => inStock && stockQuantity <= minStockAlert;
+
+  CatalogProduct copyWith({
+    String? id,
+    String? nameAr,
+    String? category,
+    double? priceLyd,
+    bool? inStock,
+    int? stockQuantity,
+    int? minStockAlert,
+    String? descAr,
+    IconData? icon,
+  }) {
+    return CatalogProduct(
+      id: id ?? this.id,
+      nameAr: nameAr ?? this.nameAr,
+      category: category ?? this.category,
+      priceLyd: priceLyd ?? this.priceLyd,
+      inStock: inStock ?? this.inStock,
+      stockQuantity: stockQuantity ?? this.stockQuantity,
+      minStockAlert: minStockAlert ?? this.minStockAlert,
+      descAr: descAr ?? this.descAr,
+      icon: icon ?? this.icon,
+    );
+  }
 }
 
 class MerchantMockData {

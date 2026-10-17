@@ -35,21 +35,77 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
 
   Future<void> _loadLiveWalletData() async {
     final profile = await DriverSupabaseService.fetchDriverProfile();
+    final statement = await DriverSupabaseService.fetchDriverStatement(DriverSupabaseService.activeDriverId);
     final vouchers = await DriverSupabaseService.fetchDriverVouchers();
     if (mounted) {
       setState(() {
         _captainName = profile['full_name']?.toString() ?? 'كابتن واصل';
-        _cashInHandCodLyd = (profile['wallet_balance_lyd'] is num)
-            ? (profile['wallet_balance_lyd'] as num).toDouble()
-            : 0.0;
         final int trips = (profile['total_trips'] is int) ? profile['total_trips'] as int : 0;
         _completedTrips = trips;
-        _availableEarningsLyd = _cashInHandCodLyd * 0.80; // 80% of delivery fees as captain's real earnings
 
+        // Account 1040 (Cash in Hand COD held by driver)
+        _cashInHandCodLyd = (profile['cash_in_hand_lyd'] is num)
+            ? (profile['cash_in_hand_lyd'] as num).toDouble()
+            : 0.0;
+
+        // Account 2030 (Captain Net Payable / Wallet Balance)
+        if (statement != null && statement['net_payable_remaining_lyd'] is num) {
+          _availableEarningsLyd = (statement['net_payable_remaining_lyd'] as num).toDouble();
+        } else if (profile['wallet_balance_lyd'] is num) {
+          _availableEarningsLyd = (profile['wallet_balance_lyd'] as num).toDouble();
+        } else {
+          _availableEarningsLyd = 0.0;
+        }
+
+        final List<LedgerTransaction> txList = [];
+
+        // Map journal lines from general ledger statement
+        if (statement != null && statement['transaction_lines'] is List) {
+          for (var l in statement['transaction_lines']) {
+            final double debit = (l['debit'] is num) ? (l['debit'] as num).toDouble() : 0.0;
+            final double credit = (l['credit'] is num) ? (l['credit'] as num).toDouble() : 0.0;
+            final double amt = credit > 0 ? credit : debit;
+            final bool isCredit = credit > 0;
+            DateTime txTime = DateTime.now();
+            if (l['created_at'] != null) {
+              try {
+                txTime = DateTime.parse(l['created_at'].toString());
+              } catch (_) {}
+            }
+            final String accountCode = l['account_code']?.toString() ?? '';
+            TransactionType type;
+            String title;
+            if (accountCode == '2030') {
+              type = isCredit ? TransactionType.tripEarnings : TransactionType.platformSettlement;
+              title = isCredit ? 'أرباح توصيل طلب' : 'سحب / صرف مستحقات';
+            } else if (accountCode == '1040') {
+              type = isCredit ? TransactionType.platformSettlement : TransactionType.codCollected;
+              title = isCredit ? 'توريد كاش العهدة (COD)' : 'تحصيل كاش من الزبون (COD)';
+            } else {
+              type = isCredit ? TransactionType.tripEarnings : TransactionType.platformSettlement;
+              title = l['notes']?.toString() ?? 'قيد محاسبي عام';
+            }
+
+            txList.add(
+              LedgerTransaction(
+                id: l['id']?.toString() ?? 'line_${txList.length}',
+                type: type,
+                title: title,
+                description: l['notes']?.toString() ?? 'قيد محاسبي مسجل في دفتر الأستاذ العام',
+                amountLyd: amt,
+                isCredit: isCredit,
+                timestamp: txTime,
+                referenceId: l['entry_number']?.toString() ?? l['entity_id']?.toString() ?? 'GL-2026',
+              ),
+            );
+          }
+        }
+
+        // Also add receipt vouchers if not present
         for (var v in vouchers) {
           final amt = (v['amount_lyd'] is num) ? (v['amount_lyd'] as num).toDouble() : 0.0;
           final String ref = v['voucher_number'] ?? 'REC-2026';
-          final alreadyExists = _transactions.any((t) => t.referenceId == ref);
+          final alreadyExists = txList.any((t) => t.referenceId == ref);
           if (!alreadyExists) {
             DateTime txTime = DateTime.now();
             if (v['created_at'] != null) {
@@ -57,7 +113,7 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                 txTime = DateTime.parse(v['created_at'].toString());
               } catch (_) {}
             }
-            _transactions.insert(
+            txList.insert(
               0,
               LedgerTransaction(
                 id: v['id'] ?? 'v',
@@ -72,6 +128,8 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
             );
           }
         }
+
+        _transactions = txList;
       });
     }
   }
@@ -98,9 +156,9 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) {
+      builder: (sheetContext) {
         return StatefulBuilder(
-          builder: (context, setModalState) {
+          builder: (modalCtx, setModalState) {
             return Padding(
               padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
               child: Container(
@@ -177,31 +235,35 @@ class _DriverWalletScreenState extends State<DriverWalletScreen> {
                       width: double.infinity,
                       height: 50,
                       child: ElevatedButton(
-                        onPressed: () {
+                        onPressed: () async {
                           final amt = double.tryParse(amountController.text) ?? 0.0;
-                          setState(() {
-                            _cashInHandCodLyd = (_cashInHandCodLyd - amt).clamp(0.0, 9999.0);
-                            _transactions.insert(
-                              0,
-                              LedgerTransaction(
-                                id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
-                                title: 'تسوية كاش المنصة ($selectedMethod)',
-                                description: 'تمت التسوية بنجاح عبر $selectedMethod',
-                                amountLyd: amt,
-                                isCredit: true,
-                                type: TransactionType.platformSettlement,
-                                timestamp: DateTime.now(),
-                                referenceId: 'SETTLE-${DateTime.now().millisecondsSinceEpoch}',
+                          if (amt <= 0) return;
+                          Navigator.pop(sheetContext);
+
+                          final res = await DriverSupabaseService.settleDriverCash(
+                            driverId: DriverSupabaseService.activeDriverId,
+                            amount: amt,
+                            notes: 'تسوية كاش العهدة (COD) عبر $selectedMethod',
+                          );
+
+                          if (!mounted) return;
+                          if (res['success'] == true) {
+                            await _loadLiveWalletData();
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('✅ تمت تسوية مبلغ $amt د.ل بنجاح بقيد وسند رسمي!'),
+                                backgroundColor: DriverColors.onlineGreen,
                               ),
                             );
-                          });
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('✅ تمت تسوية مبلغ $amt د.ل بنجاح!'),
-                              backgroundColor: DriverColors.onlineGreen,
-                            ),
-                          );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('❌ فشلت عملية التسوية: ${res['error'] ?? 'خطأ غير معروف'}'),
+                                backgroundColor: DriverColors.urgentRed,
+                              ),
+                            );
+                          }
                         },
                         style: ElevatedButton.styleFrom(backgroundColor: DriverColors.onlineGreen),
                         child: const Text('تأكيد التسوية الفورية ✅', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),

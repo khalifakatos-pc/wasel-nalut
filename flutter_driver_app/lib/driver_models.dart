@@ -80,6 +80,19 @@ class DriverStats {
     required this.onlineDurationSeconds,
   });
 
+  static const DriverStats initial = DriverStats(
+    netEarningsTodayLyd: 0.0,
+    netEarningsYesterdayLyd: 0.0,
+    completedTripsToday: 0,
+    cashInHandCodLyd: 0.0,
+    maxCodLimitLyd: 500.0,
+    rating: 5.0,
+    totalReviews: 0,
+    acceptanceRate: 1.0,
+    onTimeRate: 1.0,
+    onlineDurationSeconds: 0,
+  );
+
   double get codUsageRatio => (cashInHandCodLyd / maxCodLimitLyd).clamp(0.0, 1.0);
   bool get isCodLimitApproaching => cashInHandCodLyd >= (maxCodLimitLyd * 0.75);
   bool get isCodLimitExceeded => cashInHandCodLyd >= maxCodLimitLyd;
@@ -208,8 +221,8 @@ class ActiveDeliveryOrder {
   final double customerLongitude;
   final PaymentType paymentType;
   final double codAmountLyd;
-  final String customerOtpPin;
   final double driverPayoutLyd;
+  final String? handoverCode;
   final List<DeliveryItem> items;
   DeliveryStep currentStep;
   String orderStatus;
@@ -230,12 +243,21 @@ class ActiveDeliveryOrder {
     required this.customerLongitude,
     required this.paymentType,
     required this.codAmountLyd,
-    required this.customerOtpPin,
     required this.driverPayoutLyd,
     required this.items,
     this.currentStep = DeliveryStep.navigatingToStore,
     this.orderStatus = 'preparing',
+    this.handoverCode,
   });
+
+  static String generateHandoverCode(String orderIdOrNumber) {
+    final digits = orderIdOrNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length >= 4) {
+      return digits.substring(digits.length - 4);
+    }
+    final hash = (orderIdOrNumber.hashCode.abs() % 9000 + 1000).toString();
+    return hash;
+  }
 
   bool get isAllItemsVerified => items.every((i) => i.isVerified);
   bool get isCod => paymentType == PaymentType.cashOnDelivery;
@@ -256,8 +278,8 @@ class ActiveDeliveryOrder {
     'customerLongitude': customerLongitude,
     'paymentType': paymentType.name,
     'codAmountLyd': codAmountLyd,
-    'customerOtpPin': customerOtpPin,
     'driverPayoutLyd': driverPayoutLyd,
+    'handoverCode': handoverCode ?? generateHandoverCode(orderNumber.isNotEmpty ? orderNumber : orderId),
     'items': items.map((i) => i.toJson()).toList(),
     'currentStep': currentStep.name,
     'orderStatus': orderStatus,
@@ -299,10 +321,15 @@ class ActiveDeliveryOrder {
           name: 'طلب نالوت',
           quantity: 1,
           options: 'نشط',
-          unitPriceLyd: (json['codAmountLyd'] is num) ? (json['codAmountLyd'] as num).toDouble() : 35.0,
+          unitPriceLyd: (json['codAmountLyd'] is num) ? (json['codAmountLyd'] as num).toDouble() : 0.0,
         ),
       ];
     }
+
+    final rawHandover = json['handoverCode']?.toString() ?? json['handover_code']?.toString() ?? json['pickup_code']?.toString();
+    final handover = (rawHandover != null && rawHandover.isNotEmpty)
+        ? rawHandover
+        : generateHandoverCode(json['orderNumber']?.toString() ?? json['orderId']?.toString() ?? '1000');
 
     return ActiveDeliveryOrder(
       orderId: json['orderId']?.toString() ?? '',
@@ -320,8 +347,8 @@ class ActiveDeliveryOrder {
       customerLongitude: (json['customerLongitude'] is num) ? (json['customerLongitude'] as num).toDouble() : 10.9780,
       paymentType: pType,
       codAmountLyd: (json['codAmountLyd'] is num) ? (json['codAmountLyd'] as num).toDouble() : 0.0,
-      customerOtpPin: json['customerOtpPin']?.toString() ?? '1234',
-      driverPayoutLyd: (json['driverPayoutLyd'] is num) ? (json['driverPayoutLyd'] as num).toDouble() : 7.5,
+      driverPayoutLyd: (json['driverPayoutLyd'] is num) ? (json['driverPayoutLyd'] as num).toDouble() : 0.0,
+      handoverCode: handover,
       items: itemList,
       currentStep: step,
       orderStatus: json['orderStatus']?.toString() ?? 'preparing',
@@ -356,178 +383,3 @@ class LedgerTransaction {
   });
 }
 
-/// Mock Dataset for Captain Wasel in Nalut
-class DriverMockData {
-  static const VehicleInfo driverVehicle = VehicleInfo(
-    type: 'سيارة (Car)',
-    plateNumber: 'نالوت 4-11204',
-    model: 'كيا سيراتو (Kia Cerato)',
-    icon: Icons.directions_car_rounded,
-  );
-
-  static const DriverStats initialStats = DriverStats(
-    netEarningsTodayLyd: 0.0,
-    netEarningsYesterdayLyd: 0.0,
-    completedTripsToday: 0,
-    cashInHandCodLyd: 0.0,
-    maxCodLimitLyd: 500.0,
-    rating: 5.0,
-    totalReviews: 0,
-    acceptanceRate: 1.0,
-    onTimeRate: 1.0,
-    onlineDurationSeconds: 0,
-  );
-
-  static const List<DeliveryZoneHeat> libyanZones = [
-    DeliveryZoneHeat(
-      id: 'zone_shuhada',
-      name: 'حي الشهداء وقصر نالوت',
-      city: 'نالوت',
-      surgeMultiplier: 1.6,
-      demandLevel: 'مرتفع جداً 🔥',
-      estimatedWaitTime: '< 1 دقيقة',
-      bonusLyd: 4.50,
-      isHotspot: true,
-    ),
-    DeliveryZoneHeat(
-      id: 'zone_center',
-      name: 'وسط نالوت وطريق وازن',
-      city: 'نالوت',
-      surgeMultiplier: 1.4,
-      demandLevel: 'طلب عالي',
-      estimatedWaitTime: '2-3 دقائق',
-      bonusLyd: 3.00,
-      isHotspot: true,
-    ),
-    DeliveryZoneHeat(
-      id: 'zone_qalaa',
-      name: 'منطقة القلعة وتالات',
-      city: 'نالوت',
-      surgeMultiplier: 1.2,
-      demandLevel: 'متوسط',
-      estimatedWaitTime: '4-5 دقائق',
-      bonusLyd: 2.00,
-      isHotspot: false,
-    ),
-  ];
-
-  static RadarOrder getSampleIncomingOrder() {
-    return RadarOrder(
-      orderId: 'ord_ly_90412',
-      orderNumber: '#WSL-90412',
-      storeName: 'مطعم قصر نالوت للمشويات',
-      storeCategory: 'طعام ومأكولات ليبية (واصل طعام)',
-      storeAddress: 'نالوت - بالقرب من القصر الأثري',
-      storeDistanceKm: 1.2,
-      storeEtaMinutes: 4,
-      customerAddress: 'حي الشهداء، شارع النور، نالوت',
-      customerArea: 'منطقة نالوت المركزية',
-      tripDistanceKm: 2.8,
-      tripEtaMinutes: 8,
-      basePayoutLyd: 10.00,
-      surgeBonusLyd: 3.50,
-      tipLyd: 1.00,
-      paymentType: PaymentType.cashOnDelivery,
-      codCollectAmountLyd: 48.00,
-      countdownSeconds: 15,
-      items: [
-        DeliveryItem(
-          name: 'صحن مشويات مشكل قصر نالوت',
-          quantity: 1,
-          options: 'خبز تنور إضافي، سلطة مشوية جبلية',
-          unitPriceLyd: 28.00,
-        ),
-        DeliveryItem(
-          name: 'بيتزا القلعة سوبريم حجم كبير',
-          quantity: 1,
-          options: 'جبنة موزاريلا إضافية',
-          unitPriceLyd: 20.00,
-        ),
-      ],
-    );
-  }
-
-  static ActiveDeliveryOrder getSampleActiveDelivery() {
-    final sample = getSampleIncomingOrder();
-    return ActiveDeliveryOrder(
-      orderId: sample.orderId,
-      orderNumber: sample.orderNumber,
-      storeName: sample.storeName,
-      storePhone: '+218 91 234 5678',
-      storeAddress: sample.storeAddress,
-      storeLatitude: 31.8686,
-      storeLongitude: 10.9818,
-      customerName: 'محمد سالم الورفلي',
-      customerPhone: '+218 92 876 5432',
-      customerAddress: sample.customerAddress,
-      customerNotes: 'منزل بباب أزرق بجانب المسجد. يرجى الاتصال عند الوصول.',
-      customerLatitude: 31.8740,
-      customerLongitude: 10.9790,
-      paymentType: sample.paymentType,
-      codAmountLyd: sample.codCollectAmountLyd,
-      customerOtpPin: '8492',
-      driverPayoutLyd: sample.totalDriverPayoutLyd,
-      items: sample.items,
-      currentStep: DeliveryStep.navigatingToStore,
-    );
-  }
-
-  static List<LedgerTransaction> getSampleTransactions() {
-    return [
-      LedgerTransaction(
-        id: 'tx_01',
-        title: 'عائد توصيل طلب #WSL-90412',
-        description: 'مشوار أساسي (10.00) + مكافأة ذروة (3.50) + إكرامية (1.00)',
-        amountLyd: 14.50,
-        isCredit: true,
-        type: TransactionType.tripEarnings,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 25)),
-        orderReference: '#WSL-90412',
-        referenceId: 'REF-8921-NAL',
-      ),
-      LedgerTransaction(
-        id: 'tx_02',
-        title: 'كاش محصل من الزبون (COD)',
-        description: 'تحصيل كاش للطلب #WSL-90412 (مطعم قصر نالوت)',
-        amountLyd: 48.00,
-        isCredit: false,
-        type: TransactionType.codCollected,
-        timestamp: DateTime.now().subtract(const Duration(minutes: 25)),
-        orderReference: '#WSL-90412',
-        referenceId: 'COD-90412-LY',
-      ),
-      LedgerTransaction(
-        id: 'tx_03',
-        title: 'عائد توصيل طلب #WSL-90388',
-        description: 'مشوار أسواق نالوت المركزية (واصل فوري)',
-        amountLyd: 12.00,
-        isCredit: true,
-        type: TransactionType.tripEarnings,
-        timestamp: DateTime.now().subtract(const Duration(hours: 1, minutes: 40)),
-        orderReference: '#WSL-90388',
-        referenceId: 'REF-8874-NAL',
-      ),
-      LedgerTransaction(
-        id: 'tx_04',
-        title: 'تسوية كاش المنصة (تمت بنجاح)',
-        description: 'تسوية كاش COD عبر خدمة سداد الإلكترونية (Sadad Pay)',
-        amountLyd: 150.00,
-        isCredit: true,
-        type: TransactionType.platformSettlement,
-        timestamp: DateTime.now().subtract(const Duration(hours: 3, minutes: 10)),
-        referenceId: 'SADAD-TX-984102',
-        status: 'settled',
-      ),
-      LedgerTransaction(
-        id: 'tx_05',
-        title: 'سحب أرباح أسبوعية',
-        description: 'تحويل مباشر إلى بطاقة تداول المصرفية (تنتهي بـ **4819)',
-        amountLyd: 250.00,
-        isCredit: false,
-        type: TransactionType.payoutWithdrawalTadawul,
-        timestamp: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-        referenceId: 'TDW-PAY-77192',
-      ),
-    ];
-  }
-}

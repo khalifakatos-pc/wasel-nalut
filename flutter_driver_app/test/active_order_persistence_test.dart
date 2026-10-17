@@ -28,7 +28,6 @@ void main() {
         customerLongitude: 10.9780,
         paymentType: PaymentType.cashOnDelivery,
         codAmountLyd: 45.0,
-        customerOtpPin: '7890',
         driverPayoutLyd: 8.5,
         currentStep: DeliveryStep.orderPickupChecklist,
         orderStatus: 'ready_for_pickup',
@@ -56,7 +55,6 @@ void main() {
       expect(restored.storeName, 'مطعم القلعة نالوت');
       expect(restored.customerName, 'سالم النالوتي');
       expect(restored.codAmountLyd, 45.0);
-      expect(restored.customerOtpPin, '7890');
       expect(restored.currentStep, DeliveryStep.orderPickupChecklist);
       expect(restored.orderStatus, 'ready_for_pickup');
       expect(restored.items.length, 1);
@@ -81,7 +79,6 @@ void main() {
         customerLongitude: 10.9800,
         paymentType: PaymentType.prepaidSadad,
         codAmountLyd: 0.0,
-        customerOtpPin: '4321',
         driverPayoutLyd: 6.0,
         currentStep: DeliveryStep.navigatingToCustomer,
         orderStatus: 'out_for_delivery',

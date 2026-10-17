@@ -251,7 +251,7 @@ class _CaptainsTabState extends State<CaptainsTab> {
   void _showCaptainCredentialsDialog(Map<String, dynamic> driver) {
     final name = driver['full_name'] ?? 'كابتن نالوت';
     final phone = driver['phone'] ?? '0910000000';
-    final pin = driver['pin'] ?? '1234';
+    final pin = driver['pin'] ?? 'غير محدد';
     final vehicle = '${driver['vehicle_type'] ?? 'مركبة'} (${driver['plate_number'] ?? 'نالوت'})';
     final codLimit = (driver['max_cod_limit_lyd'] is num) ? (driver['max_cod_limit_lyd'] as num).toDouble() : 250.0;
 
@@ -380,7 +380,7 @@ class _CaptainsTabState extends State<CaptainsTab> {
   void _showAddDriverDialog() {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController(text: '09');
-    final pinCtrl = TextEditingController(text: '1234');
+    final pinCtrl = TextEditingController();
     final vehicleCtrl = TextEditingController(text: 'سيارة هيونداي');
     final plateCtrl = TextEditingController(text: 'نالوت 14-');
     final limitCtrl = TextEditingController(text: '250.0');

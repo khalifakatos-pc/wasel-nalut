@@ -15,7 +15,7 @@ import {
 
 // Backend Configuration
 const BACKEND_URL = process.env.WASEL_BACKEND_URL || "https://wasel-nalut.onrender.com/api/v1";
-const ADMIN_MASTER_KEY = process.env.WASEL_ADMIN_KEY || "9832";
+const ADMIN_MASTER_KEY = process.env.WASEL_ADMIN_KEY;
 const SUPABASE_URL = "https://yfhvuatssuylrkbthosa.supabase.co/rest/v1";
 const SUPABASE_KEY = "sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD";
 
@@ -25,6 +25,39 @@ const supabaseHeaders = {
   "Content-Type": "application/json",
   Prefer: "return=representation",
 };
+
+let cachedAdminToken = process.env.WASEL_ADMIN_TOKEN || null;
+
+async function getAdminToken() {
+  if (cachedAdminToken) return cachedAdminToken;
+  try {
+    const adminPassword = process.env.WASEL_ADMIN_PASSWORD || "Admin@Nalut2026!Secure";
+    const res = await fetch(`${BACKEND_URL}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone: "0910009832", password: adminPassword }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.data?.token) {
+        cachedAdminToken = data.data.token;
+        return cachedAdminToken;
+      }
+    }
+  } catch (err) {
+    console.error("Failed to fetch admin token:", err.message);
+  }
+  return ADMIN_MASTER_KEY || "";
+}
+
+async function getAdminHeaders() {
+  const token = await getAdminToken();
+  const headers = { "Content-Type": "application/json" };
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return headers;
+}
 
 // Starter Menu Presets
 const STARTER_PRESETS = {
@@ -111,7 +144,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               description: "تصنيف المتجر ونمط العمل (restaurant: مطبخ KDS, grocery: تجميع Pick & Pack, pharmacy: صيدلية)",
             },
             phone: { type: "string", description: "رقم هاتف دخول التاجر (مثال: 0912345678)" },
-            pin: { type: "string", description: "رمز PIN السري للدخول من تطبيق التاجر (الافتراضي: 1234)" },
+            pin: { type: "string", description: "رمز PIN السري المكون من 4 أرقام للدخول من تطبيق التاجر" },
             district: { type: "string", description: "الحي أو الشارع في نالوت (مثال: نالوت - شارع أفريقيا)" },
             base_delivery_fee_lyd: { type: "number", description: "سعر التوصيل الأساسي بالدينار الليبي (الافتراضي: 5.0)" },
             commission_rate: { type: "number", description: "نسبة عمولة واصل % (الافتراضي: 10.0)" },
@@ -211,7 +244,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
           properties: {
             full_name: { type: "string", description: "اسم الكابتن الكامل (مثال: طارق عبد السلام النالوتي)" },
             phone: { type: "string", description: "رقم هاتف الدخول (مثال: 0925554433)" },
-            pin: { type: "string", description: "رمز PIN السري (الافتراضي: 1234)" },
+            pin: { type: "string", description: "رمز PIN السري المكون من 4 أرقام" },
             vehicle_type: { type: "string", description: "نوع المركبة (مثال: سيارة هيونداي، دراجة نارية)" },
             plate_number: { type: "string", description: "رقم لوحة المركبة (مثال: نالوت 14-88992)" },
             max_cod_limit_lyd: { type: "number", description: "سقف عهدة الكاش COD بالدينار (الافتراضي: 250.0)" },
@@ -267,11 +300,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: "wasel_admin_purge_all",
-        description: "تطهير وحذف كافة البيانات الوهمية من السحابة وتصفير المنظومة بالكامل (يتطلب رمز PIN الإداري 9832).",
+        description: "تطهير وحذف كافة البيانات وتصفير المنظومة بالكامل (يتطلب رمز الحماية الإداري المعتمد).",
         inputSchema: {
           type: "object",
           properties: {
-            admin_pin: { type: "string", description: "رمز الحماية الإداري الرئيسي (9832)" },
+            admin_pin: { type: "string", description: "رمز الحماية الإداري الرئيسي المعتمد" },
           },
           required: ["admin_pin"],
         },
@@ -288,7 +321,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     switch (name) {
       // 1. Overview
       case "wasel_admin_get_overview": {
-        const res = await fetch(`${BACKEND_URL}/admin/overview?admin_key=${ADMIN_MASTER_KEY}`);
+        const adminHeaders = await getAdminHeaders();
+        const res = await fetch(`${BACKEND_URL}/admin/overview`, {
+          headers: adminHeaders
+        });
         const data = await res.json();
         return {
           content: [
@@ -317,7 +353,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         for (const s of stores) {
           textSummary += `• [${s.id}] ${s.name} (${s.type})\n` +
                          `  الحالة: ${s.is_open ? "🟢 مفتوح" : "🔴 مغلق"} | الحي: ${s.district ?? "نالوت"}\n` +
-                         `  هاتف الدخول: ${s.phone ?? "غير محدد"} | رمز PIN: ${s.pin ?? "1234"}\n` +
+                         `  هاتف الدخول: ${s.phone ?? "غير محدد"} | رمز PIN: ${s.pin ?? "غير محدد"}\n` +
                          `  التوصيل: ${s.base_delivery_fee_lyd ?? 5} د.ل | العمولة: ${s.commission_rate ?? 10}%\n\n`;
         }
 
@@ -342,7 +378,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           district: args.district || "نالوت - شارع أفريقيا",
           city: "nalut",
           phone: String(args.phone).replace(/\D/g, ""),
-          pin: args.pin ? String(args.pin) : "1234",
+          pin: args.pin ? String(args.pin) : String(Math.floor(1000 + Math.random() * 9000)),
           app_mode: (args.type === "grocery" || args.type === "pharmacy") ? "retail" : "kitchen",
           commission_rate: args.commission_rate ?? 10.0,
           rating: 5.0,
@@ -357,10 +393,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           is_featured: true,
         };
 
+        const adminHeaders = await getAdminHeaders();
+
         // 1. Post to Backend
         await fetch(`${BACKEND_URL}/stores`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: adminHeaders,
           body: JSON.stringify(storePayload),
         }).catch(() => {});
 
@@ -388,7 +426,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             };
             await fetch(`${BACKEND_URL}/products`, {
               method: "POST",
-              headers: { "Content-Type": "application/json" },
+              headers: adminHeaders,
               body: JSON.stringify(prodPayload),
             }).catch(() => {});
 
@@ -421,7 +459,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // 4. Delete Store
       case "wasel_admin_delete_store": {
         const storeId = args.store_id;
-        await fetch(`${BACKEND_URL}/stores/${storeId}`, { method: "DELETE" }).catch(() => {});
+        const adminHeaders = await getAdminHeaders();
+        await fetch(`${BACKEND_URL}/stores/${storeId}`, { method: "DELETE", headers: adminHeaders }).catch(() => {});
         await fetch(`${SUPABASE_URL}/stores?id=eq.${storeId}`, { method: "DELETE", headers: supabaseHeaders }).catch(() => {});
 
         return {
@@ -437,6 +476,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // 5. Toggle Store Status
       case "wasel_admin_toggle_store_status": {
         const { store_id, is_open } = args;
+        const adminHeaders = await getAdminHeaders();
+        await fetch(`${BACKEND_URL}/stores/${store_id}`, {
+          method: "PATCH",
+          headers: adminHeaders,
+          body: JSON.stringify({ is_open }),
+        }).catch(() => {});
         await fetch(`${SUPABASE_URL}/stores?id=eq.${store_id}`, {
           method: "PATCH",
           headers: supabaseHeaders,
@@ -493,9 +538,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           is_available: args.is_available ?? true,
         };
 
+        const adminHeaders = await getAdminHeaders();
         await fetch(`${BACKEND_URL}/products`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: adminHeaders,
           body: JSON.stringify(payload),
         }).catch(() => {});
 
@@ -518,7 +564,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // 8. Delete Product
       case "wasel_admin_delete_product": {
         const pId = args.product_id;
-        await fetch(`${BACKEND_URL}/products/${pId}`, { method: "DELETE" }).catch(() => {});
+        const adminHeaders = await getAdminHeaders();
+        await fetch(`${BACKEND_URL}/products/${pId}`, { method: "DELETE", headers: adminHeaders }).catch(() => {});
         await fetch(`${SUPABASE_URL}/products?id=eq.${pId}`, { method: "DELETE", headers: supabaseHeaders }).catch(() => {});
 
         return {
@@ -539,9 +586,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (args.stock_quantity !== undefined) payload.stock_quantity = Number(args.stock_quantity);
         if (args.price !== undefined) payload.price_lyd = Number(args.price);
 
+        const adminHeaders = await getAdminHeaders();
         const backendRes = await fetch(`${BACKEND_URL}/products/${pId}`, {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: adminHeaders,
           body: JSON.stringify(payload),
         }).catch(() => null);
 
@@ -579,7 +627,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         let summary = `🚗 أسطول كباتن واصل نالوت (${drivers.length} كابتن):\n\n`;
         for (const d of drivers) {
           summary += `• [${d.id}] ${d.full_name}\n` +
-                     `  الهاتف: ${d.phone} | رمز PIN: ${d.pin ?? "1234"}\n` +
+                     `  الهاتف: ${d.phone} | رمز PIN: ${d.pin ?? "غير محدد"}\n` +
                      `  المركبة: ${d.vehicle_type} (${d.plate_number})\n` +
                      `  العهدة النقدية COD: ${d.wallet_balance_lyd ?? 0} د.ل | الحالة: ${d.status}\n\n`;
         }
@@ -602,7 +650,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           id,
           full_name: args.full_name,
           phone: cleanPhone,
-          pin: args.pin ? String(args.pin) : "1234",
+          pin: args.pin ? String(args.pin) : String(Math.floor(1000 + Math.random() * 9000)),
           vehicle_type: args.vehicle_type || "سيارة هيونداي",
           plate_number: args.plate_number || "نالوت 14-",
           status: "available",
@@ -614,9 +662,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           longitude: 10.9818,
         };
 
+        const adminHeaders = await getAdminHeaders();
         await fetch(`${BACKEND_URL}/drivers`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: adminHeaders,
           body: JSON.stringify(payload),
         }).catch(() => {});
 
@@ -646,7 +695,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // 11. Delete Driver
       case "wasel_admin_delete_driver": {
         const drvId = args.driver_id;
-        await fetch(`${BACKEND_URL}/drivers/${drvId}`, { method: "DELETE" }).catch(() => {});
+        const adminHeaders = await getAdminHeaders();
+        await fetch(`${BACKEND_URL}/drivers/${drvId}`, { method: "DELETE", headers: adminHeaders }).catch(() => {});
         await fetch(`${SUPABASE_URL}/drivers?id=eq.${drvId}`, { method: "DELETE", headers: supabaseHeaders }).catch(() => {});
 
         return {
@@ -662,6 +712,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
       // 12. Settle Driver Cash
       case "wasel_admin_settle_driver_cash": {
         const drvId = args.driver_id;
+        const adminHeaders = await getAdminHeaders();
+        await fetch(`${BACKEND_URL}/drivers/${drvId}/settle`, {
+          method: "POST",
+          headers: adminHeaders,
+          body: JSON.stringify({ amount_lyd: 0, notes: "تسوية عهدة عبر MCP" }),
+        }).catch(() => {});
         await fetch(`${SUPABASE_URL}/drivers?id=eq.${drvId}`, {
           method: "PATCH",
           headers: supabaseHeaders,
@@ -680,9 +736,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // 13. Batch Import
       case "wasel_admin_batch_import": {
-        const res = await fetch(`${BACKEND_URL}/admin/batch-import?admin_key=${ADMIN_MASTER_KEY}`, {
+        const adminHeaders = await getAdminHeaders();
+        const res = await fetch(`${BACKEND_URL}/admin/batch-import`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: adminHeaders,
           body: JSON.stringify(args),
         });
         const result = await res.json();
@@ -703,13 +760,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // 14. Purge All
       case "wasel_admin_purge_all": {
-        if (args.admin_pin !== ADMIN_MASTER_KEY) {
-          throw new Error("رمز الـ PIN الإداري غير صحيح! يرجى إدخال 9832.");
+        if (!ADMIN_MASTER_KEY || args.admin_pin !== ADMIN_MASTER_KEY) {
+          throw new Error("رمز الحماية الإداري غير صحيح أو غير مهيأ بالخادم.");
         }
 
-        const res = await fetch(`${BACKEND_URL}/admin/purge-test-data`, {
+        const adminHeaders = await getAdminHeaders();
+        const res = await fetch(`${BACKEND_URL}/admin/purge`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: adminHeaders,
           body: JSON.stringify({ admin_pin: args.admin_pin }),
         });
         const data = await res.json();

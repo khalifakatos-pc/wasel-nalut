@@ -1,6 +1,12 @@
 const { config } = require('../config');
 const { calculateDynamicDeliveryFee } = require('../utils/geo');
 
+function sanitizeStore(store) {
+  if (!store) return store;
+  const { pin, password, password_hash, ...publicStore } = store;
+  return publicStore;
+}
+
 async function getStores(req, res, db) {
   try {
     const { type, city, search, district, featured, lat, lng } = req.query;
@@ -48,7 +54,7 @@ async function getStores(req, res, db) {
     res.json({
       success: true,
       count: stores.length,
-      data: stores
+      data: stores.map(sanitizeStore)
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -63,7 +69,7 @@ async function getStoreById(req, res, db) {
   res.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
   res.json({
     success: true,
-    data: store
+    data: sanitizeStore(store)
   });
 }
 
@@ -125,7 +131,7 @@ async function createStore(req, res, db) {
       district: s.district || 'نالوت',
       city: 'nalut',
       phone: s.phone || '',
-      pin: s.pin || '1234',
+      pin: s.pin || require('crypto').randomInt(1000, 10000).toString(),
       app_mode: s.app_mode || ((s.type === 'grocery' || s.type === 'pharmacy') ? 'retail' : 'kitchen'),
       commission_rate: s.commission_rate || 10.0,
       rating: 5.0,

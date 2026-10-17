@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const { v4: uuidv4 } = require('uuid');
 const { calculateDynamicDeliveryFee } = require('../utils/geo');
 
@@ -166,7 +167,8 @@ class OrderService {
 
     const orderId = `ord_${uuidv4().substring(0, 8)}`;
     const orderNumber = `ORD-2026-LY-${Math.floor(1000 + Math.random() * 9000)}`;
-    const otpCode = (1000 + Math.floor(Math.random() * 9000)).toString();
+    const otpCode = (crypto.randomInt ? crypto.randomInt(1000, 10000) : (1000 + Math.floor(Math.random() * 9000))).toString();
+    const handoverCode = (crypto.randomInt ? crypto.randomInt(1000, 10000) : (1000 + Math.floor(Math.random() * 9000))).toString();
 
     const customerName = (body.customer_name && String(body.customer_name).trim().length > 0) ? String(body.customer_name).trim() : (user.full_name || 'زبون واصل نالوت');
     const customerPhone = (body.customer_phone && String(body.customer_phone).trim().length > 0) ? String(body.customer_phone).trim() : (user.phone || '0910000000');
@@ -184,6 +186,8 @@ class OrderService {
       driver_id: null,
       status: 'placed',
       otp_code: otpCode,
+      delivery_otp: otpCode,
+      handover_code: handoverCode,
       payment_method,
       payment_status: payment_method === 'wallet' ? 'held_escrow' : 'pending_cod',
       subtotal_lyd: subtotal,
@@ -262,6 +266,29 @@ class OrderService {
       return { valid: true, isIdempotent: true };
     }
 
+    // Admin FSM Override: Permitted to transition to any lifecycle phase
+    const adminPermittedStatuses = [
+      'placed',
+      'accepted',
+      'preparing',
+      'ready_for_pickup',
+      'driver_assigned',
+      'driver_arrived',
+      'picked_up',
+      'out_for_delivery',
+      'delivered',
+      'cancelled'
+    ];
+    if (options.adminOverride || options.isAdmin) {
+      if (adminPermittedStatuses.includes(targetStatus)) {
+        return {
+          valid: true,
+          adminOverride: true,
+          isCancellation: targetStatus === 'cancelled'
+        };
+      }
+    }
+
     // 2. Terminal state protection: delivered & cancelled cannot be transitioned further
     if (currentStatus === 'delivered') {
       return {
@@ -295,7 +322,7 @@ class OrderService {
     // Cancellation check for in-flight / kitchen orders
     if (targetStatus === 'cancelled') {
       if (['preparing', 'ready_for_pickup', 'driver_assigned', 'driver_arrived', 'picked_up', 'out_for_delivery'].includes(currentStatus)) {
-        if (options.isAdmin || options.adminOverride || options.role === 'admin') {
+        if (options.isAdmin || options.adminOverride) {
           return { valid: true, isCancellation: true };
         }
         return {
@@ -354,15 +381,17 @@ class OrderService {
   /**
    * Updates order status and handles the state machine logic.
    */
-  async updateStatus(db, orderId, body, systemWallets) {
+  async updateStatus(db, orderId, body, systemWallets, reqUser = null) {
     const order = db.orders.find(o => o.id === orderId || o.order_number === orderId);
     if (!order) throw new Error('Order not found');
 
     const { status, driver_id, notes, admin_override } = body;
 
+    const isRealAdmin = ((reqUser && reqUser.role === 'admin') || (body.user && body.user.role === 'admin')) && Boolean(admin_override || body.adminOverride);
+
     const validation = this.validateTransition(order.status, status, {
-      isAdmin: Boolean(admin_override) || body.role === 'admin',
-      adminOverride: Boolean(admin_override),
+      isAdmin: isRealAdmin,
+      adminOverride: isRealAdmin,
       driver_id: driver_id || order.driver_id
     }, order);
 
@@ -380,6 +409,25 @@ class OrderService {
       }
       order.updated_at = new Date().toISOString();
       return { order, previousStatus, isIdempotent: true };
+    }
+
+    // Pre-flight Security Verification for Delivery
+    if (status === 'delivered' && previousStatus !== 'delivered') {
+      const expectedOtp = order.otp_code || order.delivery_otp;
+      if (!isRealAdmin) {
+        if (!body.otp_code) {
+          const err = new Error('رمز التسليم (OTP) مطلوب لتأكيد الاستلام');
+          err.statusCode = 400;
+          throw err;
+        }
+        const cleanReceived = String(body.otp_code).trim();
+        const cleanExpected = expectedOtp ? String(expectedOtp).trim() : null;
+        if (!cleanExpected || cleanReceived !== cleanExpected) {
+          const err = new Error('رمز التسليم (OTP) غير صحيح! يرجى أخذ الرمز السري من الزبون لتأكيد الاستلام.');
+          err.statusCode = 400;
+          throw err;
+        }
+      }
     }
 
     order.status = status;
@@ -415,6 +463,7 @@ class OrderService {
 
     // FINANCIAL SETTLEMENT ON ORDER DELIVERY
     if (status === 'delivered' && previousStatus !== 'delivered') {
+
       order.delivered_at = new Date().toISOString();
       order.payment_status = 'captured';
 
@@ -525,12 +574,13 @@ class OrderService {
     }
 
     const { handover_code, driver_id } = body;
-    if (order.handover_code && handover_code) {
-      const cleanExpected = String(order.handover_code).trim();
-      const cleanReceived = String(handover_code).trim();
-      if (cleanExpected !== cleanReceived && cleanReceived !== '1234') {
-        throw new Error('كود تسليم الوجبة غير صحيح (Invalid Handover Code)');
-      }
+    if (!handover_code) {
+      throw new Error('كود تسليم الوجبة مطلوب (Handover Code is required)');
+    }
+    const cleanExpected = order.handover_code ? String(order.handover_code).trim() : null;
+    const cleanReceived = String(handover_code).trim();
+    if (!cleanExpected || cleanExpected !== cleanReceived) {
+      throw new Error('كود تسليم الوجبة غير صحيح (Invalid Handover Code)');
     }
 
     order.status = 'out_for_delivery';

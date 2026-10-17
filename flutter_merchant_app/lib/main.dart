@@ -108,6 +108,10 @@ class _MerchantAuthGateState extends State<MerchantAuthGate> {
         );
         MerchantSupabaseService.currentStoreId = store.id;
         MerchantSupabaseService.currentUser = _activeUser;
+        final token = prefs.getString('wasel_merchant_jwt_token');
+        if (token != null && token.isNotEmpty) {
+          MerchantSupabaseService.jwtToken = token;
+        }
       }
     } catch (_) {}
 
@@ -133,12 +137,14 @@ class _MerchantAuthGateState extends State<MerchantAuthGate> {
     await prefs.remove('wasel_merchant_user_phone');
     await prefs.remove('wasel_merchant_user_name');
     await prefs.remove('wasel_merchant_user_role');
+    await prefs.remove('wasel_merchant_jwt_token');
 
     try {
       await MerchantSupabaseService.toggleStoreStatus(_activeStore.id, false);
     } catch (_) {}
 
     MerchantSupabaseService.currentUser = null;
+    MerchantSupabaseService.jwtToken = null;
 
     if (mounted) {
       setState(() {
@@ -401,16 +407,41 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     );
   }
 
-  void _onProductUpdated(CatalogProduct updatedProduct) {
+  Future<bool> _onProductUpdated(CatalogProduct updatedProduct) async {
+    final idx = _catalog.indexWhere((p) => p.id == updatedProduct.id);
+    if (idx == -1) return false;
+
+    final previousProduct = _catalog[idx].copyWith();
+
     setState(() {
-      final idx = _catalog.indexWhere((p) => p.id == updatedProduct.id);
-      if (idx != -1) {
-        _catalog[idx] = updatedProduct;
-      }
+      _catalog[idx] = updatedProduct;
     });
 
-    MerchantSupabaseService.updateProductStock(updatedProduct.id, updatedProduct.inStock, updatedProduct.stockQuantity);
-    MerchantSupabaseService.updateProductPrice(updatedProduct.id, updatedProduct.priceLyd);
+    final stockOk = await MerchantSupabaseService.updateProductStock(
+      updatedProduct.id,
+      updatedProduct.inStock,
+      updatedProduct.stockQuantity,
+    );
+
+    if (updatedProduct.priceLyd != previousProduct.priceLyd) {
+      await MerchantSupabaseService.updateProductPrice(
+        updatedProduct.id,
+        updatedProduct.priceLyd,
+      );
+    }
+
+    if (!stockOk) {
+      // Revert optimistic catalog state
+      setState(() {
+        final currentIdx = _catalog.indexWhere((p) => p.id == updatedProduct.id);
+        if (currentIdx != -1) {
+          _catalog[currentIdx] = previousProduct;
+        }
+      });
+      return false;
+    }
+
+    return true;
   }
 
   int get _newOrdersCount =>
@@ -451,126 +482,6 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
     );
   }
 
-  Future<void> _switchStore(PartnerStore newStore) async {
-    Navigator.pop(context);
-    if (newStore.id == _currentStore.id) return;
-
-    setState(() {
-      _currentStore = newStore;
-      _orders = [];
-      _catalog = [];
-    });
-
-    MerchantSupabaseService.currentStoreId = newStore.id;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('wasel_active_store_id', newStore.id);
-    await prefs.setString('wasel_active_store_name', newStore.name);
-    await prefs.setString('wasel_active_store_type', newStore.type);
-    await prefs.setString('wasel_active_store_district', newStore.district);
-    await prefs.setString('wasel_active_store_mode', newStore.mode == PartnerAppMode.retail ? 'retail' : 'kitchen');
-
-    _initNotifications();
-    MerchantSocketService.instance.updateStore(newStore.id);
-    _loadLiveMerchantData();
-    MerchantSupabaseService.sendHeartbeat(newStore.id);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('🏪 تم التبديل إلى: ${newStore.name}'),
-          backgroundColor: MerchantColors.primary,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-    }
-  }
-
-  void _showStoreSwitcherModal() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: MerchantColors.lightSurface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
-                    children: [
-                      Icon(Icons.swap_horiz_rounded, color: MerchantColors.primary, size: 24),
-                      SizedBox(width: 8),
-                      Text(
-                        'تبديل متجر نالوت النشط',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: MerchantColors.lightTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close_rounded, color: MerchantColors.lightTextSecondary),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const Divider(color: MerchantColors.lightBorder),
-              const SizedBox(height: 8),
-              ...PartnerStore.nalutStores.map((st) {
-                final isSelected = st.id == _currentStore.id;
-                final isKitchen = st.mode == PartnerAppMode.kitchen;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isSelected ? MerchantColors.primary : MerchantColors.lightBorder,
-                        width: isSelected ? 1.5 : 1,
-                      ),
-                    ),
-                    tileColor: isSelected ? MerchantColors.statusNewBg : const Color(0xFFF8FAFC),
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (isKitchen ? MerchantColors.primary : MerchantColors.accentTeal).withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(st.icon, color: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal, size: 20),
-                    ),
-                    title: Text(
-                      st.name,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                        color: isSelected ? MerchantColors.statusNewText : MerchantColors.lightTextPrimary,
-                      ),
-                    ),
-                    subtitle: Text(
-                      '${st.district} • ${isKitchen ? "مطبخ وتجهيز وجبات 🍳" : "تجهيز طلبات سوبرماركت 🛒"}',
-                      style: const TextStyle(fontSize: 11, color: MerchantColors.lightTextSecondary),
-                    ),
-                    trailing: isSelected
-                        ? const Icon(Icons.check_circle_rounded, color: MerchantColors.primary)
-                        : const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: MerchantColors.lightTextMuted),
-                    onTap: () => _switchStore(st),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 
   void _showStoreProfileModal() {
     final user = widget.user;
@@ -807,30 +718,6 @@ class _MerchantMainShellState extends State<MerchantMainShell> {
                           ],
                         ),
                       ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Quick Switch Button
-                  InkWell(
-                    onTap: _showStoreSwitcherModal,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: MerchantColors.lightBorder),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.swap_horiz_rounded, size: 14, color: MerchantColors.lightTextSecondary),
-                          SizedBox(width: 4),
-                          Text(
-                            'تبديل',
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: MerchantColors.lightTextSecondary),
-                          ),
-                        ],
-                      ),
                     ),
                   ),
                 ],

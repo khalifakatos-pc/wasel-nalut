@@ -163,24 +163,50 @@ class AccountingEngine {
     db.journal_entries.unshift(entryObj);
     db.journal_entry_lines.push(...validatedLines);
 
-    // Commit to PostgreSQL if pool is available
-    if (pgPool) {
+    // Commit to PostgreSQL if pool or client is available
+    if (pgPool && typeof pgPool.query === 'function') {
       try {
         await pgPool.query(
           `INSERT INTO journal_entries 
-            (id, entry_number, reference_id, transaction_type, narration, total_debit, total_credit, is_balanced, created_at)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            (id, entry_number, reference_id, transaction_type, narration, total_debit, total_credit, discrepancy, is_balanced, lines_count, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            ON CONFLICT (id) DO NOTHING`,
-          [entryObj.id, entryObj.entry_number, entryObj.reference_id, entryObj.transaction_type, entryObj.narration, entryObj.total_debit, entryObj.total_credit, true, entryObj.created_at]
+          [
+            entryObj.id,
+            entryObj.entry_number,
+            entryObj.reference_id,
+            entryObj.transaction_type,
+            entryObj.narration,
+            entryObj.total_debit,
+            entryObj.total_credit,
+            entryObj.discrepancy || 0.00,
+            true,
+            entryObj.lines_count,
+            entryObj.created_at
+          ]
         );
 
         for (const l of validatedLines) {
           await pgPool.query(
             `INSERT INTO journal_entry_lines
-              (id, journal_entry_id, entry_number, line_number, account_code, debit, credit, entity_type, entity_id, note, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+              (id, journal_entry_id, entry_number, line_number, account_code, account_name_ar, account_category, debit, credit, entity_type, entity_id, note, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
              ON CONFLICT (id) DO NOTHING`,
-            [l.id, l.journal_entry_id, l.entry_number, l.line_number, l.account_code, l.debit, l.credit, l.entity_type, l.entity_id, l.note, l.created_at]
+            [
+              l.id,
+              l.journal_entry_id,
+              l.entry_number,
+              l.line_number,
+              l.account_code,
+              l.account_name_ar || null,
+              l.account_category || null,
+              l.debit,
+              l.credit,
+              l.entity_type || null,
+              l.entity_id || null,
+              l.note || null,
+              l.created_at
+            ]
           );
         }
       } catch (err) {

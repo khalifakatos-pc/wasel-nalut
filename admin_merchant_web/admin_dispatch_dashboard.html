@@ -1372,8 +1372,10 @@
     // Fetch live system overview and real drivers & orders from backend
     async function fetchLiveFleetData() {
       try {
+        const session = JSON.parse(sessionStorage.getItem('wasel_admin_session') || '{}');
+        const headers = session.token ? { 'Authorization': `Bearer ${session.token}` } : {};
         const [overviewRes, ordersRes] = await Promise.all([
-          fetch('/api/v1/admin/overview?admin_key=9832'),
+          fetch('/api/v1/admin/overview', { headers }),
           fetch('/api/v1/orders')
         ]);
 
@@ -2578,9 +2580,9 @@
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="text-xs font-bold text-slate-300">رمز الأمان الإداري (Master PIN):</label>
-            <span class="text-[10px] text-brand-400 font-mono">Master PIN: 7788</span>
+            
           </div>
-          <input type="password" id="auth-admin-pin" value="7788" required placeholder="أدخل رمز المشرف (7788)" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 text-white text-center" />
+          <input type="password" id="auth-admin-pin" value="" required placeholder="أدخل رمز المشرف الإداري" class="w-full bg-dark-950 border border-dark-700 rounded-xl px-3.5 py-2.5 text-sm font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-500 text-white text-center" />
         </div>
 
         <div id="admin-login-error" class="hidden p-3 rounded-xl bg-red-950/60 border border-red-900/80 text-red-300 text-xs font-semibold flex items-center gap-2">
@@ -2597,7 +2599,7 @@
   </div>
 
   <script>
-    // Admin Master Authentication Guard (Master PIN: 7788)
+    // Admin Master Authentication Guard 
     function checkAdminAuth() {
       const session = sessionStorage.getItem('wasel_admin_session');
       const modal = document.getElementById('admin-auth-modal');
@@ -2628,32 +2630,18 @@
           body: JSON.stringify({ pin: pin })
         });
         const json = await res.json();
-        if (json.success) {
+        if (json.success && json.data) {
           sessionStorage.setItem('wasel_admin_session', JSON.stringify(json.data));
           document.getElementById('admin-auth-modal').style.display = 'none';
-          showToast('تم تأكيد الصلاحيات الإدارية بنجاح 🛡️ (PIN: 7788)', 'success');
+          showToast('تم تأكيد الصلاحيات الإدارية بنجاح 🛡️', 'success');
         } else {
-          // Check local fallback
-          if (pin === '7788' || pin === '9832' || pin === 'Admin123!') {
-            sessionStorage.setItem('wasel_admin_session', JSON.stringify({ token: 'admin_master_token', admin_key: '7788' }));
-            document.getElementById('admin-auth-modal').style.display = 'none';
-            showToast('تم فتح لوحة العمليات بنجاح (وضع المشرف 7788) 🛡️', 'success');
-          } else {
-            errorMsg.textContent = json.error || 'رمز الأمان غير صحيح (الرمز الافتراضي: 7788)';
-            errorBox.classList.remove('hidden');
-          }
-        }
-      } catch (err) {
-        // Fallback for offline testing
-        if (pin === '7788' || pin === '9832' || pin === 'Admin123!') {
-          sessionStorage.setItem('wasel_admin_session', JSON.stringify({ token: 'admin_local_token', admin_key: '7788' }));
-          document.getElementById('admin-auth-modal').style.display = 'none';
-          showToast('تم فتح لوحة العمليات بنجاح (وضع المشرف 7788) 🛡️', 'success');
-        } else {
-          errorMsg.textContent = 'رمز الأمان غير صحيح (الرمز الافتراضي: 7788)';
+          errorMsg.textContent = json.error || 'رمز الأمان غير صحيح';
           errorBox.classList.remove('hidden');
         }
-      } finally {
+      } catch (err) {
+        errorMsg.textContent = 'تعذر الاتصال بخادم الإدارة المركزي أو رمز الأمان غير صحيح';
+        errorBox.classList.remove('hidden');
+      }} finally {
         submitBtn.disabled = false;
         submitBtn.innerHTML = '<i data-lucide="lock" class="w-4 h-4"></i><span>فتح غرفة العمليات 🛡️</span>';
         if (window.lucide) lucide.createIcons();

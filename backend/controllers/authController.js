@@ -19,7 +19,7 @@ async function registerUser(req, res, db) {
       full_name,
       phone,
       email: email || `${phone.replace('+', '')}@presto-mataa.ly`,
-      password: password || 'Password123!',
+      password: password || require('crypto').randomBytes(8).toString('hex'),
       role,
       status: 'active',
       city,
@@ -77,15 +77,11 @@ async function loginUser(req, res, db) {
             phone: matchedDriver.phone,
             role: 'driver',
             city: 'nalut',
-            password: matchedDriver.pin || '1234'
+            password: matchedDriver.pin || null
           };
         }
       }
     } else if (role === 'admin') {
-      const adminPin = process.env.ADMIN_DEFAULT_PIN || '9832';
-      if (password !== adminPin && password !== 'Admin123!') {
-        return res.status(401).json({ success: false, error: 'Invalid admin credentials or PIN' });
-      }
       user = db.users.find(u => u.role === 'admin');
     } else if (role) {
       user = db.users.find(u => u.role === role);
@@ -95,7 +91,15 @@ async function loginUser(req, res, db) {
       return res.status(401).json({ success: false, error: 'Invalid login credentials' });
     }
 
-    if (password && user.password && password !== user.password && password !== 'Password123!' && password !== '1234') {
+    if (!password) {
+      return res.status(400).json({ success: false, error: 'Password or PIN required' });
+    }
+
+    const storedSecret = user.password || user.password_hash;
+    if (!storedSecret) {
+      return res.status(401).json({ success: false, error: 'لم يتم تعيين رمز مرور لهذا الحساب' });
+    }
+    if (storedSecret !== password) {
       return res.status(401).json({ success: false, error: 'Incorrect password or PIN' });
     }
 

@@ -1,11 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/referral_model.dart';
 import 'api_service.dart';
 
 /// ============================================================================
-/// WASEL REFERRAL & VIRAL SHARING SERVICE (REAL PERSISTENT POSTGRESQL INTEGRATION)
+/// WASEL REFERRAL & VIRAL SHARING SERVICE (BACKEND API ONLY - NO MOCK DATA)
 /// ============================================================================
 
 class ReferralService {
@@ -38,10 +37,9 @@ class ReferralService {
         'https://wasel.ly/app?ref=$code';
   }
 
-  /// Fetch user's invited friends list from persistent database
+  /// Fetch user's invited friends list from persistent database API
   static Future<List<ReferralFriend>> getInvitedFriends() async {
     final phone = ApiService.userPhone;
-    final prefs = await SharedPreferences.getInstance();
 
     if (phone.isNotEmpty) {
       try {
@@ -53,7 +51,7 @@ class ReferralService {
           final Map<String, dynamic> body = jsonDecode(res.body);
           if (body['success'] == true && body['invited_friends'] is List) {
             final List<dynamic> list = body['invited_friends'];
-            final friends = list.map((item) {
+            return list.map((item) {
               final m = Map<String, dynamic>.from(item);
               final isVerified = m['status'] == 'verified' || m['status'] == 'rewarded';
               return ReferralFriend(
@@ -64,30 +62,13 @@ class ReferralService {
                 date: m['created_at'] != null ? DateTime.tryParse(m['created_at'].toString()) ?? DateTime.now() : DateTime.now(),
               );
             }).toList();
-
-            await _saveInvitedFriends(friends);
-            return friends;
           }
         }
       } catch (_) {}
     }
 
-    // Fallback to local cache
-    final raw = prefs.getString('wasel_invited_friends');
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final List<dynamic> list = jsonDecode(raw);
-        return list.map((item) => ReferralFriend.fromJson(Map<String, dynamic>.from(item))).toList();
-      } catch (_) {}
-    }
-
+    // Return empty state when API is not available
     return [];
-  }
-
-  static Future<void> _saveInvitedFriends(List<ReferralFriend> friends) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = jsonEncode(friends.map((f) => f.toJson()).toList());
-    await prefs.setString('wasel_invited_friends', raw);
   }
 
   /// Check a phone number against real database and record referral
@@ -117,17 +98,6 @@ class ReferralService {
         final isAlreadyRegistered = ref['status'] == 'already_registered';
         final bool rewardGranted = body['reward_granted'] == true;
 
-        final friends = await getInvitedFriends();
-        final newFriend = ReferralFriend(
-          id: ref['id'] ?? 'ref_${DateTime.now().millisecondsSinceEpoch}',
-          name: friendName,
-          phone: cleanPhone,
-          status: isAlreadyRegistered ? ReferralFriendStatus.alreadyRegistered : ReferralFriendStatus.verifiedNew,
-          date: DateTime.now(),
-        );
-        friends.insert(0, newFriend);
-        await _saveInvitedFriends(friends);
-
         if (rewardGranted && body['voucher'] != null) {
           final vMap = body['voucher'];
           final newVoucher = FreeDeliveryVoucher(
@@ -140,6 +110,7 @@ class ReferralService {
           await addVoucher(newVoucher);
         }
 
+        final friends = await getInvitedFriends();
         final verifiedCount = _countVerified(friends);
         return {
           'success': !isAlreadyRegistered,
@@ -154,25 +125,12 @@ class ReferralService {
       }
     } catch (_) {}
 
-    // Fallback: local record
-    final friends = await getInvitedFriends();
-    final friend = ReferralFriend(
-      id: 'ref_${DateTime.now().millisecondsSinceEpoch}',
-      name: friendName,
-      phone: cleanPhone,
-      status: ReferralFriendStatus.verifiedNew,
-      date: DateTime.now(),
-    );
-    friends.insert(0, friend);
-    await _saveInvitedFriends(friends);
-    final verifiedCount = _countVerified(friends);
-
     return {
-      'success': true,
+      'success': false,
       'is_already_registered': false,
-      'message': 'تم تسجيل دعوة ($friendName) بنجاح.',
+      'message': 'لا يوجد اتصال بالخادم — تعذر تسجيل الإحالة. يرجى التحقق من اتصالك بالإنترنت.',
       'voucher_issued': false,
-      'new_progress': verifiedCount % targetCount,
+      'new_progress': 0,
       'target_count': targetCount,
     };
   }
@@ -181,10 +139,9 @@ class ReferralService {
     return friends.where((f) => f.status == ReferralFriendStatus.verifiedNew || f.status == ReferralFriendStatus.completedFirstOrder).length;
   }
 
-  /// Get active free delivery vouchers from real database
+  /// Get active free delivery vouchers from real backend database
   static Future<List<FreeDeliveryVoucher>> getActiveVouchers() async {
     final phone = ApiService.userPhone;
-    final prefs = await SharedPreferences.getInstance();
 
     if (phone.isNotEmpty) {
       try {
@@ -196,7 +153,7 @@ class ReferralService {
           final Map<String, dynamic> body = jsonDecode(res.body);
           if (body['success'] == true && body['data'] is List) {
             final List<dynamic> list = body['data'];
-            final vouchers = list.map((item) {
+            return list.map((item) {
               final m = Map<String, dynamic>.from(item);
               return FreeDeliveryVoucher(
                 id: m['id'] ?? 'v_${m['code']}',
@@ -207,78 +164,51 @@ class ReferralService {
                 isUsed: m['is_used'] == true,
               );
             }).where((v) => v.isValid).toList();
-
-            await prefs.setString('wasel_user_vouchers', jsonEncode(vouchers.map((v) => v.toJson()).toList()));
-            return vouchers;
           }
         }
       } catch (_) {}
     }
 
-    // Local cached vouchers
-    final raw = prefs.getString('wasel_user_vouchers');
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final List<dynamic> list = jsonDecode(raw);
-        return list
-            .map((item) => FreeDeliveryVoucher.fromJson(Map<String, dynamic>.from(item)))
-            .where((v) => v.isValid)
-            .toList();
-      } catch (_) {}
-    }
-
+    // Return empty state when API is not available
     return [];
   }
 
-  /// Add a new earned voucher
+  /// Add a new earned voucher via backend API
   static Future<void> addVoucher(FreeDeliveryVoucher voucher) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<FreeDeliveryVoucher> vouchers = [];
-    final raw = prefs.getString('wasel_user_vouchers');
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final List<dynamic> list = jsonDecode(raw);
-        vouchers = list.map((item) => FreeDeliveryVoucher.fromJson(Map<String, dynamic>.from(item))).toList();
-      } catch (_) {}
-    }
-    vouchers.insert(0, voucher);
-    final updatedRaw = jsonEncode(vouchers.map((v) => v.toJson()).toList());
-    await prefs.setString('wasel_user_vouchers', updatedRaw);
-  }
-
-  /// Redeem voucher on checkout
-  static Future<bool> redeemVoucher(String voucherId, {String? orderId}) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString('wasel_user_vouchers');
-    String? codeToRedeem;
-
-    if (raw != null && raw.isNotEmpty) {
-      try {
-        final List<dynamic> list = jsonDecode(raw);
-        final vouchers = list.map((item) => FreeDeliveryVoucher.fromJson(Map<String, dynamic>.from(item))).toList();
-        for (final v in vouchers) {
-          if (v.id == voucherId) {
-            v.isUsed = true;
-            codeToRedeem = v.code;
-          }
-        }
-        await prefs.setString('wasel_user_vouchers', jsonEncode(vouchers.map((v) => v.toJson()).toList()));
-      } catch (_) {}
-    }
-
-    if (codeToRedeem != null) {
+    final phone = ApiService.userPhone;
+    if (phone.isNotEmpty) {
       try {
         await http.post(
-          Uri.parse('$_backendBaseUrl/vouchers/user/redeem'),
+          Uri.parse('$_backendBaseUrl/vouchers/user'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'code': codeToRedeem,
-            'order_id': orderId,
+            'user_phone': phone,
+            'code': voucher.code,
+            'title': voucher.title,
+            'discount_amount_lyd': voucher.discountLyd,
+            'expires_at': voucher.expiresAt.toIso8601String(),
           }),
         ).timeout(const Duration(seconds: 4));
       } catch (_) {}
     }
+  }
 
-    return true;
+  /// Redeem voucher on checkout via backend API
+  static Future<bool> redeemVoucher(String voucherId, {String? orderId}) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_backendBaseUrl/vouchers/user/redeem'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'voucher_id': voucherId,
+          'order_id': orderId,
+          'user_phone': ApiService.userPhone,
+        }),
+      ).timeout(const Duration(seconds: 4));
+
+      return res.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
   }
 }

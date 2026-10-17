@@ -311,7 +311,7 @@
       updateUI({
         order_number: currentOrderId,
         status: 'out_for_delivery',
-        delivery_otp: '4821',
+        delivery_otp: '••••',
         store: { name: 'مطعم قصر نالوت للمشويات', latitude: 31.8687, longitude: 10.9818 },
         driver: { full_name: 'كابتن طارق النالوتي', vehicle_type: 'سيارة تويوتا يارس', phone: '0915544332', latitude: 31.8682, longitude: 10.9822, rating: 4.9 },
         delivery_address_text: 'نالوت - حي القلعة',
@@ -323,7 +323,7 @@
 
     function updateUI(data) {
       document.getElementById('order-number-display').innerText = `طلب: ${data.order_number || currentOrderId}`;
-      document.getElementById('delivery-otp-display').innerText = data.delivery_otp || '4821';
+      document.getElementById('delivery-otp-display').innerText = '••••';
       
       if (data.tracking) {
         document.getElementById('eta-badge').innerText = `${data.tracking.eta_minutes || 8} دقيقة`;

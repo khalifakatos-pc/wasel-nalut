@@ -7,8 +7,8 @@ import 'services/merchant_supabase_service.dart';
 /// ============================================================================
 /// WASEL MERCHANT & KITCHEN LOGIN SCREEN (Google Stitch Modern Light Redesign)
 /// ============================================================================
-/// Supports both 1-click instant store identification for kitchen tablets
-/// and manual phone/PIN authentication for managers.
+/// Secure phone/PIN authentication for store managers & kitchen operators.
+/// Issues verified JWT tokens with strict tenant isolation.
 /// ============================================================================
 
 class MerchantLoginScreen extends StatefulWidget {
@@ -37,48 +37,6 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
     super.dispose();
   }
 
-  Future<void> _handleFastStoreSelect(PartnerStore store) async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final user = MerchantUser(
-        id: 'usr_${store.id}',
-        phone: store.phone.isNotEmpty ? store.phone : '0919570011',
-        name: store.name,
-        storeId: store.id,
-        role: 'مسؤول المطبخ والمتجر',
-      );
-
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('wasel_merchant_logged_in', true);
-      await prefs.setString('wasel_active_store_id', store.id);
-      await prefs.setString('wasel_active_store_name', store.name);
-      await prefs.setString('wasel_active_store_type', store.type);
-      await prefs.setString('wasel_active_store_district', store.district);
-      await prefs.setString('wasel_active_store_mode', store.mode == PartnerAppMode.retail ? 'retail' : 'kitchen');
-      await prefs.setString('wasel_merchant_user_phone', user.phone);
-      await prefs.setString('wasel_merchant_user_name', user.name);
-      await prefs.setString('wasel_merchant_user_role', user.role);
-
-      MerchantSupabaseService.currentStoreId = store.id;
-      MerchantSupabaseService.currentUser = user;
-
-      if (mounted) {
-        widget.onLoginSuccess(user, store);
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _errorMessage = 'تعذر تسجيل الدخول للمتجر: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
-  }
 
   Future<void> _handleLogin() async {
     final phone = _phoneController.text.trim();
@@ -253,110 +211,6 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                     const SizedBox(height: 16),
                   ],
 
-                  // 1-Click Fast Store Selector Cards (Google Stitch Modern Light)
-                  Container(
-                    padding: const EdgeInsets.all(18),
-                    decoration: BoxDecoration(
-                      color: MerchantColors.lightCard,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: MerchantColors.lightBorder),
-                      boxShadow: MerchantShadows.card,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.bolt_rounded, color: MerchantColors.primary, size: 22),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                'الدخول الفوري المباشر (تحديد المتجر):',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: MerchantColors.lightTextPrimary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        ...PartnerStore.nalutStores.map((store) {
-                          final isKitchen = store.mode == PartnerAppMode.kitchen;
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: InkWell(
-                              onTap: _isLoading ? null : () => _handleFastStoreSelect(store),
-                              borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8FAFC),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: store.id == 'store_nalut_ranchello'
-                                        ? MerchantColors.primary.withValues(alpha: 0.5)
-                                        : MerchantColors.lightBorder,
-                                    width: store.id == 'store_nalut_ranchello' ? 1.5 : 1,
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      store.icon,
-                                      color: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal,
-                                      size: 22,
-                                    ),
-                                    const SizedBox(width: 10),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            store.name,
-                                            style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.bold,
-                                              color: MerchantColors.lightTextPrimary,
-                                            ),
-                                          ),
-                                          Text(
-                                            '${store.district} • ${isKitchen ? "مطبخ 🍳" : "سوبرماركت 🛒"}',
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              color: MerchantColors.lightTextSecondary,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                                      decoration: BoxDecoration(
-                                        color: isKitchen ? MerchantColors.primary : MerchantColors.accentTeal,
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                      child: const Text(
-                                        'دخول',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
 
                   // Login Form Card
                   Container(
@@ -388,36 +242,6 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                         ),
                         const SizedBox(height: 16),
 
-                        // Quick Store Shortcuts
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            ActionChip(
-                              avatar: const Text('🌯'),
-                              label: const Text('مطعم رانشيلو 🌯', style: TextStyle(fontSize: 12)),
-                              backgroundColor: const Color(0xFFF1F5F9),
-                              onPressed: () {
-                                setState(() {
-                                  _phoneController.text = '0919570011';
-                                  _pinController.text = '0011';
-                                });
-                              },
-                            ),
-                            ActionChip(
-                              avatar: const Text('🛒'),
-                              label: const Text('ريكسوس للتسوق 🛒', style: TextStyle(fontSize: 12)),
-                              backgroundColor: const Color(0xFFF1F5F9),
-                              onPressed: () {
-                                setState(() {
-                                  _phoneController.text = '0910000002';
-                                  _pinController.text = '0002';
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
 
                         // Phone Field
                         const Text(
