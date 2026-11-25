@@ -2166,8 +2166,8 @@ function handleKapsoOrderStatus(req, res) {
 
   const orders = db.orders || [];
   let matched = null;
-  if (orderNumber) {
-    const cleanNum = String(orderNumber).replace('#', '').trim();
+  const cleanNum = String(orderNumber || '').replace('#', '').trim();
+  if (cleanNum && !['null', 'undefined', 'none', 'غير محدد'].includes(cleanNum.toLowerCase())) {
     matched = orders.find(o => o.id === cleanNum || String(o.order_number) === cleanNum);
   }
   if (!matched && normPhone) {
@@ -2297,7 +2297,7 @@ app.post('/api/v1/integrations/kapso/update-item-stock', kapsoAgentAuth, async (
       return res.status(404).json({ success: false, error: `لم يتم العثور على صنف باسم "${product_name}".` });
     }
 
-    const flag = Boolean(available);
+    const flag = available === true || available === 'true' || available === 1 || available === '1';
     product.in_stock = flag;
     product.is_available = flag;
     await saveProductToPg(product);
