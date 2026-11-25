@@ -12,6 +12,7 @@ const crypto = require('crypto');
 
 class KapsoService {
   constructor() {
+    this.enabled = process.env.KAPSO_ENABLED === 'true';
     this.apiKey = process.env.KAPSO_API_KEY || '';
     this.phoneNumberId = process.env.KAPSO_PHONE_NUMBER_ID || '1100582179808362';
     this.officialPhone = process.env.KAPSO_OFFICIAL_PHONE || '+218918207786';
@@ -114,6 +115,14 @@ class KapsoService {
    * Requests and sends a WhatsApp OTP code via Kapso
    */
   async requestOtp(phone, role = 'customer') {
+    if (!this.enabled) {
+      return {
+        success: false,
+        disabled: true,
+        mode: 'disabled',
+        error: 'تم إيقاف خدمة واتساب كابسو مؤقتاً.',
+      };
+    }
     const normalized = this.normalizePhone(phone);
     if (!normalized || normalized.length < 10) {
       throw new Error('رقم الهاتف غير صالح. يرجى إدخال رقم ليبي صحيح.');
@@ -293,6 +302,7 @@ class KapsoService {
    * Sends a plain text message via Kapso WhatsApp Cloud API
    */
   async sendTextMessage(toPhone, messageText) {
+    if (!this.enabled) return { success: false, disabled: true, error: 'Kapso WhatsApp is paused' };
     const normalized = this.normalizePhone(toPhone);
     if (!normalized) return { success: false, error: 'رقم هاتف غير صالح' };
 
@@ -321,6 +331,7 @@ class KapsoService {
    * Sends an interactive button message (up to 3 buttons) via Kapso WhatsApp API
    */
   async sendInteractiveButtons(toPhone, bodyText, buttons = []) {
+    if (!this.enabled) return { success: false, disabled: true, error: 'Kapso WhatsApp is paused' };
     const normalized = this.normalizePhone(toPhone);
     if (!normalized) return { success: false, error: 'رقم هاتف غير صالح' };
 
@@ -447,6 +458,9 @@ class KapsoService {
    * Processes incoming WhatsApp webhooks (Interactive buttons, customer tracking, driver COD queries, location)
    */
   async processWebhookMessage(rawPayload, db = { orders: [], stores: [], drivers: [], users: [] }, io = null, hooks = {}) {
+    if (!this.enabled) {
+      return { success: true, ignored: true, reason: 'Kapso WhatsApp is paused' };
+    }
     try {
       // 1. Extract message payload whether from Meta webhook, Kapso v2 format, or direct body
       let message = null;

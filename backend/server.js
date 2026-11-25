@@ -1939,6 +1939,13 @@ app.post('/api/v1/auth/register', async (req, res) => {
 
 app.post('/api/v1/auth/whatsapp/send-otp', rateLimiter(20, 60000), async (req, res) => {
   try {
+    if (!kapsoService.enabled) {
+      return res.status(503).json({
+        success: false,
+        disabled: true,
+        error: 'تم إيقاف التحقق عبر واتساب كابسو مؤقتاً.'
+      });
+    }
     const { phone, role = 'customer' } = req.body;
     if (!phone) {
       return res.status(400).json({ success: false, error: 'رقم الهاتف مطلوب لإرسال رمز واتساب.' });
@@ -2090,6 +2097,9 @@ app.get('/api/v1/kapso/webhook', (req, res) => {
  */
 app.post('/api/v1/kapso/webhook', async (req, res) => {
   try {
+    if (!kapsoService.enabled) {
+      return res.status(200).json({ success: true, ignored: true, reason: 'Kapso WhatsApp is paused' });
+    }
     const webhookSecret = process.env.KAPSO_WEBHOOK_SECRET || process.env.KAPSO_WEBHOOK_VERIFY_TOKEN;
     const signature = req.get('X-Webhook-Signature');
 

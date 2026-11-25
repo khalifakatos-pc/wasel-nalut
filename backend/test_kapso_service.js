@@ -4,6 +4,13 @@ const kapsoService = require('./services/kapsoService');
 async function testKapsoService() {
   console.log('--- Testing KapsoService Unit Logic ---');
 
+  // 0. Verify safe default paused state
+  const pausedRes = await kapsoService.requestOtp('0918207786', 'customer');
+  assert.strictEqual(pausedRes.disabled, true, 'Kapso should be paused by default unless KAPSO_ENABLED=true');
+  console.log('✅ Default paused kill-switch passed.');
+
+  kapsoService.enabled = true;
+
   // 1. Phone normalization
   const n1 = kapsoService.normalizePhone('0918207786');
   assert.strictEqual(n1, '218918207786', '0918207786 should normalize to 218918207786');

@@ -15,6 +15,11 @@ async function runKapsoAiWorkflowTests() {
     emit: (event, data) => emittedEvents.push({ room: 'global', event, data })
   };
 
+  // Verify paused kill-switch before enabling for test simulation
+  const pausedWebhookRes = await kapsoService.processWebhookMessage({ from: '0918207786', type: 'text', text: { body: 'مرحبا' } }, {}, mockIo);
+  assert.strictEqual(pausedWebhookRes.ignored, true, 'Paused Kapso should ignore webhook messages');
+  kapsoService.enabled = true;
+
   // Intercept _postToKapso so tests run 100% offline and deterministic
   const dispatchedMessages = [];
   kapsoService._postToKapso = async (endpoint, payload) => {
