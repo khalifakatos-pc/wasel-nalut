@@ -255,6 +255,7 @@ class _DriverMainNavigationHarnessState extends State<DriverMainNavigationHarnes
         onStartDelivery: _onStartDelivery,
         activeDelivery: _currentActiveDelivery,
         onResumeDelivery: () => setState(() => _currentIndex = 1),
+        onLogout: widget.onLogout,
       ),
       _currentActiveDelivery != null
           ? ActiveDeliveryFlowScreen(

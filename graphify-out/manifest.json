@@ -300,9 +300,9 @@
     "semantic_hash": ""
   },
   "backend/server.js": {
-    "mtime": 1792244476.9538891,
-    "seen": 1792244881.613894,
-    "ast_hash": "a819bc9776fac8bca03b6d46d80ef577",
+    "mtime": 1795611052.209699,
+    "seen": 1795611232.5900242,
+    "ast_hash": "0b598957a5ca4479c4ab8b09d572145a",
     "semantic_hash": ""
   },
   "backend/services/dispatchService.js": {
@@ -624,9 +624,9 @@
     "semantic_hash": ""
   },
   "flutter_admin_app/lib/services/admin_supabase_service.dart": {
-    "mtime": 1792247049.2760084,
-    "seen": 1792267770.676641,
-    "ast_hash": "6c597d88825f8c217ce65eff7d249d24",
+    "mtime": 1792760931.5089664,
+    "seen": 1792761651.229025,
+    "ast_hash": "0adf5fad7219bcc68d23f383ebe7c3e0",
     "semantic_hash": ""
   },
   "flutter_admin_app/lib/theme/admin_theme.dart": {
@@ -648,10 +648,10 @@
     "semantic_hash": "07464b580bab5b69367b8f21cbc81a55"
   },
   "flutter_admin_app/linux/flutter/generated_plugin_registrant.cc": {
-    "mtime": 1789070595.672516,
-    "seen": 1791631278.0762565,
-    "ast_hash": "d07afe003d5837167bdd357d593f20a0",
-    "semantic_hash": "d07afe003d5837167bdd357d593f20a0"
+    "mtime": 1792757069.315533,
+    "seen": 1792757550.1898596,
+    "ast_hash": "bd6e64368e100cca8e55173215ae1bdd",
+    "semantic_hash": ""
   },
   "flutter_admin_app/linux/flutter/generated_plugin_registrant.h": {
     "mtime": 1789070595.6685805,
@@ -678,9 +678,9 @@
     "semantic_hash": "ffa1a7c0a2ad45a2c14a921596516ff8"
   },
   "flutter_admin_app/macos/Flutter/GeneratedPluginRegistrant.swift": {
-    "mtime": 1792169784.4288068,
-    "seen": 1792177199.4572868,
-    "ast_hash": "a357655862f911fac276652186d97f35",
+    "mtime": 1792757069.3307722,
+    "seen": 1792757550.1938624,
+    "ast_hash": "5547476c81d2f003297998cb4289a02e",
     "semantic_hash": ""
   },
   "flutter_admin_app/macos/RunnerTests/RunnerTests.swift": {
@@ -864,15 +864,15 @@
     "semantic_hash": "1597dde169f94c7e3ea012d4103ce019"
   },
   "flutter_driver_app/lib/driver_home_screen.dart": {
-    "mtime": 1792172621.3833356,
-    "seen": 1792177199.464967,
-    "ast_hash": "bae180546004be0e31b820dd80939e21",
+    "mtime": 1792761078.6775277,
+    "seen": 1792761651.237959,
+    "ast_hash": "a6f5be67a8c6169597680030c524cfc8",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/driver_login_screen.dart": {
-    "mtime": 1792168781.716345,
-    "seen": 1792177199.4649713,
-    "ast_hash": "859a3eafa6328db9fe8873683fadc7cd",
+    "mtime": 1792761168.0281312,
+    "seen": 1792761651.2379613,
+    "ast_hash": "cdbfce73bdb0b1f1205e50cf6ca23c4b",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/driver_models.dart": {
@@ -894,9 +894,9 @@
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/main.dart": {
-    "mtime": 1792171968.4028203,
-    "seen": 1792177199.4652522,
-    "ast_hash": "b67858b32249fb1777e636cec2d289f2",
+    "mtime": 1792761078.671527,
+    "seen": 1792761651.2385225,
+    "ast_hash": "e12e28759581c5d07c734e76119ac08e",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/order_radar_dialog.dart": {
@@ -930,10 +930,10 @@
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/whatsapp_auth_service.dart": {
-    "mtime": 1790966349.5790906,
-    "seen": 1791631278.076319,
-    "ast_hash": "a7cea016b0e13fbffe888a3f1ccb13e5",
-    "semantic_hash": "a7cea016b0e13fbffe888a3f1ccb13e5"
+    "mtime": 1792677640.1146162,
+    "seen": 1792678830.8283496,
+    "ast_hash": "1972dfd66e9646a6236626da1d4c5780",
+    "semantic_hash": ""
   },
   "flutter_driver_app/lib/simulated_driver_map.dart": {
     "mtime": 1791274899.8969774,
@@ -1194,9 +1194,9 @@
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/merchant_login_screen.dart": {
-    "mtime": 1792151783.9191067,
-    "seen": 1792152422.3902488,
-    "ast_hash": "0655677af13daa6b85ef7a6e32741f57",
+    "mtime": 1792678586.8213506,
+    "seen": 1792678830.8557549,
+    "ast_hash": "4fb585f1a1d6f3c2d91f33345bfa3cc5",
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/merchant_models.dart": {
@@ -1242,9 +1242,9 @@
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/services/merchant_supabase_service.dart": {
-    "mtime": 1792151560.2834444,
-    "seen": 1792152422.3920293,
-    "ast_hash": "bdca6adb0dfec1b7171e3886dcdbb54c",
+    "mtime": 1792678074.8363378,
+    "seen": 1792678830.8573453,
+    "ast_hash": "0d801f604ef5122560310369f7651864",
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/thermal_receipt_dialog.dart": {
@@ -1260,9 +1260,9 @@
     "semantic_hash": "785b11b550bcb21e5c82d119068e940b"
   },
   "flutter_merchant_app/linux/flutter/generated_plugin_registrant.cc": {
-    "mtime": 1791650634.4691658,
-    "seen": 1791651400.4859455,
-    "ast_hash": "7506739e15f9fd0c6de2db3633ddc90c",
+    "mtime": 1792756805.6489246,
+    "seen": 1792757550.2232938,
+    "ast_hash": "e0d80c289a78afb0e5bf28f4e2a91ba3",
     "semantic_hash": ""
   },
   "flutter_merchant_app/linux/flutter/generated_plugin_registrant.h": {
@@ -1290,9 +1290,9 @@
     "semantic_hash": "ffa1a7c0a2ad45a2c14a921596516ff8"
   },
   "flutter_merchant_app/macos/Flutter/GeneratedPluginRegistrant.swift": {
-    "mtime": 1791650634.5071642,
-    "seen": 1791651400.4866517,
-    "ast_hash": "56874e38a4e6d4508d8e30fb00508f00",
+    "mtime": 1792756805.6898131,
+    "seen": 1792757550.2242336,
+    "ast_hash": "ada015672228bcbf382c3482f5e02d00",
     "semantic_hash": ""
   },
   "flutter_merchant_app/macos/RunnerTests/RunnerTests.swift": {
@@ -1530,9 +1530,9 @@
     "semantic_hash": "16dba3efc7d42b4be9f9f75669175688"
   },
   "flutter_mobile_app/lib/otp_verification_screen.dart": {
-    "mtime": 1792158184.4627647,
-    "seen": 1792177199.4904609,
-    "ast_hash": "be4c0087d4a819a69187a6125f5fef73",
+    "mtime": 1792677557.3184936,
+    "seen": 1792678830.8726373,
+    "ast_hash": "24553ac02c777c2d9160f93e9c63b4c3",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/product_detail_sheet.dart": {
@@ -1542,9 +1542,9 @@
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/profile_screen.dart": {
-    "mtime": 1791653709.64013,
-    "seen": 1791654217.4297135,
-    "ast_hash": "092008ac5b2e766af1946444d53c4fbb",
+    "mtime": 1792751357.6533737,
+    "seen": 1792751612.6285832,
+    "ast_hash": "b45dfecb4a66c0338774bd6fb5a387f0",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/satellite_location_picker.dart": {
@@ -1596,9 +1596,9 @@
     "semantic_hash": "0e9147aed3eb248eca86be78a5608a46"
   },
   "flutter_mobile_app/lib/services/whatsapp_auth_service.dart": {
-    "mtime": 1792150831.725033,
-    "seen": 1792152422.402977,
-    "ast_hash": "cba6d7d13d1ebd972182a07da0f96700",
+    "mtime": 1792677409.4829278,
+    "seen": 1792678830.874752,
+    "ast_hash": "d71bdf96cce9f2f55754b20527865a9c",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/splash_screen.dart": {
@@ -1968,10 +1968,10 @@
     "semantic_hash": "fae7fe6bd9205aa280fb47950efa2cce"
   },
   "packages/wasel_ui/lib/wasel_ui.dart": {
-    "mtime": 1791554016.3339348,
-    "seen": 1791631278.0765476,
-    "ast_hash": "786cd99d026f6e5c3cb180b618532e49",
-    "semantic_hash": "786cd99d026f6e5c3cb180b618532e49"
+    "mtime": 1792677224.414297,
+    "seen": 1792678830.8869772,
+    "ast_hash": "2adb1ffa612c10f4caf57f0399db3fa2",
+    "semantic_hash": ""
   },
   "packages/wasel_ui/test/wasel_ui_stress_test.dart": {
     "mtime": 1791062778.1144845,
@@ -2478,9 +2478,9 @@
     "semantic_hash": ""
   },
   "flutter_admin_app/pubspec.yaml": {
-    "mtime": 1792169634.1503816,
-    "seen": 1792177199.5265162,
-    "ast_hash": "9db2bde43f9aff9a41afbe69765ea6c6",
+    "mtime": 1792757024.013917,
+    "seen": 1792757550.2786677,
+    "ast_hash": "b5437a486951c083d16e2047b9630db9",
     "semantic_hash": ""
   },
   "flutter_admin_app/web/index.html": {
@@ -2718,9 +2718,9 @@
     "semantic_hash": ""
   },
   "packages/wasel_ui/pubspec.yaml": {
-    "mtime": 1791058956.7421172,
-    "seen": 1791635965.7529793,
-    "ast_hash": "e473c81af5979dec3c6630544c6c62b4",
+    "mtime": 1792676977.4227133,
+    "seen": 1792678830.910059,
+    "ast_hash": "b34cef6974c32afa84745314d1733216",
     "semantic_hash": ""
   },
   "public/app/index.html": {
@@ -2850,21 +2850,21 @@
     "semantic_hash": ""
   },
   "specs/005-unified-app-redesign/plan.md": {
-    "mtime": 1790939774.6703362,
-    "seen": 1791635965.753009,
-    "ast_hash": "53f1702160157c1e881223126ca43c8e",
+    "mtime": 1792653315.5449867,
+    "seen": 1792653543.298582,
+    "ast_hash": "10a0ef04048adacaf02511449574313a",
     "semantic_hash": ""
   },
   "specs/005-unified-app-redesign/spec.md": {
-    "mtime": 1790939762.063522,
-    "seen": 1791635965.7530107,
-    "ast_hash": "a1fba694a9b00b3a377bb768cd253211",
+    "mtime": 1792653297.1894138,
+    "seen": 1792653543.2985866,
+    "ast_hash": "6e25b494aa519afd586edbf00242c34d",
     "semantic_hash": ""
   },
   "specs/005-unified-app-redesign/tasks.md": {
-    "mtime": 1790941115.856838,
-    "seen": 1791635965.7530117,
-    "ast_hash": "978af7446d4a7d7efc7e60930d9ea4e5",
+    "mtime": 1792653366.86099,
+    "seen": 1792653543.2985888,
+    "ast_hash": "e20189025535eb51c345d62dc313c912",
     "semantic_hash": ""
   },
   "specs/006-order-handover-audit-and-kds-redesign/plan.md": {
@@ -4209,6 +4209,42 @@
     "mtime": 1792251462.929236,
     "seen": 1792267770.6833587,
     "ast_hash": "fce6458c77c099f37568774d448393d2",
+    "semantic_hash": ""
+  },
+  "backend/services/kapsoService.js": {
+    "mtime": 1795611011.6458347,
+    "seen": 1795611232.5905664,
+    "ast_hash": "e6b935d7872518ca325e5bc9f5e131a4",
+    "semantic_hash": ""
+  },
+  "backend/test_kapso_service.js": {
+    "mtime": 1792676140.06453,
+    "seen": 1792678830.8056166,
+    "ast_hash": "916fd0f36ef5779da25376bde57e2d24",
+    "semantic_hash": ""
+  },
+  "packages/wasel_ui/lib/src/services/kapso_whatsapp_service.dart": {
+    "mtime": 1792751083.9427767,
+    "seen": 1792751612.7130523,
+    "ast_hash": "662b5e7f2929ee7d9c5f67e372e96165",
+    "semantic_hash": ""
+  },
+  "packages/wasel_ui/test/kapso_whatsapp_service_test.dart": {
+    "mtime": 1792677342.96512,
+    "seen": 1792678830.8869805,
+    "ast_hash": "cf27855c67baf6fdc5fc4024f3bf6f51",
+    "semantic_hash": ""
+  },
+  "backend/test_kapso_ai_workflow.js": {
+    "mtime": 1795611120.7195263,
+    "seen": 1795611232.59713,
+    "ast_hash": "c70b826799a85ba60995811a2d0d2c8d",
+    "semantic_hash": ""
+  },
+  "build_admin_and_captain_apks.ps1": {
+    "mtime": 1792761278.738004,
+    "seen": 1792761651.2215528,
+    "ast_hash": "d20ff3c61341e6d92270d3ed6a415f10",
     "semantic_hash": ""
   }
 }

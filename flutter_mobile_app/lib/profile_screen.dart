@@ -227,11 +227,11 @@ class ProfileScreen extends StatelessWidget {
           const SizedBox(height: AppSpacing.sm),
           _buildSettingsTile(
             icon: Icons.headset_mic_rounded,
-            title: 'خدمة العملاء المباشرة (24/7)',
-            subtitle: 'محادثة فورية مع فريق دعم واصل',
+            title: 'خدمة العملاء والمحادثة الذكية (24/7)',
+            subtitle: 'محادثة فورية عبر واتساب مع وكيل واصل الذكي ⚡',
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('جاري توصيلك بممثل خدمة العملاء...')),
+              KapsoWhatsAppService.openSupportChat(
+                initialMessage: 'مرحباً واصل نالوت ⚡، أحتاج مساعدة أو استفسار بخصوص حسابي أو طلباتي.',
               );
             },
           ),

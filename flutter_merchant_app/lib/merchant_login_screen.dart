@@ -1,3 +1,4 @@
+import 'package:wasel_ui/wasel_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'merchant_theme.dart';
@@ -112,6 +113,186 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+
+  Future<void> _handleWhatsAppLogin() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      setState(() => _errorMessage = 'يرجى إدخال رقم هاتف المتجر أولاً');
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final res = await KapsoWhatsAppService.requestOtp(
+        phone: phone,
+        role: WaselUserRole.merchant,
+      );
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      _showWhatsAppOtpDialog(phone, res.otp ?? '1234');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'فشل طلب رمز واتساب: $e';
+      });
+    }
+  }
+
+  void _showWhatsAppOtpDialog(String phone, String initialOtp) {
+    final otpController = TextEditingController();
+    bool isVerifying = false;
+    String? dialogError;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: EdgeInsets.only(
+              left: 24,
+              right: 24,
+              top: 24,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 24),
+                        SizedBox(width: 8),
+                        Text(
+                          'تأكيد الدخول عبر واتساب كابسو',
+                          style: TextStyle(color: MerchantColors.lightTextPrimary, fontSize: 16, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.black54),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'أدخل رمز التحقق (4 أرقام) المرسل إلى رقم المتجر: $phone',
+                  style: const TextStyle(color: MerchantColors.lightTextSecondary, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: otpController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.black, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 8),
+                  maxLength: 4,
+                  decoration: InputDecoration(
+                    counterText: '',
+                    hintText: '••••',
+                    hintStyle: const TextStyle(color: Colors.black26, letterSpacing: 8),
+                    filled: true,
+                    fillColor: MerchantColors.lightBg,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF25D366)),
+                    ),
+                  ),
+                ),
+                if (dialogError != null) ...[
+                  const SizedBox(height: 8),
+                  Text(dialogError!, style: const TextStyle(color: Colors.red, fontSize: 12), textAlign: TextAlign.center),
+                ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: isVerifying ? null : () async {
+                      final entered = otpController.text.trim();
+                      if (entered.length != 4) {
+                        setSheetState(() => dialogError = 'أدخل رمز التحقق المكون من 4 أرقام');
+                        return;
+                      }
+
+                      setSheetState(() {
+                        isVerifying = true;
+                        dialogError = null;
+                      });
+
+                      final verifiedRes = await KapsoWhatsAppService.verifyOtp(
+                        phone: phone,
+                        enteredOtp: entered,
+                        role: WaselUserRole.merchant,
+                      );
+
+                      if (!mounted) return;
+                      if (verifiedRes.success) {
+                        final user = await MerchantSupabaseService.authenticateMerchantWithVerifiedPhone(phone);
+                        if (!mounted) return;
+                        if (user != null) {
+                          if (ctx.mounted) Navigator.pop(ctx);
+                          final store = MerchantSupabaseService.activeDynamicStore ?? PartnerStore.nalutStores.first;
+                          widget.onLoginSuccess(user, store);
+                        } else {
+                          setSheetState(() {
+                            isVerifying = false;
+                            dialogError = 'تعذر تحميل بيانات المتجر المسجل.';
+                          });
+                        }
+                      } else {
+                        setSheetState(() {
+                          isVerifying = false;
+                          dialogError = verifiedRes.errorMessage ?? 'رمز التحقق غير صحيح أو انتهت صلاحيته.';
+                        });
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: isVerifying
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                        : const Text('تأكيد الدخول لإدارة المتجر 🏪', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () {
+                    KapsoWhatsAppService.openWhatsAppChat(
+                      phone: phone,
+                      otpCode: initialOtp,
+                    );
+                  },
+                  icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 18),
+                  label: const Text('فتح محادثة واتساب الرسمية للتأكيد', style: TextStyle(color: Colors.black87, fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Color(0xFF25D366)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -374,6 +555,29 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                                       Icon(Icons.arrow_forward_rounded, size: 18),
                                     ],
                                   ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 46,
+                          child: OutlinedButton.icon(
+                            onPressed: _isLoading ? null : _handleWhatsAppLogin,
+                            icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 18),
+                            label: const Text(
+                              'الدخول أو استعادة PIN عبر واتساب كابسو 💬',
+                              style: TextStyle(
+                                color: Color(0xFF128C7E),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFF25D366)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
                           ),
                         ),
                       ],

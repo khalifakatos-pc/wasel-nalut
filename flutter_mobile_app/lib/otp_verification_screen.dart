@@ -504,33 +504,66 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     ),
                   )
                 else
-                  SizedBox(
-                    height: 48,
-                    child: OutlinedButton.icon(
-                      onPressed: () {
-                        setState(() {
-                          _currentMethod = AuthMethod.sms;
-                          _otpController.clear();
-                        });
-                        _resendOtp();
-                      },
-                      icon: const Icon(Icons.sms_outlined,
-                          color: AppColors.waselPrimary, size: 18),
-                      label: const Text(
-                        'الرجوع للإرسال عبر SMS 📩',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                  Column(
+                    children: [
+                      SizedBox(
+                        height: 48,
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            final code = widget.generatedOtp ?? _otpController.text.trim();
+                            WhatsAppAuthService.openWhatsAppVerificationChat(
+                              phone: widget.phoneNumber,
+                              otpCode: code.isNotEmpty ? code : '1234',
+                            );
+                          },
+                          icon: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+                          label: const Text(
+                            'فتح محادثة واتساب الرسمية للتأكيد 💬',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF128C7E),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                          ),
                         ),
                       ),
-                      style: OutlinedButton.styleFrom(
-                        side: BorderSide(
-                          color: AppColors.waselPrimary.withValues(alpha: 0.6),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        height: 48,
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            setState(() {
+                              _currentMethod = AuthMethod.sms;
+                              _otpController.clear();
+                            });
+                            _resendOtp();
+                          },
+                          icon: const Icon(Icons.sms_outlined,
+                              color: AppColors.waselPrimary, size: 18),
+                          label: const Text(
+                            'الرجوع للإرسال عبر SMS 📩',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(
+                              color: AppColors.waselPrimary.withValues(alpha: 0.6),
+                            ),
+                            shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
+                          ),
                         ),
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
                       ),
-                    ),
+                    ],
                   ),
 
                 const SizedBox(height: 24),

@@ -18,6 +18,7 @@ class DriverHomeScreen extends StatefulWidget {
   final Function(ActiveDeliveryOrder) onStartDelivery;
   final ActiveDeliveryOrder? activeDelivery;
   final VoidCallback? onResumeDelivery;
+  final VoidCallback? onLogout;
 
   const DriverHomeScreen({
     super.key,
@@ -25,6 +26,7 @@ class DriverHomeScreen extends StatefulWidget {
     required this.onStartDelivery,
     this.activeDelivery,
     this.onResumeDelivery,
+    this.onLogout,
   });
 
   @override
@@ -414,6 +416,44 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
     );
   }
 
+  void _confirmLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: DriverColors.darkSurface,
+        shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusLg),
+        title: const Row(
+          children: [
+            Icon(Icons.logout_rounded, color: DriverColors.urgentRed),
+            SizedBox(width: 8),
+            Text('تسجيل الخروج', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: const Text(
+          'هل أنت متأكد من رغبتك في تسجيل الخروج من حساب الكابتن الحالي لتبديل المستخدم أو إنهاء الوردية؟',
+          style: TextStyle(color: Colors.white70, fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: DriverColors.urgentRed),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await DriverSupabaseService.logoutCaptain();
+              if (widget.onLogout != null) {
+                widget.onLogout!();
+              }
+            },
+            child: const Text('تسجيل الخروج', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOnline = _onlineStatus != DriverOnlineStatus.offline;
@@ -427,12 +467,18 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
         actions: [
           IconButton(
             icon: const Icon(Icons.account_balance_wallet_outlined),
+            tooltip: 'المحفظة وسجل المستحقات',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const DriverWalletScreen()),
+                MaterialPageRoute(builder: (_) => DriverWalletScreen(onLogout: widget.onLogout)),
               );
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: DriverColors.urgentRed),
+            tooltip: 'تسجيل الخروج لتبديل المستخدم',
+            onPressed: () => _confirmLogout(context),
           ),
         ],
       ),
@@ -478,13 +524,42 @@ class _DriverHomeScreenState extends State<DriverHomeScreen> with SingleTickerPr
                     ],
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: DriverColors.onlineGreen.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text('VIP الذهبي', style: TextStyle(color: DriverColors.onlineGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: DriverColors.onlineGreen.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text('VIP الذهبي', style: TextStyle(color: DriverColors.onlineGreen, fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () => _confirmLogout(context),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: DriverColors.urgentRed.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: DriverColors.urgentRed.withValues(alpha: 0.3)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.logout_rounded, size: 12, color: DriverColors.urgentRed),
+                            SizedBox(width: 4),
+                            Text(
+                              'تبديل المستخدم',
+                              style: TextStyle(color: DriverColors.urgentRed, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),

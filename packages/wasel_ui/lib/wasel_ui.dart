@@ -22,3 +22,6 @@ export 'src/components/od_filter_pill.dart';
 export 'src/components/receipt_audit_sheet.dart';
 export 'src/components/swipe_slider.dart';
 export 'src/components/wasel_in_app_banner.dart';
+
+// Services
+export 'src/services/kapso_whatsapp_service.dart';

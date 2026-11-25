@@ -124,6 +124,60 @@ class MerchantSupabaseService {
     return null;
   }
 
+  /// Authenticate Merchant whose phone was verified via Kapso WhatsApp OTP
+  static Future<MerchantUser?> authenticateMerchantWithVerifiedPhone(String phone) async {
+    final cleanPhone = phone.trim().replaceAll(RegExp(r'[^0-9]'), '');
+
+    // 1. Try to find the store in Supabase by phone
+    try {
+      final res = await http
+          .get(
+            Uri.parse('$supabaseUrl/stores?phone=eq.$cleanPhone&select=*'),
+            headers: _headers,
+          )
+          .timeout(const Duration(seconds: 4));
+
+      if (res.statusCode == 200) {
+        final List<dynamic> list = jsonDecode(res.body);
+        if (list.isNotEmpty) {
+          final storeData = Map<String, dynamic>.from(list.first as Map);
+          activeDynamicStore = PartnerStore.fromMap(storeData);
+          currentStoreId = activeDynamicStore!.id;
+          currentUser = MerchantUser(
+            id: 'usr_${activeDynamicStore!.id}',
+            phone: cleanPhone,
+            name: activeDynamicStore!.name,
+            storeId: activeDynamicStore!.id,
+            role: 'مدير المتجر (مؤكد بالواتساب)',
+          );
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('wasel_merchant_jwt_token', 'wasel-merchant-wa-${activeDynamicStore!.id}');
+          return currentUser;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Check local authentic Nalut stores
+    final matchedStore = PartnerStore.nalutStores.firstWhere(
+      (s) => s.phone.replaceAll(RegExp(r'[^0-9]'), '') == cleanPhone,
+      orElse: () => PartnerStore.nalutStores.first,
+    );
+
+    activeDynamicStore = matchedStore;
+    currentStoreId = matchedStore.id;
+    currentUser = MerchantUser(
+      id: 'usr_${matchedStore.id}',
+      phone: cleanPhone,
+      name: matchedStore.name,
+      storeId: matchedStore.id,
+      role: 'مدير المتجر (مؤكد بالواتساب)',
+    );
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('wasel_merchant_jwt_token', 'wasel-merchant-wa-${matchedStore.id}');
+    return currentUser;
+  }
+
   /// Fetch store delivery receipts & invoices (الواصلات)
   static Future<List<MerchantReceipt>> fetchStoreReceipts([String? storeId]) async {
     final targetStoreId = storeId ?? currentStoreId;

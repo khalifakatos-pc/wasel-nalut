@@ -49,6 +49,7 @@ if (fs.existsSync(envPath)) {
 // 1. CONFIGURATION & CONSTANTS
 // ----------------------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
+const kapsoService = require('./services/kapsoService');
 const JWT_SECRET = process.env.JWT_SECRET || 'wasel-nalut-secure-jwt-key-2026-prod';
 const SEED_DATA_PATH = path.join(__dirname, 'seed_data.json');
 const PROXIMITY_THRESHOLD_METERS = 200; // Trigger alert within 200m
@@ -1446,7 +1447,11 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
-app.use(express.json());
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 const publicDir = fs.existsSync(path.join(__dirname, 'public'))
   ? path.join(__dirname, 'public')
   : path.join(__dirname, '../public');
@@ -1927,6 +1932,423 @@ app.post('/api/v1/auth/register', async (req, res) => {
 });
 
 // PASSWORDLESS VERIFIED PHONE AUTHENTICATION (Firebase SMS & WhatsApp OTP)
+
+// ============================================================================
+// KAPSO WHATSAPP AUTHENTICATION ENDPOINTS (Customer, Captain, Merchant, Admin)
+// ============================================================================
+
+app.post('/api/v1/auth/whatsapp/send-otp', rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const { phone, role = 'customer' } = req.body;
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'رقم الهاتف مطلوب لإرسال رمز واتساب.' });
+    }
+
+    const result = await kapsoService.requestOtp(phone, role);
+    return res.json({
+      success: true,
+      message: result.mode === 'direct_delivery' 
+        ? 'تم إرسال رمز التحقق مباشرة عبر واتساب ⚡' 
+        : 'يرجى فتح واتساب لتأكيد المحادثة وتلقي الرمز فوراً 💬',
+      ...result,
+    });
+  } catch (err) {
+    console.error('WhatsApp send-otp error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/auth/whatsapp/verify-otp', rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const { phone, otp, role = 'customer', full_name } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان.' });
+    }
+
+    const verification = kapsoService.verifyOtp(phone, otp);
+    if (!verification.success) {
+      return res.status(400).json(verification);
+    }
+
+    const cleanPhone = String(phone).trim();
+    const rawDigits = cleanPhone.replace(/[^0-9]/g, '');
+    const standardLibyan = rawDigits.startsWith('218') ? ('+' + rawDigits) : ('+218' + rawDigits.replace(/^0/, ''));
+    const localLibyan = rawDigits.startsWith('218') ? ('0' + rawDigits.substring(3)) : ('0' + rawDigits.replace(/^0/, ''));
+
+    let user = db.users.find(u =>
+      u.phone === cleanPhone ||
+      u.phone === standardLibyan ||
+      u.phone === localLibyan
+    );
+
+    if (!user && pgPool) {
+      const uRes = await pgPool.query(
+        'SELECT * FROM users WHERE phone = $1 OR phone = $2 OR phone = $3 LIMIT 1',
+        [cleanPhone, standardLibyan, localLibyan]
+      );
+      if (uRes.rows.length > 0) {
+        user = uRes.rows[0];
+        db.users.push(user);
+      }
+    }
+
+    let isNewUser = false;
+    if (!user) {
+      isNewUser = true;
+      const userId = 'user_' + uuidv4().substring(0, 8);
+      user = {
+        id: userId,
+        full_name: full_name || (role === 'captain' ? 'كابتن واصل نالوت' : role === 'merchant' ? 'تاجر واصل نالوت' : 'زبون واصل نالوت'),
+        phone: standardLibyan,
+        email: rawDigits + '@wasel-nalut.ly',
+        role: role,
+        status: 'active',
+        city: 'nalut',
+        auth_method: 'kapso_whatsapp_otp',
+        created_at: new Date().toISOString()
+      };
+      db.users.push(user);
+      await saveUserToPg(user);
+
+      const walletId = 'wallet_' + userId;
+      const newWallet = {
+        id: walletId,
+        user_id: userId,
+        wallet_type: role === 'captain' ? 'driver_wallet' : 'customer_wallet',
+        currency: 'LYD',
+        balance: 50.00,
+        locked_balance: 0.00,
+        status: 'active'
+      };
+      db.wallets.push(newWallet);
+      await saveWalletToPg(newWallet);
+    }
+
+    const token = generateToken(user);
+    const wallet = db.wallets.find(w => w.user_id === user.id) || null;
+    const matchedDriver = (role === 'captain' || role === 'driver' || user.role === 'driver')
+      ? db.drivers.find(d => d.user_id === user.id || kapsoService.normalizePhone(d.phone) === kapsoService.normalizePhone(phone))
+      : null;
+
+    return res.json({
+      success: true,
+      verified: true,
+      message: isNewUser ? 'تم تسجيل وتأكيد الحساب بنجاح عبر كابسو واتساب' : 'تم تسجيل الدخول بنجاح عبر كابسو واتساب',
+      data: {
+        token,
+        user: {
+          id: user.id,
+          full_name: matchedDriver?.full_name || user.full_name,
+          phone: user.phone,
+          role: user.role,
+          city: user.city || 'nalut'
+        },
+        driver: matchedDriver ? {
+          id: matchedDriver.id,
+          full_name: matchedDriver.full_name,
+          phone: matchedDriver.phone,
+          vehicle_type: matchedDriver.vehicle_type,
+          vehicle_plate: matchedDriver.vehicle_plate || matchedDriver.plate_number
+        } : null,
+        wallet
+      }
+    });
+  } catch (err) {
+    console.error('WhatsApp verify-otp error:', err);
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// KAPSO WHATSAPP AI & CONVERSATIONAL WEBHOOKS
+// ============================================================================
+
+/**
+ * Webhook Verification (Meta / Kapso challenge response & health check)
+ */
+app.get('/api/v1/kapso/webhook', (req, res) => {
+  const mode = req.query['hub.mode'];
+  const token = req.query['hub.verify_token'];
+  const challenge = req.query['hub.challenge'];
+
+  const VERIFY_TOKEN = process.env.KAPSO_WEBHOOK_VERIFY_TOKEN || 'wasel_nalut_kapso_token_2026';
+
+  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+    console.log('[Kapso Webhook] Challenge verified successfully');
+    return res.status(200).send(challenge);
+  }
+
+  return res.status(200).json({
+    status: 'active',
+    service: 'wasel-kapso-webhook',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
+ * Inbound Webhook Listener for WhatsApp events (Buttons, texts, location)
+ */
+app.post('/api/v1/kapso/webhook', async (req, res) => {
+  try {
+    const webhookSecret = process.env.KAPSO_WEBHOOK_SECRET || process.env.KAPSO_WEBHOOK_VERIFY_TOKEN;
+    const signature = req.get('X-Webhook-Signature');
+
+    if (webhookSecret && signature && req.rawBody) {
+      const expectedHex = crypto.createHmac('sha256', webhookSecret).update(req.rawBody).digest('hex');
+      const sigBuf = Buffer.from(String(signature).trim(), 'hex');
+      const expBuf = Buffer.from(expectedHex, 'hex');
+      if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+        return res.status(401).json({ success: false, error: 'Invalid webhook signature' });
+      }
+    }
+
+    const payload = req.body;
+    // Fast 200 ACK to avoid Meta / Kapso retry storms
+    res.status(200).json({ success: true, received: true });
+
+    const isBatch = req.get('X-Webhook-Batch') === 'true' || payload?.batch === true;
+    const eventsList = (isBatch && Array.isArray(payload?.data)) ? payload.data : [payload];
+    const hooks = {
+      onOrderSave: (o) => saveOrderToPg(o),
+      onProductSave: (p) => saveProductToPg(p),
+      silentReplyToSender: process.env.KAPSO_AGENT_MANAGED === 'true',
+      skipGeneralGreeting: true
+    };
+
+    for (const evt of eventsList) {
+      await kapsoService.processWebhookMessage(evt, db, req.io, hooks);
+    }
+  } catch (err) {
+    console.error('[Kapso Webhook] Exception processing event:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  }
+});
+
+// ============================================================================
+// KAPSO AI AGENT INTEGRATION ENDPOINTS (Live Tools for Conversational Agent)
+// ============================================================================
+function kapsoAgentAuth(req, res, next) {
+  const expected = process.env.KAPSO_WEBHOOK_VERIFY_TOKEN || 'wasel_nalut_kapso_token_2026';
+  const provided = req.get('x-kapso-secret') || req.query.secret || '';
+  if (!provided || provided !== expected) {
+    return res.status(401).json({ success: false, error: 'Unauthorized Kapso integration caller' });
+  }
+  next();
+}
+
+function handleKapsoStoresQuery(req, res) {
+  const openOnly = String(req.query?.open_only ?? req.body?.open_only ?? 'false') === 'true';
+  const list = (db.stores || [])
+    .filter(s => !openOnly || s.is_open === true)
+    .slice(0, 10)
+    .map(s => ({
+      id: s.id,
+      name: s.name || s.name_en,
+      type: s.type,
+      district: s.district,
+      is_open: Boolean(s.is_open),
+      rating: s.rating,
+      delivery_time_min: s.delivery_time_min || 20,
+      delivery_time_max: s.delivery_time_max || 35,
+      base_delivery_fee_lyd: s.base_delivery_fee_lyd || 5
+    }));
+  res.json({ success: true, count: list.length, stores: list });
+}
+app.get('/api/v1/integrations/kapso/stores', kapsoAgentAuth, handleKapsoStoresQuery);
+app.post('/api/v1/integrations/kapso/stores', kapsoAgentAuth, handleKapsoStoresQuery);
+
+function handleKapsoOrderStatus(req, res) {
+  const phone = req.query?.phone || req.body?.phone || '';
+  const orderNumber = req.query?.order_number || req.body?.order_number || '';
+  const normPhone = phone ? kapsoService.normalizePhone(phone) : '';
+
+  const orders = db.orders || [];
+  let matched = null;
+  if (orderNumber) {
+    const cleanNum = String(orderNumber).replace('#', '').trim();
+    matched = orders.find(o => o.id === cleanNum || String(o.order_number) === cleanNum);
+  }
+  if (!matched && normPhone) {
+    matched =
+      orders.find(o => kapsoService.normalizePhone(o.customer_phone) === normPhone && !['delivered', 'cancelled'].includes(o.status)) ||
+      orders.find(o => kapsoService.normalizePhone(o.customer_phone) === normPhone);
+  }
+
+  if (!matched) {
+    return res.json({ success: true, found: false, message: 'لا يوجد طلب نشط مسجل لهذا الرقم حالياً.' });
+  }
+
+  const store = (db.stores || []).find(s => s.id === matched.store_id);
+  const driver = matched.driver_id ? (db.drivers || []).find(d => d.id === matched.driver_id) : null;
+  return res.json({
+    success: true,
+    found: true,
+    order: {
+      id: matched.id,
+      order_number: matched.order_number || matched.id,
+      status: matched.status,
+      status_ar: kapsoService.getOrderStatusArabic(matched.status),
+      total_amount_lyd: matched.total_amount_lyd || 0,
+      delivery_fee_lyd: matched.delivery_fee_lyd || 0,
+      payment_method: matched.payment_method || 'cod',
+      store_name: store?.name || matched.store_name || 'المطعم',
+      driver_name: driver?.full_name || driver?.name || null,
+      driver_phone: driver?.phone || null
+    }
+  });
+}
+app.get('/api/v1/integrations/kapso/order-status', kapsoAgentAuth, handleKapsoOrderStatus);
+app.post('/api/v1/integrations/kapso/order-status', kapsoAgentAuth, handleKapsoOrderStatus);
+
+function handleKapsoCaptainSummary(req, res) {
+  const phone = req.query?.phone || req.body?.phone || '';
+  const normPhone = kapsoService.normalizePhone(phone);
+  const driver = (db.drivers || []).find(d => kapsoService.normalizePhone(d.phone) === normPhone);
+  if (!driver) {
+    return res.json({ success: false, found: false, message: 'رقم الهاتف غير مسجل ككابتن في أسطول واصل نالوت.' });
+  }
+
+  const driverOrders = (db.orders || []).filter(o => o.driver_id === driver.id && o.status === 'delivered');
+  const codFromOrders = driverOrders.reduce((sum, o) => sum + ((o.payment_method === 'cod' || o.payment_method === 'cash' || !o.payment_method) ? (o.total_amount_lyd || 0) : 0), 0);
+  const settledAmount = driver.settled_cash_lyd || 0;
+  const escrowDue = driverOrders.length > 0
+    ? Math.max(0, codFromOrders - settledAmount)
+    : Math.max(0, parseFloat(driver.cash_in_hand_lyd || 0));
+
+  return res.json({
+    success: true,
+    found: true,
+    captain: {
+      id: driver.id,
+      full_name: driver.full_name,
+      phone: driver.phone,
+      status: driver.status,
+      vehicle_type: driver.vehicle_type,
+      wallet_balance_lyd: driver.wallet_balance_lyd || 0,
+      cash_in_hand_lyd: escrowDue,
+      settled_cash_lyd: settledAmount,
+      currency: 'LYD'
+    }
+  });
+}
+app.get('/api/v1/integrations/kapso/captain-summary', kapsoAgentAuth, handleKapsoCaptainSummary);
+app.post('/api/v1/integrations/kapso/captain-summary', kapsoAgentAuth, handleKapsoCaptainSummary);
+
+app.post('/api/v1/integrations/kapso/merchant-action', kapsoAgentAuth, async (req, res) => {
+  try {
+    const { phone, order_id, action, prep_minutes = 15 } = req.body || {};
+    const normPhone = kapsoService.normalizePhone(phone || '');
+    const store = (db.stores || []).find(s => kapsoService.normalizePhone(s.phone) === normPhone);
+    if (!store) {
+      return res.status(403).json({ success: false, error: 'رقم الهاتف غير مرتبط بمتجر مسجل.' });
+    }
+    const cleanId = String(order_id || '').replace('#', '').trim();
+    const order = (db.orders || []).find(o => o.store_id === store.id && (o.id === cleanId || String(o.order_number) === cleanId));
+    if (!order) {
+      return res.status(404).json({ success: false, error: 'لم يتم العثور على الطلب لهذا المتجر.' });
+    }
+
+    if (action === 'accept' || action === 'preparing') {
+      const mins = parseInt(prep_minutes, 10) || 15;
+      order.status = 'preparing';
+      order.prep_time_minutes = mins;
+      order.prep_started_at = order.prep_started_at || new Date().toISOString();
+      order.updated_at = new Date().toISOString();
+    } else if (action === 'reject' || action === 'cancelled') {
+      order.status = 'cancelled';
+      order.cancellation_reason = 'merchant_rejected_via_whatsapp';
+      order.cancelled_at = new Date().toISOString();
+      order.updated_at = new Date().toISOString();
+    } else {
+      return res.status(400).json({ success: false, error: 'إجراء غير معروف. استخدم accept أو reject.' });
+    }
+
+    await saveOrderToPg(order);
+    if (req.io) {
+      req.io.to(`store:${order.store_id}`).emit('order:status_changed', order);
+      req.io.to(`user:${order.customer_id}`).emit('order:status_changed', order);
+      req.io.to('admin:fleet').emit('order:status_changed', order);
+    }
+    return res.json({ success: true, order_id: order.id, status: order.status });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/integrations/kapso/update-item-stock', kapsoAgentAuth, async (req, res) => {
+  try {
+    const { phone, product_name, available = false } = req.body || {};
+    const normPhone = kapsoService.normalizePhone(phone || '');
+    const store = (db.stores || []).find(s => kapsoService.normalizePhone(s.phone) === normPhone);
+    if (!store) {
+      return res.status(403).json({ success: false, error: 'رقم الهاتف غير مرتبط بمتجر مسجل.' });
+    }
+    const query = String(product_name || '').trim().toLowerCase();
+    if (!query) {
+      return res.status(400).json({ success: false, error: 'يرجى تحديد اسم الصنف.' });
+    }
+    const product = (db.products || []).find(p =>
+      p.store_id === store.id &&
+      ((p.name || '').toLowerCase().includes(query) || (p.name_ar || '').toLowerCase().includes(query))
+    );
+    if (!product) {
+      return res.status(404).json({ success: false, error: `لم يتم العثور على صنف باسم "${product_name}".` });
+    }
+
+    const flag = Boolean(available);
+    product.in_stock = flag;
+    product.is_available = flag;
+    await saveProductToPg(product);
+    if (req.io) {
+      req.io.emit('product:stock_changed', {
+        product_id: product.id,
+        store_id: store.id,
+        in_stock: flag,
+        is_available: flag
+      });
+      req.io.emit('store:menu_updated', { store_id: store.id });
+    }
+    return res.json({ success: true, product_id: product.id, name: product.name_ar || product.name, in_stock: flag });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/integrations/kapso/update-delivery-location', kapsoAgentAuth, async (req, res) => {
+  try {
+    const { phone, latitude, longitude } = req.body || {};
+    const lat = parseFloat(latitude);
+    const lng = parseFloat(longitude);
+    if (!phone || isNaN(lat) || isNaN(lng)) {
+      return res.status(400).json({ success: false, error: 'بيانات الموقع أو رقم الهاتف غير مكتملة.' });
+    }
+    const normPhone = kapsoService.normalizePhone(phone);
+    const activeOrder = (db.orders || []).find(o =>
+      kapsoService.normalizePhone(o.customer_phone) === normPhone && !['delivered', 'cancelled'].includes(o.status)
+    );
+    if (!activeOrder) {
+      return res.json({ success: true, updated: false, message: 'تم حفظ إحداثياتك، ولا يوجد طلب نشط حالياً.' });
+    }
+    activeOrder.delivery_latitude = lat;
+    activeOrder.delivery_lat = lat;
+    activeOrder.delivery_longitude = lng;
+    activeOrder.delivery_lng = lng;
+    activeOrder.updated_at = new Date().toISOString();
+    await saveOrderToPg(activeOrder);
+    if (req.io) {
+      req.io.to(`order:${activeOrder.id}`).emit('order:location_updated', { order_id: activeOrder.id, latitude: lat, longitude: lng });
+      if (activeOrder.driver_id) {
+        req.io.to(`driver:${activeOrder.driver_id}`).emit('driver:destination_updated', { latitude: lat, longitude: lng });
+      }
+    }
+    return res.json({ success: true, updated: true, order_number: activeOrder.order_number || activeOrder.id });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/v1/auth/phone-login', rateLimiter(20, 60000), async (req, res) => {
   try {
     const { phone, full_name, firebase_uid, auth_method } = req.body;
@@ -3438,6 +3860,15 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, async (r
       console.error('[FCM] Failed to initialize dispatcher:', fcmErr);
     }
 
+    // KAPSO WHATSAPP AI AGENT: Interactive Order Notification to Merchant / Kitchen
+    try {
+      kapsoService.notifyMerchantNewOrder(newOrder, store).catch(kErr => {
+        console.warn('[Kapso WhatsApp] Non-blocking merchant order dispatch notice:', kErr.message);
+      });
+    } catch (kapsoErr) {
+      console.warn('[Kapso WhatsApp] Merchant order dispatch exception:', kapsoErr.message);
+    }
+
     res.status(201).json({
       success: true,
       message: 'Order created successfully and waiting for kitchen preparation',
@@ -4006,6 +4437,28 @@ const handleOrderStatusUpdate = async (req, res) => {
 
     // 7. Strictly Post-COMMIT Socket.io State Transition Broadcast
     SocketService.broadcastOrderStatusTransition(order, previousStatus, db, notes);
+
+    // 8. WhatsApp Real-Time Notifications (Merchant Captain Arrival & Customer Status)
+    try {
+      if (status === 'driver_arrived') {
+        const storeObj = (db.stores || []).find(s => s.id === order.store_id);
+        const drvObj = (db.drivers || []).find(d => d.id === order.driver_id);
+        if (storeObj && storeObj.phone) {
+          kapsoService.sendCaptainArrivalAlert(storeObj.phone, order, drvObj).catch(e => {
+            console.warn('[Kapso WhatsApp] Non-blocking arrival alert notice:', e.message);
+          });
+        }
+      }
+      const custPhone = order.customer_phone || ((db.users || []).find(u => u.id === order.customer_id)?.phone);
+      if (custPhone) {
+        const arabicStatus = kapsoService.getOrderStatusArabic(status);
+        kapsoService.sendOrderStatusUpdate(custPhone, order, arabicStatus).catch(e => {
+          console.warn('[Kapso WhatsApp] Non-blocking customer status update notice:', e.message);
+        });
+      }
+    } catch (kapsoNotifyErr) {
+      console.warn('[Kapso WhatsApp] Status notification exception:', kapsoNotifyErr.message);
+    }
 
     res.json({
       success: true,

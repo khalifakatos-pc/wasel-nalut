@@ -1,13 +1,13 @@
 import 'dart:convert';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:wasel_ui/wasel_ui.dart';
 
 /// WhatsApp OTP Authentication Service for Wasel Nalut Captains
+/// Powered by Kapso WhatsApp Cloud API with Supabase Cloud fallback.
 class WhatsAppAuthService {
-  static const String officialSupportPhone = '+218918207786'; // رقم إدارة واصل نالوت الرسمي للكباتن والدعم
+  static const String officialSupportPhone = KapsoWhatsAppService.officialSupportPhone;
   static const String _supabaseUrl = 'https://yfhvuatssuylrkbthosa.supabase.co/rest/v1';
   static const String _supabaseApiKey = 'sb_publishable_oksEzBwufYAmR1mRBUFCYg_XtSQjbTD';
 
@@ -18,32 +18,32 @@ class WhatsAppAuthService {
         'Prefer': 'return=representation,resolution=merge-duplicates',
       };
 
-  static String? _cachedOtp;
-  static String? _cachedPhone;
-  static DateTime? _cachedExpiresAt;
+  static KapsoOtpResult? lastResult;
 
   static Future<String> requestWhatsAppOtp(String phone) async {
     final cleanPhone = phone.trim().replaceAll(' ', '');
-    final random = Random();
-    final otp = (1000 + random.nextInt(9000)).toString();
-    final expiresAt = DateTime.now().add(const Duration(minutes: 5));
 
-    _cachedOtp = otp;
-    _cachedPhone = cleanPhone;
-    _cachedExpiresAt = expiresAt;
+    // 1. Primary: Kapso WhatsApp Cloud API for Captains
+    final kapsoRes = await KapsoWhatsAppService.requestOtp(
+      phone: cleanPhone,
+      role: WaselUserRole.captain,
+    );
+    lastResult = kapsoRes;
+    final otp = kapsoRes.otp ?? '0000';
 
-    final metaData = {
-      'otp': otp,
-      'expires_at': expiresAt.toIso8601String(),
-      'verified': false,
-      'requested_at': DateTime.now().toIso8601String(),
-      'role': 'captain',
-    };
-
+    // 2. Backup: Supabase Cloud record
     try {
+      final metaData = {
+        'otp': otp,
+        'expires_at': DateTime.now().add(Duration(seconds: kapsoRes.expiresInSeconds)).toIso8601String(),
+        'verified': false,
+        'requested_at': DateTime.now().toIso8601String(),
+        'role': 'captain',
+      };
+
       final body = jsonEncode({
         'phone': cleanPhone,
-        'customer_name': 'كابتن واصل نالوت',
+        'customer_name': 'كابتن واصل نالوت (كابسو)',
         'notes': jsonEncode(metaData),
       });
 
@@ -51,7 +51,7 @@ class WhatsAppAuthService {
         Uri.parse('$_supabaseUrl/customer_penalties'),
         headers: _headers,
         body: body,
-      ).timeout(const Duration(seconds: 4));
+      ).timeout(const Duration(seconds: 3));
       debugPrint('✅ Captain WhatsApp OTP ($otp) synced for $cleanPhone');
     } catch (e) {
       debugPrint('Offline OTP fallback: $e');
@@ -64,27 +64,11 @@ class WhatsAppAuthService {
     required String phone,
     required String otpCode,
   }) async {
-    final cleanPhone = phone.trim().replaceAll(' ', '');
-    final message = 'طلب تأكيد رقمي كـ كابتن توصيل في واصل نالوت 🛵\n'
-        'الرقم: $cleanPhone\n'
-        'رمز التحقق: $otpCode';
-
-    final encodedMessage = Uri.encodeComponent(message);
-    final cleanOfficialPhone = officialSupportPhone.replaceAll('+', '').replaceAll(' ', '');
-
-    final whatsappUri = Uri.parse('whatsapp://send?phone=$cleanOfficialPhone&text=$encodedMessage');
-    final webUri = Uri.parse('https://wa.me/$cleanOfficialPhone?text=$encodedMessage');
-
-    try {
-      if (await canLaunchUrl(whatsappUri)) {
-        return await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
-      } else if (await canLaunchUrl(webUri)) {
-        return await launchUrl(webUri, mode: LaunchMode.externalApplication);
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
+    return KapsoWhatsAppService.openWhatsAppChat(
+      phone: phone,
+      otpCode: otpCode,
+      customOfficialPhone: officialSupportPhone,
+    );
   }
 
   static Future<bool> verifyOtp({
@@ -94,16 +78,22 @@ class WhatsAppAuthService {
     final cleanPhone = phone.trim().replaceAll(' ', '');
     final trimmedOtp = enteredOtp.trim();
 
-    if (_cachedPhone == cleanPhone && _cachedOtp == trimmedOtp) {
-      if (_cachedExpiresAt != null && DateTime.now().isBefore(_cachedExpiresAt!)) {
-        await _persistSuccessfulLogin(cleanPhone);
-        return true;
-      }
+    // 1. Primary: Kapso Backend verification
+    final verifyRes = await KapsoWhatsAppService.verifyOtp(
+      phone: cleanPhone,
+      enteredOtp: trimmedOtp,
+      role: WaselUserRole.captain,
+    );
+
+    if (verifyRes.success) {
+      await _persistSuccessfulLogin(cleanPhone, verifyRes.token);
+      return true;
     }
 
+    // 2. Fallback: Supabase check
     try {
       final response = await http.get(
-        Uri.parse('$_supabaseUrl/customer_penalties?phone=eq.${Uri.encodeComponent(cleanPhone)}&select=notes,is_blocked'),
+        Uri.parse('$_supabaseUrl/customer_penalties?phone=eq.${Uri.encodeComponent(cleanPhone)}&select=notes'),
         headers: {
           'apikey': _supabaseApiKey,
           'Authorization': 'Bearer $_supabaseApiKey',
@@ -113,42 +103,33 @@ class WhatsAppAuthService {
       if (response.statusCode == 200) {
         final List<dynamic> list = jsonDecode(response.body);
         if (list.isNotEmpty) {
-          final record = list.first;
-          if (record['is_blocked'] == true) return false;
-
-          final String? notes = record['notes'];
+          final String? notes = list.first['notes'];
           if (notes != null) {
-            try {
-              final Map<String, dynamic> data = jsonDecode(notes);
-              final expectedOtp = data['otp']?.toString();
-              final expiresAtStr = data['expires_at']?.toString();
+            final Map<String, dynamic> data = jsonDecode(notes);
+            final expectedOtp = data['otp']?.toString();
+            final expiresAtStr = data['expires_at']?.toString();
 
-              if (expectedOtp == trimmedOtp) {
-                if (expiresAtStr != null) {
-                  final exp = DateTime.tryParse(expiresAtStr);
-                  if (exp != null && DateTime.now().isAfter(exp)) return false;
-                }
-                await _persistSuccessfulLogin(cleanPhone);
-                return true;
+            if (expectedOtp == trimmedOtp) {
+              if (expiresAtStr != null) {
+                final exp = DateTime.tryParse(expiresAtStr);
+                if (exp != null && DateTime.now().isAfter(exp)) return false;
               }
-            } catch (_) {}
+              await _persistSuccessfulLogin(cleanPhone, null);
+              return true;
+            }
           }
         }
       }
     } catch (_) {}
 
-    if (trimmedOtp.length == 4) {
-      await _persistSuccessfulLogin(cleanPhone);
-      return true;
-    }
-
     return false;
   }
 
-  static Future<void> _persistSuccessfulLogin(String phone) async {
+  static Future<void> _persistSuccessfulLogin(String phone, String? customToken) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('auth_token', 'wasel-captain-wa-token-${DateTime.now().millisecondsSinceEpoch}');
-    await prefs.setString('driver_phone', phone);
-    await prefs.setBool('is_driver_verified', true);
+    final token = customToken ?? 'captain-kapso-token-${DateTime.now().millisecondsSinceEpoch}';
+    await prefs.setString('captain_auth_token', token);
+    await prefs.setString('captain_phone', phone);
+    await prefs.setBool('is_captain_logged_in', true);
   }
 }
