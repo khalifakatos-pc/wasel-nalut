@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:wasel_ui/wasel_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -116,7 +117,9 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
   }
 
 
-  Future<void> _handleWhatsAppLogin() async {
+  static const Color _telegramBlue = Color(0xFF0088CC);
+
+  Future<void> _handleTelegramLogin() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
       setState(() => _errorMessage = 'يرجى إدخال رقم هاتف المتجر أولاً');
@@ -129,7 +132,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
     });
 
     try {
-      final res = await KapsoWhatsAppService.requestOtp(
+      final res = await TelegramAuthService.requestOtp(
         phone: phone,
         role: WaselUserRole.merchant,
       );
@@ -137,20 +140,63 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      _showWhatsAppOtpDialog(phone, res.otp ?? '1234');
+      if (!res.success) {
+        setState(() {
+          _errorMessage = res.errorMessage ?? 'فشل طلب رمز تيليجرام.';
+        });
+        return;
+      }
+
+      _showTelegramOtpDialog(phone, res);
+      if (res.needsBotTap) {
+        TelegramAuthService.openTelegramBot(
+          customNativeUri: res.nativeUri,
+          customWebUrl: res.deeplinkUrl,
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'فشل طلب رمز واتساب: $e';
+        _errorMessage = 'فشل طلب رمز تيليجرام: $e';
       });
     }
   }
 
-  void _showWhatsAppOtpDialog(String phone, String initialOtp) {
+  void _showTelegramOtpDialog(String phone, TelegramOtpResult otpRes) {
     final otpController = TextEditingController();
     bool isVerifying = false;
     String? dialogError;
+    Timer? pollTimer;
+    bool pollStarted = false;
+    bool completed = false;
+
+    Future<void> completeVerifiedMerchant(
+      BuildContext ctx,
+      StateSetter setSheetState,
+      TelegramVerifyResult verifyRes,
+    ) async {
+      if (completed) return;
+      completed = true;
+      pollTimer?.cancel();
+      final user = await MerchantSupabaseService.authenticateMerchantWithVerifiedPhone(
+        phone,
+        token: verifyRes.token,
+        storeData: verifyRes.storeData,
+      );
+      if (!mounted) return;
+      if (user != null) {
+        if (ctx.mounted) Navigator.pop(ctx);
+        final store = MerchantSupabaseService.activeDynamicStore ?? PartnerStore.nalutStores.first;
+        widget.onLoginSuccess(user, store);
+      } else {
+        completed = false;
+        setSheetState(() {
+          isVerifying = false;
+          dialogError = 'تعذر تحميل بيانات المتجر المسجل.';
+        });
+      }
+    }
 
     showModalBottomSheet(
       context: context,
@@ -161,6 +207,28 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setSheetState) {
+          if (!pollStarted && otpRes.sessionId != null && otpRes.sessionId!.isNotEmpty) {
+            pollStarted = true;
+            pollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) async {
+              if (completed || !ctx.mounted) {
+                pollTimer?.cancel();
+                return;
+              }
+              final pollRes = await TelegramAuthService.checkSessionStatus(
+                sessionId: otpRes.sessionId!,
+              );
+              if (!ctx.mounted || completed) return;
+              if (pollRes.expired) {
+                pollTimer?.cancel();
+                setSheetState(() => dialogError = 'انتهت صلاحية الجلسة. أعد المحاولة.');
+                return;
+              }
+              if (pollRes.verified) {
+                await completeVerifiedMerchant(ctx, setSheetState, pollRes);
+              }
+            });
+          }
+
           return Padding(
             padding: EdgeInsets.only(
               left: 24,
@@ -177,23 +245,28 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 24),
+                        Icon(Icons.send_rounded, color: _telegramBlue, size: 24),
                         SizedBox(width: 8),
                         Text(
-                          'تأكيد الدخول عبر واتساب كابسو',
+                          'تأكيد الدخول عبر تيليجرام ✈️',
                           style: TextStyle(color: MerchantColors.lightTextPrimary, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.black54),
-                      onPressed: () => Navigator.pop(ctx),
+                      onPressed: () {
+                        pollTimer?.cancel();
+                        Navigator.pop(ctx);
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'أدخل رمز التحقق (4 أرقام) المرسل إلى رقم المتجر: $phone',
+                  otpRes.needsBotTap
+                      ? 'افتح بوت @WaselNalutbot وشارك رقمك ($phone) بنقرة واحدة للتسجيل التلقائي، أو أدخل الرمز (4 أرقام):'
+                      : 'أدخل رمز التحقق (4 أرقام) المرسل في تيليجرام لرقم المتجر: $phone',
                   style: const TextStyle(color: MerchantColors.lightTextSecondary, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
@@ -211,7 +284,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                     fillColor: MerchantColors.lightBg,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF25D366)),
+                      borderSide: const BorderSide(color: _telegramBlue),
                     ),
                   ),
                 ),
@@ -235,26 +308,15 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                         dialogError = null;
                       });
 
-                      final verifiedRes = await KapsoWhatsAppService.verifyOtp(
+                      final verifiedRes = await TelegramAuthService.verifyOtp(
                         phone: phone,
                         enteredOtp: entered,
                         role: WaselUserRole.merchant,
                       );
 
-                      if (!mounted) return;
-                      if (verifiedRes.success) {
-                        final user = await MerchantSupabaseService.authenticateMerchantWithVerifiedPhone(phone);
-                        if (!mounted) return;
-                        if (user != null) {
-                          if (ctx.mounted) Navigator.pop(ctx);
-                          final store = MerchantSupabaseService.activeDynamicStore ?? PartnerStore.nalutStores.first;
-                          widget.onLoginSuccess(user, store);
-                        } else {
-                          setSheetState(() {
-                            isVerifying = false;
-                            dialogError = 'تعذر تحميل بيانات المتجر المسجل.';
-                          });
-                        }
+                      if (!ctx.mounted) return;
+                      if (verifiedRes.success && verifiedRes.verified) {
+                        await completeVerifiedMerchant(ctx, setSheetState, verifiedRes);
                       } else {
                         setSheetState(() {
                           isVerifying = false;
@@ -263,7 +325,7 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
+                      backgroundColor: _telegramBlue,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
@@ -275,15 +337,15 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: () {
-                    KapsoWhatsAppService.openWhatsAppChat(
-                      phone: phone,
-                      otpCode: initialOtp,
+                    TelegramAuthService.openTelegramBot(
+                      customNativeUri: otpRes.nativeUri,
+                      customWebUrl: otpRes.deeplinkUrl,
                     );
                   },
-                  icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 18),
-                  label: const Text('فتح محادثة واتساب الرسمية للتأكيد', style: TextStyle(color: Colors.black87, fontSize: 12)),
+                  icon: const Icon(Icons.send_rounded, color: _telegramBlue, size: 18),
+                  label: const Text('فتح بوت واصل في تيليجرام للتأكيد الفوري ✈️', style: TextStyle(color: Colors.black87, fontSize: 12)),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF25D366)),
+                    side: const BorderSide(color: _telegramBlue),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
@@ -292,7 +354,10 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      pollTimer?.cancel();
+      otpController.dispose();
+    });
   }
 
   @override
@@ -562,18 +627,18 @@ class _MerchantLoginScreenState extends State<MerchantLoginScreen> {
                           width: double.infinity,
                           height: 46,
                           child: OutlinedButton.icon(
-                            onPressed: _isLoading ? null : _handleWhatsAppLogin,
-                            icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 18),
+                            onPressed: _isLoading ? null : _handleTelegramLogin,
+                            icon: const Icon(Icons.send_rounded, color: _telegramBlue, size: 18),
                             label: const Text(
-                              'الدخول أو استعادة PIN عبر واتساب كابسو 💬',
+                              'الدخول أو استعادة PIN عبر تيليجرام ✈️',
                               style: TextStyle(
-                                color: Color(0xFF128C7E),
+                                color: _telegramBlue,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 13,
                               ),
                             ),
                             style: OutlinedButton.styleFrom(
-                              side: const BorderSide(color: Color(0xFF25D366)),
+                              side: const BorderSide(color: _telegramBlue),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),

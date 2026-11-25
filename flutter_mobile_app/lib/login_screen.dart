@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'design_system.dart';
 import 'otp_verification_screen.dart';
-import 'services/whatsapp_auth_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/api_service.dart';
 import 'main.dart';
@@ -136,13 +135,13 @@ class _LoginScreenState extends State<LoginScreen> {
           shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusLg),
           title: const Row(
             children: [
-              Icon(Icons.info_outline_rounded, color: Color(0xFF25D366)),
+              Icon(Icons.info_outline_rounded, color: Color(0xFF0088CC)),
               SizedBox(width: 8),
-              Text('المتابعة عبر واتساب', style: TextStyle(color: Colors.white, fontSize: 18)),
+              Text('المتابعة عبر تيليجرام', style: TextStyle(color: Colors.white, fontSize: 18)),
             ],
           ),
           content: const Text(
-            'تعذر إرسال رسالة SMS حالياً (قد يكون بسبب اكتمال حد الرسائل المجاني أو تأخر الشبكة المحلية). يمكنك تسجيل الدخول فوراً وبأمان عبر واتساب.',
+            'تعذر إرسال رسالة SMS حالياً (قد يكون بسبب اكتمال حد الرسائل المجاني أو تأخر الشبكة المحلية). يمكنك تسجيل الدخول فوراً وبأمان عبر بوت واصل نالوت في تيليجرام.',
             style: TextStyle(color: Colors.white70, fontSize: 14),
           ),
           actions: [
@@ -153,12 +152,12 @@ class _LoginScreenState extends State<LoginScreen> {
             ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(ctx);
-                _sendWhatsAppOtp();
+                _sendTelegramOtp();
               },
-              icon: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
-              label: const Text('دخول عبر واتساب الآن', style: TextStyle(fontWeight: FontWeight.bold)),
+              icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+              label: const Text('دخول عبر تيليجرام الآن', style: TextStyle(fontWeight: FontWeight.bold)),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF25D366),
+                backgroundColor: const Color(0xFF0088CC),
                 foregroundColor: Colors.white,
               ),
             ),
@@ -168,7 +167,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _sendWhatsAppOtp() async {
+  Future<void> _sendTelegramOtp() async {
     if (!_isValidPhone) {
       setState(() => _errorMessage = 'أدخل رقم ليبي صالح (9 أرقام يبدأ بـ 092/094 ليبيانا أو 091/093 المدار)');
       return;
@@ -179,11 +178,18 @@ class _LoginScreenState extends State<LoginScreen> {
       _errorMessage = null;
     });
 
-    final otp = await WhatsAppAuthService.requestWhatsAppOtp(_fullPhoneNumber);
+    final otpRes = await TelegramAuthService.requestOtp(
+      phone: _fullPhoneNumber,
+      role: WaselUserRole.customer,
+    );
 
     if (!mounted) return;
-
     setState(() => _isLoading = false);
+
+    if (!otpRes.success) {
+      setState(() => _errorMessage = otpRes.errorMessage ?? 'تعذر طلب التحقق عبر تيليجرام.');
+      return;
+    }
 
     Navigator.push(
       context,
@@ -191,11 +197,21 @@ class _LoginScreenState extends State<LoginScreen> {
         builder: (_) => OtpVerificationScreen(
           phoneNumber: _fullPhoneNumber,
           displayPhone: '0${_phoneController.text.trim()}',
-          initialMethod: AuthMethod.whatsapp,
-          generatedOtp: otp,
+          initialMethod: AuthMethod.telegram,
+          telegramSessionId: otpRes.sessionId,
+          telegramDeeplinkUrl: otpRes.deeplinkUrl,
+          telegramNativeUri: otpRes.nativeUri,
+          telegramBotNeedsTap: otpRes.needsBotTap,
         ),
       ),
     );
+
+    if (otpRes.needsBotTap) {
+      TelegramAuthService.openTelegramBot(
+        customNativeUri: otpRes.nativeUri,
+        customWebUrl: otpRes.deeplinkUrl,
+      );
+    }
   }
 
   @override
@@ -432,7 +448,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     Icon(Icons.shield_outlined, color: AppColors.waselPrimary, size: 14),
                     SizedBox(width: 6),
                     Text(
-                      'تحقق فوري عبر رسائل SMS مع دعم تسجيل الدخول عبر واتساب',
+                      'تحقق فوري عبر رسائل SMS مع دعم تسجيل الدخول عبر تيليجرام',
                       style: TextStyle(color: Colors.white70, fontSize: 12),
                     ),
                   ],
@@ -478,14 +494,14 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 12),
 
-                // Secondary Button: WhatsApp OTP
+                // Secondary Button: Telegram Fast OTP
                 SizedBox(
                   height: 50,
                   child: OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _sendWhatsAppOtp,
-                    icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 20),
+                    onPressed: _isLoading ? null : _sendTelegramOtp,
+                    icon: const Icon(Icons.send_rounded, color: Color(0xFF38BDF8), size: 20),
                     label: const Text(
-                      'الدخول السريع عبر واتساب (WhatsApp) 💬',
+                      'الدخول السريع عبر تيليجرام (Telegram) ✈️',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -493,8 +509,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366).withValues(alpha: 0.12),
-                      side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
+                      backgroundColor: const Color(0xFF0088CC).withValues(alpha: 0.14),
+                      side: const BorderSide(color: Color(0xFF0088CC), width: 1.5),
                       shape: RoundedRectangleBorder(
                         borderRadius: AppRadius.radiusLg,
                       ),

@@ -107,11 +107,11 @@ class FirebaseAuthService {
 
           String message = 'تعذر إرسال رمز التحقق عبر الرسائل القصيرة SMS.';
           if (e.code == 'quota-exceeded' || e.code == 'too-many-requests') {
-            message = 'تم الوصول للحد الأقصى لرسائل SMS المجانية لهذا الشهر. يمكنك الدخول فوراً عبر واتساب.';
+            message = 'تم الوصول للحد الأقصى لرسائل SMS المجانية لهذا الشهر. يمكنك الدخول فوراً عبر تيليجرام.';
           } else if (e.code == 'invalid-phone-number') {
             message = 'رقم الهاتف غير صالح أو غير معتمد من شركة الاتصالات.';
           } else if (e.code == 'network-request-failed') {
-            message = 'تعذر الاتصال بخوادم التحقق. تحقق من اتصال الإنترنت أو استخدم واتساب.';
+            message = 'تعذر الاتصال بخوادم التحقق. تحقق من اتصال الإنترنت أو استخدم تيليجرام.';
           }
 
           onError(message, isQuota);
@@ -134,7 +134,7 @@ class FirebaseAuthService {
       );
     } catch (e) {
       debugPrint('🚨 [FirebaseAuth] Unexpected error in verifyPhoneNumber: $e');
-      onError('حدث خطأ غير متوقع أثناء إرسال SMS. يرجى المتابعة عبر واتساب.', true);
+      onError('حدث خطأ غير متوقع أثناء إرسال SMS. يرجى المتابعة عبر تيليجرام.', true);
     }
   }
 

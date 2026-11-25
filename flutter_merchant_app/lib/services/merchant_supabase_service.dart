@@ -124,9 +124,31 @@ class MerchantSupabaseService {
     return null;
   }
 
-  /// Authenticate Merchant whose phone was verified via Kapso WhatsApp OTP
-  static Future<MerchantUser?> authenticateMerchantWithVerifiedPhone(String phone) async {
+  /// Authenticate Merchant whose phone was verified via Telegram OTP / Bot
+  static Future<MerchantUser?> authenticateMerchantWithVerifiedPhone(
+    String phone, {
+    String? token,
+    Map<String, dynamic>? storeData,
+  }) async {
     final cleanPhone = phone.trim().replaceAll(RegExp(r'[^0-9]'), '');
+
+    if (storeData != null && storeData.isNotEmpty) {
+      activeDynamicStore = PartnerStore.fromMap(storeData);
+      currentStoreId = activeDynamicStore!.id;
+      if (token != null && token.isNotEmpty) {
+        jwtToken = token;
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('wasel_merchant_jwt_token', token);
+      }
+      currentUser = MerchantUser(
+        id: 'usr_${activeDynamicStore!.id}',
+        phone: cleanPhone,
+        name: activeDynamicStore!.name,
+        storeId: activeDynamicStore!.id,
+        role: 'مدير المتجر (مؤكد بتيليجرام)',
+      );
+      return currentUser;
+    }
 
     // 1. Try to find the store in Supabase by phone
     try {
@@ -140,18 +162,22 @@ class MerchantSupabaseService {
       if (res.statusCode == 200) {
         final List<dynamic> list = jsonDecode(res.body);
         if (list.isNotEmpty) {
-          final storeData = Map<String, dynamic>.from(list.first as Map);
-          activeDynamicStore = PartnerStore.fromMap(storeData);
+          final dbStore = Map<String, dynamic>.from(list.first as Map);
+          activeDynamicStore = PartnerStore.fromMap(dbStore);
           currentStoreId = activeDynamicStore!.id;
+          final resolvedToken = (token != null && token.isNotEmpty)
+              ? token
+              : 'wasel-merchant-tg-${activeDynamicStore!.id}';
+          jwtToken = resolvedToken;
           currentUser = MerchantUser(
             id: 'usr_${activeDynamicStore!.id}',
             phone: cleanPhone,
             name: activeDynamicStore!.name,
             storeId: activeDynamicStore!.id,
-            role: 'مدير المتجر (مؤكد بالواتساب)',
+            role: 'مدير المتجر (مؤكد بتيليجرام)',
           );
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString('wasel_merchant_jwt_token', 'wasel-merchant-wa-${activeDynamicStore!.id}');
+          await prefs.setString('wasel_merchant_jwt_token', resolvedToken);
           return currentUser;
         }
       }
@@ -165,16 +191,20 @@ class MerchantSupabaseService {
 
     activeDynamicStore = matchedStore;
     currentStoreId = matchedStore.id;
+    final resolvedToken = (token != null && token.isNotEmpty)
+        ? token
+        : 'wasel-merchant-tg-${matchedStore.id}';
+    jwtToken = resolvedToken;
     currentUser = MerchantUser(
       id: 'usr_${matchedStore.id}',
       phone: cleanPhone,
       name: matchedStore.name,
       storeId: matchedStore.id,
-      role: 'مدير المتجر (مؤكد بالواتساب)',
+      role: 'مدير المتجر (مؤكد بتيليجرام)',
     );
 
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('wasel_merchant_jwt_token', 'wasel-merchant-wa-${matchedStore.id}');
+    await prefs.setString('wasel_merchant_jwt_token', resolvedToken);
     return currentUser;
   }
 

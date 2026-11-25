@@ -300,9 +300,9 @@
     "semantic_hash": ""
   },
   "backend/server.js": {
-    "mtime": 1795611052.209699,
-    "seen": 1795611232.5900242,
-    "ast_hash": "0b598957a5ca4479c4ab8b09d572145a",
+    "mtime": 1795617923.2776058,
+    "seen": 1795619140.2565005,
+    "ast_hash": "730bca3d0c163840d5ebb45f535fc807",
     "semantic_hash": ""
   },
   "backend/services/dispatchService.js": {
@@ -852,9 +852,9 @@
     "semantic_hash": "0c3e86af131f6a9e547c80b5ed058914"
   },
   "flutter_driver_app/lib/active_delivery_flow_screen.dart": {
-    "mtime": 1792171519.2941473,
-    "seen": 1792177199.4646754,
-    "ast_hash": "ddd4381995d096c2d86933bbf5ec4421",
+    "mtime": 1795618552.7911706,
+    "seen": 1795619140.2814603,
+    "ast_hash": "ea05bcac9a5428d85cda515b5dcd1c41",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/cod_collection_sheet.dart": {
@@ -870,9 +870,9 @@
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/driver_login_screen.dart": {
-    "mtime": 1792761168.0281312,
-    "seen": 1792761651.2379613,
-    "ast_hash": "cdbfce73bdb0b1f1205e50cf6ca23c4b",
+    "mtime": 1795618626.176325,
+    "seen": 1795619140.2818112,
+    "ast_hash": "cfc2ad6d7588e2b8ca216407c59da31c",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/driver_models.dart": {
@@ -912,10 +912,10 @@
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/driver_firebase_auth_service.dart": {
-    "mtime": 1790611156.934049,
-    "seen": 1791631278.076315,
-    "ast_hash": "86d651cd84b82e20720a7b2f2d00fef2",
-    "semantic_hash": "86d651cd84b82e20720a7b2f2d00fef2"
+    "mtime": 1795618270.9987679,
+    "seen": 1795619140.2828774,
+    "ast_hash": "cbceefd3e581addd768d48d2746483c8",
+    "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/driver_notification_service.dart": {
     "mtime": 1791816957.2508197,
@@ -924,9 +924,9 @@
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/driver_supabase_service.dart": {
-    "mtime": 1792173027.7828968,
-    "seen": 1792177199.4661767,
-    "ast_hash": "107ab3e3e33b524462af4a4576e22ba1",
+    "mtime": 1795618494.0878956,
+    "seen": 1795619140.2832346,
+    "ast_hash": "a2dcebf58a21e3e40284cfc1e65f3381",
     "semantic_hash": ""
   },
   "flutter_driver_app/lib/services/whatsapp_auth_service.dart": {
@@ -1194,9 +1194,9 @@
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/merchant_login_screen.dart": {
-    "mtime": 1792678586.8213506,
-    "seen": 1792678830.8557549,
-    "ast_hash": "4fb585f1a1d6f3c2d91f33345bfa3cc5",
+    "mtime": 1795618649.238083,
+    "seen": 1795619140.2913654,
+    "ast_hash": "e555ff2232fdb00cdbe3fe1501ea78b9",
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/merchant_models.dart": {
@@ -1242,9 +1242,9 @@
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/services/merchant_supabase_service.dart": {
-    "mtime": 1792678074.8363378,
-    "seen": 1792678830.8573453,
-    "ast_hash": "0d801f604ef5122560310369f7651864",
+    "mtime": 1795618429.7025383,
+    "seen": 1795619140.2928405,
+    "ast_hash": "38fc1998b7303008c983e0931f06190e",
     "semantic_hash": ""
   },
   "flutter_merchant_app/lib/thermal_receipt_dialog.dart": {
@@ -1494,9 +1494,9 @@
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/login_screen.dart": {
-    "mtime": 1791783938.5601523,
-    "seen": 1791784109.3385434,
-    "ast_hash": "b837842637758b6f9898f6b52a79d9b3",
+    "mtime": 1795618614.540846,
+    "seen": 1795619140.300872,
+    "ast_hash": "5415820f20f88b5ce6c210a332ae868d",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/main.dart": {
@@ -1530,9 +1530,9 @@
     "semantic_hash": "16dba3efc7d42b4be9f9f75669175688"
   },
   "flutter_mobile_app/lib/otp_verification_screen.dart": {
-    "mtime": 1792677557.3184936,
-    "seen": 1792678830.8726373,
-    "ast_hash": "24553ac02c777c2d9160f93e9c63b4c3",
+    "mtime": 1795618618.2965033,
+    "seen": 1795619140.301787,
+    "ast_hash": "4b5477ef3832bb49845392b68ed1e470",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/product_detail_sheet.dart": {
@@ -1542,9 +1542,9 @@
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/profile_screen.dart": {
-    "mtime": 1792751357.6533737,
-    "seen": 1792751612.6285832,
-    "ast_hash": "b45dfecb4a66c0338774bd6fb5a387f0",
+    "mtime": 1795618621.8249688,
+    "seen": 1795619140.3019636,
+    "ast_hash": "06902d61fbc9ca6b2fa282d565fa9116",
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/satellite_location_picker.dart": {
@@ -1578,10 +1578,10 @@
     "semantic_hash": ""
   },
   "flutter_mobile_app/lib/services/firebase_auth_service.dart": {
-    "mtime": 1790611110.416897,
-    "seen": 1791631278.076459,
-    "ast_hash": "bbcee39bc883c7eebb66fd393b70e255",
-    "semantic_hash": "bbcee39bc883c7eebb66fd393b70e255"
+    "mtime": 1795618266.7636611,
+    "seen": 1795619140.3030756,
+    "ast_hash": "c22e215e134cf600676281bdf0610a47",
+    "semantic_hash": ""
   },
   "flutter_mobile_app/lib/services/referral_service.dart": {
     "mtime": 1792113829.785988,
@@ -1968,9 +1968,9 @@
     "semantic_hash": "fae7fe6bd9205aa280fb47950efa2cce"
   },
   "packages/wasel_ui/lib/wasel_ui.dart": {
-    "mtime": 1792677224.414297,
-    "seen": 1792678830.8869772,
-    "ast_hash": "2adb1ffa612c10f4caf57f0399db3fa2",
+    "mtime": 1795618014.0639887,
+    "seen": 1795619140.3155346,
+    "ast_hash": "096d69de5ed235e0b85aa0f7d5e4f67a",
     "semantic_hash": ""
   },
   "packages/wasel_ui/test/wasel_ui_stress_test.dart": {
@@ -4212,15 +4212,15 @@
     "semantic_hash": ""
   },
   "backend/services/kapsoService.js": {
-    "mtime": 1795611011.6458347,
-    "seen": 1795611232.5905664,
-    "ast_hash": "e6b935d7872518ca325e5bc9f5e131a4",
+    "mtime": 1795615313.7061858,
+    "seen": 1795615449.8638895,
+    "ast_hash": "b9861193b3742cfa22a11c323a458847",
     "semantic_hash": ""
   },
   "backend/test_kapso_service.js": {
-    "mtime": 1792676140.06453,
-    "seen": 1792678830.8056166,
-    "ast_hash": "916fd0f36ef5779da25376bde57e2d24",
+    "mtime": 1795615339.3385446,
+    "seen": 1795615449.8711135,
+    "ast_hash": "de219b9b6644195fde459fddef180a17",
     "semantic_hash": ""
   },
   "packages/wasel_ui/lib/src/services/kapso_whatsapp_service.dart": {
@@ -4236,15 +4236,39 @@
     "semantic_hash": ""
   },
   "backend/test_kapso_ai_workflow.js": {
-    "mtime": 1795611120.7195263,
-    "seen": 1795611232.59713,
-    "ast_hash": "c70b826799a85ba60995811a2d0d2c8d",
+    "mtime": 1795615343.1278257,
+    "seen": 1795615449.87111,
+    "ast_hash": "59fd8eb9b9828085e25b6bbf16f83249",
     "semantic_hash": ""
   },
   "build_admin_and_captain_apks.ps1": {
     "mtime": 1792761278.738004,
     "seen": 1792761651.2215528,
     "ast_hash": "d20ff3c61341e6d92270d3ed6a415f10",
+    "semantic_hash": ""
+  },
+  "backend/services/telegramService.js": {
+    "mtime": 1795617777.6394253,
+    "seen": 1795619140.2581308,
+    "ast_hash": "cc5dd628013021d565c369da4c6064fa",
+    "semantic_hash": ""
+  },
+  "backend/test_telegram_service.js": {
+    "mtime": 1795617868.3124013,
+    "seen": 1795619140.2652557,
+    "ast_hash": "54b3e15c4aedab37d6f8e401468223bc",
+    "semantic_hash": ""
+  },
+  "packages/wasel_ui/lib/src/services/telegram_auth_service.dart": {
+    "mtime": 1795618230.3235047,
+    "seen": 1795619140.3147666,
+    "ast_hash": "c20c819a9ec5ab252645aca237d79050",
+    "semantic_hash": ""
+  },
+  "packages/wasel_ui/test/telegram_auth_service_test.dart": {
+    "mtime": 1795618018.2441678,
+    "seen": 1795619140.3157213,
+    "ast_hash": "6db454c2cbc1a3ad90b77e3d4e9612a1",
     "semantic_hash": ""
   }
 }

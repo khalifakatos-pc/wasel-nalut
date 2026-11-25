@@ -25,3 +25,4 @@ export 'src/components/wasel_in_app_banner.dart';
 
 // Services
 export 'src/services/kapso_whatsapp_service.dart';
+export 'src/services/telegram_auth_service.dart';

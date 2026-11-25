@@ -2,24 +2,26 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:pin_code_fields/pin_code_fields.dart';
 import 'design_system.dart';
-import 'services/whatsapp_auth_service.dart';
 import 'services/firebase_auth_service.dart';
 import 'services/api_service.dart';
 import 'main.dart';
 
-/// Authentication method: Firebase SMS or WhatsApp Fallback
-enum AuthMethod { sms, whatsapp }
+/// Authentication method: Firebase SMS or Telegram Bot Fallback
+enum AuthMethod { sms, telegram }
 
 /// Dual-channel OTP verification screen for Wasel Nalut.
 /// Supports 6-digit Firebase Native SMS codes with auto-retrieval
-/// and seamless 4-digit fallback to WhatsApp OTP.
+/// and seamless 1-tap / 4-digit OTP fallback via Telegram (@WaselNalutbot).
 class OtpVerificationScreen extends StatefulWidget {
   final String phoneNumber;
   final String displayPhone;
   final AuthMethod initialMethod;
   final String? verificationId;
   final int? resendToken;
-  final String? generatedOtp;
+  final String? telegramSessionId;
+  final String? telegramDeeplinkUrl;
+  final String? telegramNativeUri;
+  final bool telegramBotNeedsTap;
 
   const OtpVerificationScreen({
     super.key,
@@ -28,7 +30,10 @@ class OtpVerificationScreen extends StatefulWidget {
     this.initialMethod = AuthMethod.sms,
     this.verificationId,
     this.resendToken,
-    this.generatedOtp,
+    this.telegramSessionId,
+    this.telegramDeeplinkUrl,
+    this.telegramNativeUri,
+    this.telegramBotNeedsTap = false,
   });
 
   @override
@@ -36,15 +41,24 @@ class OtpVerificationScreen extends StatefulWidget {
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  static const Color _telegramBlue = Color(0xFF0088CC);
+
   final TextEditingController _otpController = TextEditingController();
   late AuthMethod _currentMethod;
   String? _verificationId;
   int? _resendToken;
+  String? _telegramSessionId;
+  String? _telegramDeeplinkUrl;
+  String? _telegramNativeUri;
+  bool _telegramBotNeedsTap = false;
 
   bool _isLoading = false;
   bool _canResend = false;
   int _timerSeconds = 60;
   Timer? _timer;
+  Timer? _telegramPollTimer;
+  bool _isPollingCheck = false;
+  bool _hasCompletedLogin = false;
   String? _errorMessage;
 
   @override
@@ -53,7 +67,100 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
     _currentMethod = widget.initialMethod;
     _verificationId = widget.verificationId;
     _resendToken = widget.resendToken;
+    _telegramSessionId = widget.telegramSessionId;
+    _telegramDeeplinkUrl = widget.telegramDeeplinkUrl;
+    _telegramNativeUri = widget.telegramNativeUri;
+    _telegramBotNeedsTap = widget.telegramBotNeedsTap;
     _startCountdown();
+    if (_currentMethod == AuthMethod.telegram) {
+      _startTelegramPolling();
+    }
+  }
+
+  void _startTelegramPolling() {
+    _telegramPollTimer?.cancel();
+    final sessionId = _telegramSessionId;
+    if (_currentMethod != AuthMethod.telegram ||
+        sessionId == null ||
+        sessionId.isEmpty) {
+      return;
+    }
+
+    _telegramPollTimer = Timer.periodic(
+      const Duration(milliseconds: 2500),
+      (_) async {
+        if (!mounted ||
+            _hasCompletedLogin ||
+            _isPollingCheck ||
+            _currentMethod != AuthMethod.telegram) {
+          return;
+        }
+        _isPollingCheck = true;
+        try {
+          final pollRes = await TelegramAuthService.checkSessionStatus(
+            sessionId: sessionId,
+          );
+          if (!mounted || _hasCompletedLogin) return;
+          if (pollRes.expired) {
+            _telegramPollTimer?.cancel();
+            setState(() {
+              _errorMessage =
+                  'انتهت صلاحية الجلسة. اضغط على إعادة الإرسال لبدء جلسة جديدة.';
+            });
+            return;
+          }
+          if (pollRes.verified) {
+            await _completeTelegramSignIn(pollRes);
+          }
+        } finally {
+          _isPollingCheck = false;
+        }
+      },
+    );
+  }
+
+  Future<void> _completeTelegramSignIn(TelegramVerifyResult verifyRes) async {
+    if (_hasCompletedLogin) return;
+    _hasCompletedLogin = true;
+    _timer?.cancel();
+    _telegramPollTimer?.cancel();
+
+    final userName =
+        verifyRes.userData?['full_name']?.toString() ?? 'زبون واصل نالوت';
+    final backendToken = verifyRes.token;
+    if (backendToken != null && backendToken.isNotEmpty) {
+      await ApiService.saveToken(
+        backendToken,
+        phone: widget.phoneNumber,
+        name: userName,
+      );
+    } else {
+      final apiRes = await ApiService.loginWithVerifiedPhone(
+        widget.phoneNumber,
+        fullName: userName,
+        authMethod: 'telegram_bot',
+      );
+      if (apiRes.isSuccess && apiRes.data != null) {
+        final token = apiRes.data['token']?.toString() ??
+            'wasel-tg-token-${DateTime.now().millisecondsSinceEpoch}';
+        final apiName =
+            apiRes.data['user']?['full_name']?.toString() ?? userName;
+        await ApiService.saveToken(
+          token,
+          phone: widget.phoneNumber,
+          name: apiName,
+        );
+      } else {
+        await ApiService.saveToken(
+          'wasel-tg-token-${DateTime.now().millisecondsSinceEpoch}',
+          phone: widget.phoneNumber,
+          name: userName,
+        );
+      }
+    }
+
+    if (!mounted) return;
+    _navigateToHome();
   }
 
   void _startCountdown() {
@@ -116,41 +223,21 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         if (!mounted) return;
         _navigateToHome();
       } else {
-        // WhatsApp fallback verification
-        final verified = await WhatsAppAuthService.verifyOtp(
+        // Telegram OTP fallback verification
+        final verifyRes = await TelegramAuthService.verifyOtp(
           phone: widget.phoneNumber,
           enteredOtp: otp,
+          role: WaselUserRole.customer,
         );
 
         if (!mounted) return;
 
-        if (verified) {
-          final apiRes = await ApiService.loginWithVerifiedPhone(
-            widget.phoneNumber,
-            authMethod: 'whatsapp_otp',
-          );
-
-          if (apiRes.isSuccess && apiRes.data != null) {
-            final token = apiRes.data['token']?.toString() ?? 'wasel-wa-token-${DateTime.now().millisecondsSinceEpoch}';
-            final userName = apiRes.data['user']?['full_name']?.toString() ?? 'زبون واصل نالوت';
-            await ApiService.saveToken(
-              token,
-              phone: widget.phoneNumber,
-              name: userName,
-            );
-          } else {
-            await ApiService.saveToken(
-              'wasel-wa-token-${DateTime.now().millisecondsSinceEpoch}',
-              phone: widget.phoneNumber,
-              name: 'زبون واصل نالوت',
-            );
-          }
-          if (!mounted) return;
-          _navigateToHome();
+        if (verifyRes.success && verifyRes.verified) {
+          await _completeTelegramSignIn(verifyRes);
         } else {
           setState(() {
             _isLoading = false;
-            _errorMessage = 'رمز التحقق غير صحيح أو انتهت صلاحيته';
+            _errorMessage = verifyRes.errorMessage ?? 'رمز التحقق غير صحيح أو انتهت صلاحيته';
           });
         }
       }
@@ -208,7 +295,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             _errorMessage = errMsg;
           });
           if (isQuota) {
-            _switchToWhatsAppFallback();
+            _switchToTelegramFallback();
           }
         },
         onAutoVerify: (credential) async {
@@ -223,41 +310,66 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         },
       );
     } else {
-      await WhatsAppAuthService.requestWhatsAppOtp(widget.phoneNumber);
+      final res = await TelegramAuthService.requestOtp(
+        phone: widget.phoneNumber,
+        role: WaselUserRole.customer,
+      );
       if (!mounted) return;
       setState(() {
         _isLoading = false;
+        if (res.success) {
+          _telegramSessionId = res.sessionId;
+          _telegramDeeplinkUrl = res.deeplinkUrl;
+          _telegramNativeUri = res.nativeUri;
+          _telegramBotNeedsTap = res.needsBotTap;
+        } else {
+          _errorMessage = res.errorMessage;
+        }
       });
-      _startCountdown();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('✅ تم إرسال رمز جديد عبر واتساب'),
-          backgroundColor: Color(0xFF25D366),
-        ),
-      );
+      if (res.success) {
+        _startCountdown();
+        _startTelegramPolling();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✈️ تم إرسال/تحديث طلب التحقق عبر تيليجرام'),
+            backgroundColor: _telegramBlue,
+          ),
+        );
+      }
     }
   }
 
-  Future<void> _switchToWhatsAppFallback() async {
+  Future<void> _switchToTelegramFallback() async {
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
-    await WhatsAppAuthService.requestWhatsAppOtp(widget.phoneNumber);
+    final res = await TelegramAuthService.requestOtp(
+      phone: widget.phoneNumber,
+      role: WaselUserRole.customer,
+    );
     if (!mounted) return;
 
     setState(() {
-      _currentMethod = AuthMethod.whatsapp;
+      _currentMethod = AuthMethod.telegram;
+      _telegramSessionId = res.sessionId;
+      _telegramDeeplinkUrl = res.deeplinkUrl;
+      _telegramNativeUri = res.nativeUri;
+      _telegramBotNeedsTap = res.needsBotTap;
       _otpController.clear();
       _isLoading = false;
+      if (!res.success) {
+        _errorMessage = res.errorMessage;
+      }
     });
     _startCountdown();
+    _startTelegramPolling();
 
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('💬 تم التحويل إلى التحقق عبر واتساب'),
-        backgroundColor: Color(0xFF25D366),
+        content: Text('✈️ تم التحويل إلى التحقق عبر بوت تيليجرام (@WaselNalutbot)'),
+        backgroundColor: _telegramBlue,
       ),
     );
   }
@@ -265,6 +377,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
   @override
   void dispose() {
     _timer?.cancel();
+    _telegramPollTimer?.cancel();
     _otpController.dispose();
     super.dispose();
   }
@@ -313,13 +426,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                     decoration: BoxDecoration(
                       color: isSms
                           ? AppColors.waselPrimary.withValues(alpha: 0.15)
-                          : const Color(0xFF25D366).withValues(alpha: 0.15),
+                          : _telegramBlue.withValues(alpha: 0.15),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
-                      isSms ? Icons.sms_rounded : Icons.chat_rounded,
+                      isSms ? Icons.sms_rounded : Icons.send_rounded,
                       size: 38,
-                      color: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
+                      color: isSms ? AppColors.waselPrimary : _telegramBlue,
                     ),
                   ),
                 ),
@@ -328,7 +441,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                 // Title
                 Text(
-                  isSms ? 'رمز التحقق عبر رسالة SMS 📩' : 'رمز التحقق عبر واتساب 💬',
+                  isSms ? 'رمز التحقق عبر رسالة SMS 📩' : 'التحقق عبر تيليجرام ✈️',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 24,
@@ -342,7 +455,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 Text(
                   isSms
                       ? 'تم إرسال رمز التحقق (6 أرقام) في رسالة نصية قصيرة إلى:\n${widget.displayPhone}'
-                      : 'تم إنشاء رمز التحقق (4 أرقام) لحسابك على:\n${widget.displayPhone}',
+                      : _telegramBotNeedsTap
+                          ? 'اضغط على الزر بالأسفل لفتح بوت @WaselNalutbot ومشاركة رقمك بنقرة واحدة، وسيتم تسجيل دخولك تلقائياً أو أدخل الرمز:\n${widget.displayPhone}'
+                          : 'تم إرسال رمز التحقق (4 أرقام) لحسابك في تيليجرام:\n${widget.displayPhone}',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,
@@ -374,17 +489,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       borderRadius: AppRadius.radiusMd,
                       fieldHeight: 56,
                       fieldWidth: isSms ? 44 : 64,
-                      activeColor: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
+                      activeColor: isSms ? AppColors.waselPrimary : _telegramBlue,
                       inactiveColor: Colors.white24,
-                      selectedColor: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
-                      activeFillColor: (isSms ? AppColors.waselPrimary : const Color(0xFF25D366))
+                      selectedColor: isSms ? AppColors.waselPrimary : _telegramBlue,
+                      activeFillColor: (isSms ? AppColors.waselPrimary : _telegramBlue)
                           .withValues(alpha: 0.1),
                       inactiveFillColor: Colors.white.withValues(alpha: 0.05),
-                      selectedFillColor: (isSms ? AppColors.waselPrimary : const Color(0xFF25D366))
+                      selectedFillColor: (isSms ? AppColors.waselPrimary : _telegramBlue)
                           .withValues(alpha: 0.15),
                     ),
                     enableActiveFill: true,
-                    cursorColor: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
+                    cursorColor: isSms ? AppColors.waselPrimary : _telegramBlue,
                     animationDuration: const Duration(milliseconds: 200),
                     onCompleted: _verifyOtp,
                     onChanged: (_) => setState(() => _errorMessage = null),
@@ -439,7 +554,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         ? null
                         : () => _verifyOtp(_otpController.text.trim()),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
+                      backgroundColor: isSms ? AppColors.waselPrimary : _telegramBlue,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
                     ),
@@ -459,13 +574,13 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                           onPressed: _resendOtp,
                           icon: Icon(
                             Icons.refresh_rounded,
-                            color: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
+                            color: isSms ? AppColors.waselPrimary : _telegramBlue,
                             size: 18,
                           ),
                           label: Text(
-                            isSms ? 'إعادة إرسال رمز SMS' : 'إعادة إرسال رمز واتساب',
+                            isSms ? 'إعادة إرسال رمز SMS' : 'إعادة إرسال طلب تيليجرام',
                             style: TextStyle(
-                              color: isSms ? AppColors.waselPrimary : const Color(0xFF25D366),
+                              color: isSms ? AppColors.waselPrimary : _telegramBlue,
                               fontWeight: FontWeight.bold,
                               fontSize: 14,
                             ),
@@ -479,16 +594,16 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
 
                 const SizedBox(height: 12),
 
-                // Fallback channel switch button (SMS -> WhatsApp or vice versa)
+                // Fallback channel switch button (SMS -> Telegram or vice versa)
                 if (isSms)
                   SizedBox(
                     height: 48,
                     child: OutlinedButton.icon(
-                      onPressed: _switchToWhatsAppFallback,
-                      icon: const Icon(Icons.chat_bubble_outline_rounded,
-                          color: Color(0xFF25D366), size: 18),
+                      onPressed: _switchToTelegramFallback,
+                      icon: const Icon(Icons.send_rounded,
+                          color: _telegramBlue, size: 18),
                       label: const Text(
-                        'لم يصلك رمز SMS؟ التحويل إلى واتساب 💬',
+                        'لم يصلك رمز SMS؟ التحويل إلى تيليجرام ✈️',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -497,7 +612,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                       ),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(
-                          color: const Color(0xFF25D366).withValues(alpha: 0.6),
+                          color: _telegramBlue.withValues(alpha: 0.6),
                         ),
                         shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
                       ),
@@ -511,15 +626,14 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            final code = widget.generatedOtp ?? _otpController.text.trim();
-                            WhatsAppAuthService.openWhatsAppVerificationChat(
-                              phone: widget.phoneNumber,
-                              otpCode: code.isNotEmpty ? code : '1234',
+                            TelegramAuthService.openTelegramBot(
+                              customNativeUri: _telegramNativeUri,
+                              customWebUrl: _telegramDeeplinkUrl,
                             );
                           },
-                          icon: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+                          icon: const Icon(Icons.send_rounded, color: Colors.white, size: 18),
                           label: const Text(
-                            'فتح محادثة واتساب الرسمية للتأكيد 💬',
+                            'فتح بوت واصل في تيليجرام للتأكيد الفوري ✈️',
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -527,7 +641,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                             ),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF128C7E),
+                            backgroundColor: _telegramBlue,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(borderRadius: AppRadius.radiusMd),
                           ),
@@ -539,6 +653,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                         width: double.infinity,
                         child: OutlinedButton.icon(
                           onPressed: () {
+                            _telegramPollTimer?.cancel();
                             setState(() {
                               _currentMethod = AuthMethod.sms;
                               _otpController.clear();

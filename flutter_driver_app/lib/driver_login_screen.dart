@@ -1,15 +1,15 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:wasel_ui/wasel_ui.dart';
 import 'driver_theme.dart';
 import 'services/driver_supabase_service.dart';
-import 'services/whatsapp_auth_service.dart';
 
 /// ============================================================================
 /// CAPTAIN WASEL (كابتن واصل نالوت) AUTHENTICATION & REGISTRATION SCREEN
 /// ============================================================================
 /// Secures the driver application behind phone number and PIN authentication,
-/// and provides an immediate interface for new captain registration and
-/// direct communication with operations room via WhatsApp (+218 91-8207786).
+/// with fast Telegram Bot (@WaselNalutbot) 1-tap / OTP verification and
+/// direct operations room registration & support.
 /// ============================================================================
 
 class DriverLoginScreen extends StatefulWidget {
@@ -99,10 +99,42 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     }
   }
 
-  Future<void> _handleWhatsAppLogin() async {
+  static const Color _telegramBlue = Color(0xFF0088CC);
+
+  Future<void> _completeTelegramCaptainLogin(
+    String phone,
+    TelegramVerifyResult verifyRes,
+  ) async {
+    final user = verifyRes.userData ?? <String, dynamic>{};
+    final driverInfo = verifyRes.driverData ?? <String, dynamic>{};
+    final normalizedPhone = DriverSupabaseService.normalizePhone(phone);
+    final driverId = driverInfo['id']?.toString() ??
+        user['id']?.toString() ??
+        'driver_$normalizedPhone';
+    final driverName = user['full_name']?.toString() ??
+        driverInfo['full_name']?.toString() ??
+        'كابتن واصل نالوت';
+    final vehicle = driverInfo['vehicle_type']?.toString() ?? 'سيارة';
+    final plate = driverInfo['vehicle_plate']?.toString() ??
+        driverInfo['plate_number']?.toString() ??
+        'نالوت';
+    final token = verifyRes.token ??
+        'captain-tg-token-${DateTime.now().millisecondsSinceEpoch}';
+
+    await DriverSupabaseService.persistExternalCaptainSession(
+      id: driverId,
+      name: driverName,
+      phone: normalizedPhone,
+      vehicle: vehicle,
+      plate: plate,
+      token: token,
+    );
+  }
+
+  Future<void> _handleTelegramLogin() async {
     final phone = _phoneController.text.trim();
     if (phone.isEmpty) {
-      setState(() => _errorMessage = 'يرجى إدخال رقم هاتف الكابتن أولاً لإرسال رمز واتساب');
+      setState(() => _errorMessage = 'يرجى إدخال رقم هاتف الكابتن أولاً للتحقق عبر تيليجرام');
       return;
     }
 
@@ -113,16 +145,32 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
     });
 
     try {
-      final otp = await WhatsAppAuthService.requestWhatsAppOtp(phone);
+      final res = await TelegramAuthService.requestOtp(
+        phone: phone,
+        role: WaselUserRole.captain,
+      );
       if (!mounted) return;
       setState(() => _isLoading = false);
 
-      _showWhatsAppOtpDialog(phone, otp);
+      if (!res.success) {
+        setState(() {
+          _errorMessage = res.errorMessage ?? 'فشل طلب التحقق عبر تيليجرام.';
+        });
+        return;
+      }
+
+      _showTelegramOtpDialog(phone, res);
+      if (res.needsBotTap) {
+        TelegramAuthService.openTelegramBot(
+          customNativeUri: res.nativeUri,
+          customWebUrl: res.deeplinkUrl,
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _isLoading = false;
-        _errorMessage = 'فشل إرسال رمز واتساب: $e';
+        _errorMessage = 'فشل طلب التحقق عبر تيليجرام: $e';
       });
     }
   }
@@ -150,19 +198,22 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
       _errorMessage = null;
     });
 
-    final message = 'طلب انضمام وتسجيل كابتن جديد 🛵 (أسطول واصل نالوت)\n'
-        '• الاسم الثلاثي: $name\n'
-        '• رقم الهاتف: $phone\n'
-        '• نوع وسيلة النقل: $_regVehicle\n'
-        '${notes.isNotEmpty ? '• الرقم الوطني / الملاحظات: $notes\n' : ''}'
-        'أرغب في استكمال إجراءات التسجيل وتفعيل حسابي ككابتن في التطبيق وتزويدي برمز الدخول (PIN). شكراً لكم.';
+    final appRes = await TelegramAuthService.submitCaptainApplication(
+      fullName: name,
+      phone: phone,
+      vehicleType: _regVehicle,
+      notes: notes,
+    );
 
-    await KapsoWhatsAppService.openSupportChat(initialMessage: message);
+    await TelegramAuthService.openTelegramBot(
+      customWebUrl: appRes['bot_url']?.toString(),
+      startPayload: 'captain_register',
+    );
 
     if (mounted) {
       setState(() {
         _isRegistering = false;
-        _successMessage = 'تم تجهيز طلب الانضمام ومراسلة إدارة العمليات بنجاح!';
+        _successMessage = 'تم إرسال طلب الانضمام لإدارة العمليات عبر تيليجرام بنجاح!';
       });
 
       showDialog(
@@ -174,11 +225,11 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
             children: [
               Icon(Icons.check_circle_rounded, color: DriverColors.onlineGreen),
               SizedBox(width: 8),
-              Text('تم تجهيز طلب الانضمام 🚀', style: TextStyle(color: Colors.white, fontSize: 16)),
+              Text('تم إرسال طلب الانضمام 🚀', style: TextStyle(color: Colors.white, fontSize: 16)),
             ],
           ),
           content: const Text(
-            'تم فتح محادثة واتساب الرسمية مع إدارة عمليات واصل نالوت لاعتماد طلبك وتزويدك برمز الدخول (PIN) فور التحقق من البيانات.',
+            'تم تسجيل طلبك وإشعار إدارة عمليات واصل نالوت، وفتح بوت تيليجرام الرسمي (@WaselNalutbot) لاستكمال اعتمادك وتزويدك برمز الدخول (PIN).',
             style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.5),
           ),
           actions: [
@@ -197,14 +248,31 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
   }
 
   Future<void> _handleDirectContactAdmin() async {
-    const message = 'السلام عليكم إدارة واصل نالوت 🛵، أرغب بالاستفسار عن تسجيل كابتن جديد والانضمام للأسطول الميداني.';
-    await KapsoWhatsAppService.openSupportChat(initialMessage: message);
+    await TelegramAuthService.openAdminSupportChat(startPayload: 'captain_register');
   }
 
-  void _showWhatsAppOtpDialog(String phone, String initialOtp) {
+  void _showTelegramOtpDialog(String phone, TelegramOtpResult otpRes) {
     final otpController = TextEditingController();
     bool isVerifying = false;
     String? dialogError;
+    Timer? pollTimer;
+    bool pollStarted = false;
+    bool completed = false;
+
+    Future<void> finishCaptainSignIn(
+      BuildContext ctx,
+      TelegramVerifyResult verifyRes,
+    ) async {
+      if (completed) return;
+      completed = true;
+      pollTimer?.cancel();
+      await _completeTelegramCaptainLogin(phone, verifyRes);
+      if (!mounted) return;
+      if (ctx.mounted) {
+        Navigator.pop(ctx);
+      }
+      widget.onLoginSuccess();
+    }
 
     showModalBottomSheet(
       context: context,
@@ -215,6 +283,28 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
       ),
       builder: (ctx) => StatefulBuilder(
         builder: (context, setSheetState) {
+          if (!pollStarted && otpRes.sessionId != null && otpRes.sessionId!.isNotEmpty) {
+            pollStarted = true;
+            pollTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) async {
+              if (completed || !ctx.mounted) {
+                pollTimer?.cancel();
+                return;
+              }
+              final pollRes = await TelegramAuthService.checkSessionStatus(
+                sessionId: otpRes.sessionId!,
+              );
+              if (!ctx.mounted || completed) return;
+              if (pollRes.expired) {
+                pollTimer?.cancel();
+                setSheetState(() => dialogError = 'انتهت صلاحية الجلسة. أعد المحاولة.');
+                return;
+              }
+              if (pollRes.verified) {
+                await finishCaptainSignIn(ctx, pollRes);
+              }
+            });
+          }
+
           return Padding(
             padding: EdgeInsets.only(
               left: 24,
@@ -231,23 +321,28 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                   children: [
                     const Row(
                       children: [
-                        Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 24),
+                        Icon(Icons.send_rounded, color: _telegramBlue, size: 24),
                         SizedBox(width: 8),
                         Text(
-                          'تأكيد الدخول عبر واتساب كابسو',
+                          'تأكيد الدخول عبر تيليجرام ✈️',
                           style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ],
                     ),
                     IconButton(
                       icon: const Icon(Icons.close, color: Colors.white54),
-                      onPressed: () => Navigator.pop(ctx),
+                      onPressed: () {
+                        pollTimer?.cancel();
+                        Navigator.pop(ctx);
+                      },
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'أدخل رمز التحقق (4 أرقام) الذي تم إرساله إلى رقمك: $phone',
+                  otpRes.needsBotTap
+                      ? 'افتح بوت @WaselNalutbot وشارك رقمك ($phone) بنقرة واحدة للدخول التلقائي، أو أدخل الرمز (4 أرقام):'
+                      : 'أدخل رمز التحقق (4 أرقام) الذي تم إرساله في تيليجرام إلى رقمك: $phone',
                   style: const TextStyle(color: Colors.white70, fontSize: 13),
                 ),
                 const SizedBox(height: 16),
@@ -265,7 +360,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                     fillColor: DriverColors.darkBg,
                     border: OutlineInputBorder(
                       borderRadius: DriverRadius.radiusMd,
-                      borderSide: const BorderSide(color: Color(0xFF25D366)),
+                      borderSide: const BorderSide(color: _telegramBlue),
                     ),
                   ),
                 ),
@@ -289,26 +384,24 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                         dialogError = null;
                       });
 
-                      final verified = await WhatsAppAuthService.verifyOtp(
+                      final verifyRes = await TelegramAuthService.verifyOtp(
                         phone: phone,
                         enteredOtp: entered,
+                        role: WaselUserRole.captain,
                       );
 
-                      if (!mounted) return;
-                      if (verified) {
-                        if (ctx.mounted) {
-                          Navigator.pop(ctx);
-                        }
-                        widget.onLoginSuccess();
+                      if (!ctx.mounted) return;
+                      if (verifyRes.success && verifyRes.verified) {
+                        await finishCaptainSignIn(ctx, verifyRes);
                       } else {
                         setSheetState(() {
                           isVerifying = false;
-                          dialogError = 'رمز التحقق غير صحيح أو انتهت صلاحيته';
+                          dialogError = verifyRes.errorMessage ?? 'رمز التحقق غير صحيح أو انتهت صلاحيته';
                         });
                       }
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF25D366),
+                      backgroundColor: _telegramBlue,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusMd),
                     ),
@@ -320,15 +413,15 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                 const SizedBox(height: 10),
                 OutlinedButton.icon(
                   onPressed: () {
-                    WhatsAppAuthService.openWhatsAppVerificationChat(
-                      phone: phone,
-                      otpCode: initialOtp,
+                    TelegramAuthService.openTelegramBot(
+                      customNativeUri: otpRes.nativeUri,
+                      customWebUrl: otpRes.deeplinkUrl,
                     );
                   },
-                  icon: const Icon(Icons.chat_bubble_outline, color: Color(0xFF25D366), size: 18),
-                  label: const Text('فتح محادثة واتساب الرسمية للتأكيد', style: TextStyle(color: Colors.white, fontSize: 12)),
+                  icon: const Icon(Icons.send_rounded, color: _telegramBlue, size: 18),
+                  label: const Text('فتح بوت واصل في تيليجرام للتأكيد الفوري ✈️', style: TextStyle(color: Colors.white, fontSize: 12)),
                   style: OutlinedButton.styleFrom(
-                    side: const BorderSide(color: Color(0xFF25D366)),
+                    side: const BorderSide(color: _telegramBlue),
                     shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusMd),
                   ),
                 ),
@@ -337,7 +430,10 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
           );
         },
       ),
-    );
+    ).whenComplete(() {
+      pollTimer?.cancel();
+      otpController.dispose();
+    });
   }
 
   @override
@@ -684,23 +780,23 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
           ),
           const SizedBox(height: 12),
 
-          // WhatsApp Fast OTP Login Option
+          // Telegram Fast OTP Login Option
           SizedBox(
             width: double.infinity,
             height: 48,
             child: OutlinedButton.icon(
-              onPressed: _isLoading ? null : _handleWhatsAppLogin,
-              icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 18),
+              onPressed: _isLoading ? null : _handleTelegramLogin,
+              icon: const Icon(Icons.send_rounded, color: _telegramBlue, size: 18),
               label: const Text(
-                'الدخول السريع عبر رمز واتساب 💬',
+                'الدخول السريع عبر تيليجرام ✈️',
                 style: TextStyle(
-                  color: Color(0xFF25D366),
+                  color: _telegramBlue,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF25D366)),
+                side: const BorderSide(color: _telegramBlue),
                 shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusMd),
               ),
             ),
@@ -710,14 +806,14 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
           const Divider(color: DriverColors.darkBorder),
           const SizedBox(height: 12),
 
-          // Direct WhatsApp Messaging with Ops
+          // Direct Telegram Messaging with Ops
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
               onPressed: _handleDirectContactAdmin,
               icon: const Icon(Icons.support_agent_rounded, color: Colors.white70, size: 18),
               label: const Text(
-                'مراسلة الإدارة عبر واتساب للتسجيل 💬',
+                'مراسلة الإدارة عبر تيليجرام للتسجيل ✈️',
                 style: TextStyle(color: Colors.white, fontSize: 12.5, fontWeight: FontWeight.bold),
               ),
               style: OutlinedButton.styleFrom(
@@ -814,7 +910,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
 
           // Phone Number Input
           const Text(
-            'رقم الهاتف (واتساب والتواصل)',
+            'رقم الهاتف (تيليجرام والتواصل)',
             style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white70),
           ),
           const SizedBox(height: 8),
@@ -912,7 +1008,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
           ),
           const SizedBox(height: 22),
 
-          // Submit Application via WhatsApp Button
+          // Submit Application via Telegram Button
           SizedBox(
             width: double.infinity,
             height: 52,
@@ -926,7 +1022,7 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
                       child: CircularProgressIndicator(color: Colors.black, strokeWidth: 2.5),
                     )
                   : const Text(
-                      'إرسال طلب الانضمام عبر واتساب 🚀',
+                      'إرسال طلب الانضمام عبر تيليجرام 🚀',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
@@ -942,23 +1038,23 @@ class _DriverLoginScreenState extends State<DriverLoginScreen> {
           ),
           const SizedBox(height: 12),
 
-          // Direct WhatsApp Chat with Admin Button
+          // Direct Telegram Chat with Admin Button
           SizedBox(
             width: double.infinity,
             height: 48,
             child: OutlinedButton.icon(
               onPressed: _handleDirectContactAdmin,
-              icon: const Icon(Icons.chat_rounded, color: Color(0xFF25D366), size: 18),
+              icon: const Icon(Icons.send_rounded, color: _telegramBlue, size: 18),
               label: const Text(
-                'مراسلة الإدارة مباشرة عبر واتساب 💬',
+                'مراسلة الإدارة مباشرة عبر تيليجرام ✈️',
                 style: TextStyle(
-                  color: Color(0xFF25D366),
+                  color: _telegramBlue,
                   fontWeight: FontWeight.bold,
                   fontSize: 13,
                 ),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: Color(0xFF25D366)),
+                side: const BorderSide(color: _telegramBlue),
                 shape: RoundedRectangleBorder(borderRadius: DriverRadius.radiusMd),
               ),
             ),

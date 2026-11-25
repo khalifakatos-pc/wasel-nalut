@@ -226,12 +226,12 @@ class ProfileScreen extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           _buildSettingsTile(
-            icon: Icons.headset_mic_rounded,
-            title: 'خدمة العملاء والمحادثة الذكية (24/7)',
-            subtitle: 'محادثة فورية عبر واتساب مع وكيل واصل الذكي ⚡',
+            icon: Icons.send_rounded,
+            title: 'خدمة العملاء وبوت واصل الذكي (24/7)',
+            subtitle: 'محادثة فورية عبر تيليجرام (@WaselNalutbot) ✈️',
             onTap: () {
-              KapsoWhatsAppService.openSupportChat(
-                initialMessage: 'مرحباً واصل نالوت ⚡، أحتاج مساعدة أو استفسار بخصوص حسابي أو طلباتي.',
+              TelegramAuthService.openTelegramBot(
+                startPayload: 'support',
               );
             },
           ),

@@ -60,7 +60,7 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 <div class="container">
 
 <h1>wasel-app — Complete Call Flow &amp; Architecture Documentation</h1>
-<p class="subtitle">Generated from graphify knowledge graph: 14183 nodes, 39547 edges, 578 communities. Commit: f21f99c</p>
+<p class="subtitle">Generated from graphify knowledge graph: 14267 nodes, 39684 edges, 563 communities. Commit: 3ad2549</p>
 
 <div class="nav">
     <a href="#overview">Architecture Overview</a>
@@ -73,11 +73,11 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
     <a href="#tests-fixtures">Tests &amp; Fixtures</a>
     <a href="#lib-design-system-dart">lib/design_system.dart</a>
     <a href="#ui-ux-design-system-dart">ui_ux/design_system.dart</a>
+    <a href="#merchant-models-dart">merchant_models.dart</a>
     <a href="#lib-driver-models-dart">lib/driver_models.dart</a>
     <a href="#driver-app-driver-models-dart">driver_app/driver_models.dart</a>
     <a href="#lib-driver-theme-dart">lib/driver_theme.dart</a>
     <a href="#merchant-theme-dart">merchant_theme.dart</a>
-    <a href="#driver-app-driver-theme-dart">driver_app/driver_theme.dart</a>
     <a href="#other">Other</a>
 </div>
 
@@ -88,24 +88,26 @@ hr { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
 
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1235 nodes</small>")
+    BUILD_GRAPH_321CBB04("Graph Build<br/><small>1188 nodes</small>")
     class BUILD_GRAPH_321CBB04 module;
-    ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>74 nodes</small>")
+    ANALYSIS_CLUSTERING_C79796DA("Analysis &amp; Clustering<br/><small>77 nodes</small>")
     class ANALYSIS_CLUSTERING_C79796DA module;
     OUTPUTS_DOCS_ED82387C("Outputs &amp; Docs<br/><small>24 nodes</small>")
     class OUTPUTS_DOCS_ED82387C module;
-    CLI_SKILLS_9964CBB8("CLI &amp; Skill Installers<br/><small>8320 nodes</small>")
+    CLI_SKILLS_9964CBB8("CLI &amp; Skill Installers<br/><small>8418 nodes</small>")
     class CLI_SKILLS_9964CBB8 module;
     INGEST_CACHE_UPDATE_FF457338("Ingestion &amp; Updates<br/><small>175 nodes</small>")
     class INGEST_CACHE_UPDATE_FF457338 module;
-    SERVE_API_35EC8E86("Serving API<br/><small>180 nodes</small>")
+    SERVE_API_35EC8E86("Serving API<br/><small>192 nodes</small>")
     class SERVE_API_35EC8E86 module;
-    TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>1029 nodes</small>")
+    TESTS_FIXTURES_B84B1DCC("Tests &amp; Fixtures<br/><small>957 nodes</small>")
     class TESTS_FIXTURES_B84B1DCC module;
     LIB_DESIGN_SYSTEM_DART_BD20DD92("lib/design_system.dart<br/><small>130 nodes</small>")
     class LIB_DESIGN_SYSTEM_DART_BD20DD92 module;
     UI_UX_DESIGN_SYSTEM_DART_9813E065("ui_ux/design_system.dart<br/><small>117 nodes</small>")
     class UI_UX_DESIGN_SYSTEM_DART_9813E065 module;
+    MERCHANT_MODELS_DART_9F004455("merchant_models.dart<br/><small>92 nodes</small>")
+    class MERCHANT_MODELS_DART_9F004455 module;
     LIB_DRIVER_MODELS_DART_5B0EE5CC("lib/driver_models.dart<br/><small>89 nodes</small>")
     class LIB_DRIVER_MODELS_DART_5B0EE5CC module;
     DRIVER_APP_DRIVER_MODELS_DART_AE48E27A("driver_app/driver_models.dart<br/><small>89 nodes</small>")
@@ -114,22 +116,20 @@ flowchart LR
     class LIB_DRIVER_THEME_DART_83288E37 module;
     MERCHANT_THEME_DART_B8089115("merchant_theme.dart<br/><small>78 nodes</small>")
     class MERCHANT_THEME_DART_B8089115 module;
-    DRIVER_APP_DRIVER_THEME_DART_D13DA3D3("driver_app/driver_theme.dart<br/><small>71 nodes</small>")
-    class DRIVER_APP_DRIVER_THEME_DART_D13DA3D3 module;
-    OTHER_D0941E68("Other<br/><small>2490 nodes</small>")
+    OTHER_D0941E68("Other<br/><small>2559 nodes</small>")
     class OTHER_D0941E68 module;
-    BUILD_GRAPH_321CBB04 -->|inherits x153| CLI_SKILLS_9964CBB8
-    OTHER_D0941E68 -->|indirect call x101| CLI_SKILLS_9964CBB8
-    BUILD_GRAPH_321CBB04 -->|references x68| TESTS_FIXTURES_B84B1DCC
-    CLI_SKILLS_9964CBB8 -->|imports x52| BUILD_GRAPH_321CBB04
-    OTHER_D0941E68 -->|imports x51| TESTS_FIXTURES_B84B1DCC
-    TESTS_FIXTURES_B84B1DCC -->|imports x44| OTHER_D0941E68
-    OTHER_D0941E68 -->|imports x41| BUILD_GRAPH_321CBB04
-    TESTS_FIXTURES_B84B1DCC -->|imports x38| BUILD_GRAPH_321CBB04
-    CLI_SKILLS_9964CBB8 -->|imports x27| OTHER_D0941E68
-    CLI_SKILLS_9964CBB8 -->|imports x27| TESTS_FIXTURES_B84B1DCC
-    ANALYSIS_CLUSTERING_C79796DA -->|imports x19| TESTS_FIXTURES_B84B1DCC
-    BUILD_GRAPH_321CBB04 -->|references x17| OTHER_D0941E68
+    BUILD_GRAPH_321CBB04 -->|imports x165| CLI_SKILLS_9964CBB8
+    OTHER_D0941E68 -->|indirect call x119| CLI_SKILLS_9964CBB8
+    CLI_SKILLS_9964CBB8 -->|references x77| BUILD_GRAPH_321CBB04
+    OTHER_D0941E68 -->|imports x57| BUILD_GRAPH_321CBB04
+    OTHER_D0941E68 -->|imports x55| TESTS_FIXTURES_B84B1DCC
+    TESTS_FIXTURES_B84B1DCC -->|imports x36| OTHER_D0941E68
+    TESTS_FIXTURES_B84B1DCC -->|imports x32| BUILD_GRAPH_321CBB04
+    CLI_SKILLS_9964CBB8 -->|contains x21| OTHER_D0941E68
+    ANALYSIS_CLUSTERING_C79796DA -->|imports x20| TESTS_FIXTURES_B84B1DCC
+    SERVE_API_35EC8E86 -->|imports x15| TESTS_FIXTURES_B84B1DCC
+    INGEST_CACHE_UPDATE_FF457338 -->|imports x14| CLI_SKILLS_9964CBB8
+    TESTS_FIXTURES_B84B1DCC -->|imports x13| ANALYSIS_CLUSTERING_C79796DA
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -146,19 +146,19 @@ flowchart LR
     <h4>Architecture Layers</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>Layer</th><th>Nodes</th><th>Communities</th></tr>
-      <tr><td>Graph Build</td><td>1235</td><td><code>90, 88, 9, 47, 27, 26, 15, 107, 332, 8, 22, 41, 111, 253, 235, 149, 475, 498, 499, 501, 502, 504, 505, 507, 508, 532</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>74</td><td><code>64</code></td></tr><tr><td>Outputs &amp; Docs</td><td>24</td><td><code>400, 401</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>8320</td><td><code>1, 0, 2, 3, 24, 35, 17, 324, 12, 384, 38, 20, 6, 14, 191, 266, 195, 30, 37, 39, 32, 78, 82, 91, 186, 7, 128, 206, 395, 54, 89, 252, 19, 196, 72, 385, 87, 282, 40, 463, 71, 127, 325, 65, 96, 113, 159, 184, 198, 174, 141, 68, 84, 142, 221, 168, 124, 129, 197, 225, 247, 539, 144, 158, 130, 163, 318, 536, 240, 319, 421, 99, 103, 126, 160, 185, 231, 238, 465, 161, 176, 180, 268, 121, 135, 153, 154, 155, 260, 207, 63, 116, 146, 239, 408, 110, 137, 162, 190, 208, 211, 259, 265, 271, 287, 296, 310, 321, 429, 562, 131, 200, 215, 226, 233, 275, 292, 313, 398, 105, 120, 16, 170, 189, 212, 227, 273, 339, 488, 538, 108, 122, 13, 223, 411, 529, 123, 150, 165, 229, 245, 281, 358, 364, 104, 136, 167, 169, 173, 187, 274, 278, 288, 330, 345, 386, 392, 426, 456, 193, 199, 244, 251, 272, 291, 338, 353, 365, 375, 379, 205, 246, 261, 263, 269, 276, 283, 285, 300, 405, 420, 432, 527, 156, 175, 232, 248, 284, 290, 294, 295, 297, 356, 367, 388, 434, 450, 551, 139, 148, 201, 249, 298, 301, 329, 333, 334, 340, 347, 349, 352, 399, 73, 214, 234, 258, 279, 280, 289, 299, 320, 335, 337, 343, 354, 360, 81, 254, 267, 293, 331, 348, 351, 355, 366, 370, 371, 437, 119, 138, 145, 182, 316, 350, 361, 372, 373, 374, 382, 387, 393, 406, 427, 433, 554, 188, 224, 336, 407, 410, 412, 414, 417, 425, 453, 95, 117, 178, 213, 255, 264, 302, 303, 341, 369, 380, 383, 389, 415, 419, 422, 461, 118, 166, 222, 315, 322, 344, 368, 378, 397, 402, 403, 423, 428, 438, 445, 457, 458, 459, 467, 472, 404, 413, 416, 435, 443, 460, 462, 468, 470, 471, 474, 478, 484, 486, 487, 521, 530, 531, 533, 537, 262, 396, 431, 436, 439, 440, 441, 442, 451, 454, 466, 477, 485, 489, 490, 526, 528, 535, 541, 542, 543, 544, 548, 549, 550, 552, 553, 556, 171, 555, 557, 558, 559, 560, 561, 563, 564, 566, 567, 568</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>175</td><td><code>33, 346, 304, 305, 306, 307, 308, 312, 317, 326</code></td></tr><tr><td>Serving API</td><td>180</td><td><code>60, 25, 132, 342, 140, 447</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>1029</td><td><code>5, 18, 31, 125, 43, 4, 194, 311, 424, 250, 143, 46, 83, 147, 309, 62, 256, 151, 181, 203, 236, 67, 52, 242, 241, 418, 323, 357, 359</code></td></tr><tr><td>lib/design_system.dart</td><td>130</td><td><code>10</code></td></tr><tr><td>ui_ux/design_system.dart</td><td>117</td><td><code>11</code></td></tr><tr><td>lib/driver_models.dart</td><td>89</td><td><code>21</code></td></tr><tr><td>driver_app/driver_models.dart</td><td>89</td><td><code>23</code></td></tr><tr><td>lib/driver_theme.dart</td><td>82</td><td><code>28</code></td></tr><tr><td>merchant_theme.dart</td><td>78</td><td><code>29</code></td></tr><tr><td>driver_app/driver_theme.dart</td><td>71</td><td><code>36</code></td></tr><tr><td>Other</td><td>2490</td><td><code>53, 44, 45, 50, 51, 59, 55, 56, 57, 58, 61, 66, 69, 70, 74, 76, 77, 75, 79, 80, 109, 85, 86, 202, 97, 93, 48, 102, 112, 100, 101, 114, 216, 42, 115, 237, 34, 49, 134, 277, 314, 172, 183, 157, 164, 179, 94, 152, 177, 192, 204, 328, 106, 209, 210, 218, 219, 220, 243, 257, 230, 133, 217, 98, 228, 270, 381, 391, 286, 394, 409, 430, 444, 446, 92, 448, 449, 464, 469, 473, 327, 476, 522, 523, 524, 525, 362, 363, 534, 540, 545, 546, 547, 376, 377, 390, 455, 565, 579, 580, 581, 582, 452, 479, 480, 481, 482, 483, 491, 599, 600, 601, 602, 608, 492, 493, 494, 495, 496, 497, 500, 503, 506, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520</code></td></tr>
+      <tr><td>Graph Build</td><td>1188</td><td><code>90, 34, 88, 47, 9, 26, 17, 27, 15, 22, 59, 107, 111, 253, 235, 149, 475, 498, 499, 501, 502, 504, 505, 507, 508, 532</code></td></tr><tr><td>Analysis &amp; Clustering</td><td>77</td><td><code>64</code></td></tr><tr><td>Outputs &amp; Docs</td><td>24</td><td><code>400, 401</code></td></tr><tr><td>CLI &amp; Skill Installers</td><td>8418</td><td><code>1, 0, 3, 2, 24, 191, 6, 384, 20, 31, 463, 38, 12, 14, 19, 127, 186, 266, 35, 82, 194, 37, 39, 539, 32, 30, 195, 103, 113, 7, 54, 318, 87, 324, 128, 84, 206, 62, 72, 78, 116, 124, 141, 65, 395, 163, 174, 385, 71, 268, 259, 91, 265, 239, 89, 99, 130, 131, 142, 159, 68, 108, 185, 269, 144, 158, 231, 247, 169, 240, 135, 138, 176, 408, 95, 136, 146, 278, 40, 433, 456, 63, 129, 161, 173, 180, 225, 251, 252, 281, 153, 154, 155, 160, 162, 398, 120, 198, 213, 233, 267, 450, 527, 364, 411, 421, 562, 140, 187, 190, 207, 221, 227, 291, 313, 321, 488, 536, 538, 137, 168, 200, 275, 276, 282, 344, 392, 529, 126, 16, 178, 271, 300, 320, 348, 365, 122, 139, 285, 319, 333, 426, 465, 184, 189, 196, 208, 224, 229, 244, 263, 273, 121, 123, 188, 193, 199, 226, 254, 329, 331, 345, 105, 150, 197, 255, 258, 274, 280, 290, 296, 343, 352, 379, 175, 205, 214, 215, 234, 238, 246, 330, 338, 361, 386, 432, 462, 551, 104, 117, 201, 211, 212, 223, 245, 248, 261, 283, 289, 293, 294, 295, 297, 299, 301, 323, 339, 353, 110, 232, 272, 334, 484, 487, 73, 81, 145, 260, 264, 279, 288, 335, 337, 347, 349, 366, 388, 148, 156, 167, 170, 287, 298, 354, 355, 367, 371, 420, 427, 485, 13, 316, 322, 325, 350, 356, 358, 359, 360, 374, 382, 399, 405, 406, 416, 417, 249, 336, 340, 351, 370, 378, 383, 393, 407, 412, 429, 437, 96, 118, 119, 284, 292, 303, 369, 380, 389, 410, 415, 419, 458, 554, 182, 222, 262, 315, 368, 372, 397, 402, 403, 422, 423, 425, 428, 434, 459, 467, 472, 310, 373, 375, 396, 404, 413, 431, 435, 436, 438, 445, 453, 457, 460, 468, 470, 471, 414, 439, 440, 441, 442, 451, 454, 461, 466, 474, 477, 478, 486, 489, 490, 521, 526, 528, 530, 535, 548, 550, 552, 302, 387, 443, 531, 533, 537, 541, 558, 561</code></td></tr><tr><td>Ingestion &amp; Updates</td><td>175</td><td><code>33, 346, 304, 305, 306, 307, 308, 312, 317, 326</code></td></tr><tr><td>Serving API</td><td>192</td><td><code>60, 25, 132, 257, 342, 447</code></td></tr><tr><td>Tests &amp; Fixtures</td><td>957</td><td><code>5, 18, 4, 109, 125, 250, 43, 424, 309, 143, 311, 46, 256, 151, 133, 181, 203, 236, 67, 52, 242, 241, 418, 147, 341, 357</code></td></tr><tr><td>lib/design_system.dart</td><td>130</td><td><code>10</code></td></tr><tr><td>ui_ux/design_system.dart</td><td>117</td><td><code>11</code></td></tr><tr><td>merchant_models.dart</td><td>92</td><td><code>41</code></td></tr><tr><td>lib/driver_models.dart</td><td>89</td><td><code>21</code></td></tr><tr><td>driver_app/driver_models.dart</td><td>89</td><td><code>23</code></td></tr><tr><td>lib/driver_theme.dart</td><td>82</td><td><code>28</code></td></tr><tr><td>merchant_theme.dart</td><td>78</td><td><code>29</code></td></tr><tr><td>Other</td><td>2559</td><td><code>36, 53, 332, 44, 45, 50, 51, 55, 56, 57, 58, 61, 66, 69, 70, 74, 76, 75, 79, 80, 85, 86, 97, 202, 93, 48, 112, 77, 101, 114, 216, 100, 42, 115, 237, 83, 49, 134, 8, 102, 277, 314, 183, 172, 157, 164, 179, 152, 177, 192, 204, 328, 94, 106, 165, 166, 209, 210, 218, 219, 220, 243, 171, 230, 217, 98, 228, 270, 381, 391, 286, 394, 409, 430, 444, 446, 92, 448, 449, 464, 469, 473, 327, 476, 522, 523, 524, 525, 362, 363, 534, 540, 545, 546, 547, 376, 377, 390, 455, 565, 579, 580, 581, 582, 452, 479, 480, 481, 482, 483, 491, 599, 600, 601, 602, 608, 492, 493, 494, 495, 496, 497, 500, 503, 506, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520</code></td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Core Flow</h4>
-    <div class="arrow-chain">Outputs &amp; Docs -&gt; Graph Build -&gt; CLI &amp; Skill Installers -&gt; Tests &amp; Fixtures -&gt; Other -&gt; Serving API -&gt; Analysis &amp; Clustering</div>
+    <div class="arrow-chain">Outputs &amp; Docs -&gt; Graph Build -&gt; CLI &amp; Skill Installers -&gt; Other -&gt; Tests &amp; Fixtures -&gt; Analysis &amp; Clustering -&gt; Serving API</div>
   </div>
 </div>
 <div class="grid">
   <div class="card">
     <h4>Graph Report Highlights</h4>
     <ul>
-      <li>14183 nodes · 39547 edges · 578 communities (499 shown, 79 thin omitted)</li>
+      <li>14267 nodes · 39684 edges · 563 communities (488 shown, 75 thin omitted)</li>
       <li>Extraction: 87% EXTRACTED · 13% INFERRED · 0% AMBIGUOUS · INFERRED: 5057 edges (avg confidence: 0.85)</li>
       <li>Token cost: 0 input · 0 output</li>
       <li>1. `i()` - 722 edges</li>
@@ -170,34 +170,34 @@ flowchart LR
 <hr>
 <!-- ====== 2. Graph Build ====== -->
 <h2 id="build-graph">2. Graph Build</h2>
-<p>Graph Build groups implementation around app, flutter, driver, merchant, mostly in flutter_merchant_app/lib/merchant_models.dart, flutter_driver_app/lib/active_delivery_flow_screen.dart, flutter_mobile_app/lib/cart_checkout_screen.dart. This section covers 1235 nodes and 1441 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Graph Build groups implementation around app, flutter, screendart, driver, mostly in flutter_driver_app/lib/active_delivery_flow_screen.dart, flutter_mobile_app/lib/home_screen.dart, flutter_driver_app/lib/simulated_driver_map.dart. This section covers 1188 nodes and 1443 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Graph Build (1235 nodes, 1441 edges)
+    %% Section: Graph Build (1188 nodes, 1443 edges)
+    subgraph build_graph_backend_package_json_fef74fa2["backend/package.json"]
+        backend_package_9f875cb0("backend/package.json")
+        ref_compression_de97cb75("compression<br/><small>backend/package.json</small>")
+        ref_cors_c3ba69b0("cors<br/><small>backend/package.json</small>")
+        ref_socket_io_aa1f2c0c("socket.io<br/><small>backend/package.json</small>")
+        ref_types_node_4b20becf("@types/node<br/><small>backend/package.json</small>")
+    end
     subgraph build_graph_External_generated_653891f5["External / generated"]
         package_flutter_material_dart_16a2582d("package:flutter/material.dart")
         services_admin_socket_service_dart_a8740271("../services/admin socket service.dart")
         widgets_admin_motion_widgets_dart_d9487789("../widgets/admin motion widgets.dart")
         widgets_admin_fleet_map_dart_8a02de2d("../widgets/admin fleet map.dart")
-        package_geolocator_geolocator_dart_733be2b4("package:geolocator/geolocator.dart")
-        driver_supabase_service_dart_7afd69df("driver_supabase_service.dart")
-    end
-    subgraph build_graph_backend_package_json_fef74fa2["backend/package.json"]
-        backend_package_9f875cb0("backend/package.json")
-        ref_compression_de97cb75("compression<br/><small>backend/package.json</small>")
     end
     subgraph build_graph_wasel_admin_mcp_index_js_d72cbcad["wasel-admin-mcp/index.js"]
         wasel_admin_mcp_index_getadminheaders_dc07c33d("getAdminHeaders()<br/><small>wasel-admin-mcp/index.js</small>")
         wasel_admin_mcp_index_getadmintoken_1959f807("getAdminToken()<br/><small>wasel-admin-mcp/index.js</small>")
     end
+    driver_app_active_delivery_flow_screen_eca0dcdc("delivery flow screen.dart<br/><small>driver_app/active_delivery_flow_screen.dart</small>")
     flutter_driver_app_lib_active_delivery_flow_scre_5f930ebe("delivery flow screen.dart<br/><small>flutter_driver_app/lib/active_delivery_flow_screen.dart</small>")
     flutter_admin_app_lib_screens_dashboard_tab_0fbd6b40("dashboard_tab.dart")
     flutter_admin_app_lib_screens_orders_tab_a1a0640f("orders_tab.dart")
-    flutter_driver_app_lib_services_driver_gps_servi_8c373d77("driver_gps_service.dart")
     packages_wasel_ui_lib_src_components_od_filter_p_b86f2d72("od_filter_pill.dart")
-    packages_wasel_ui_lib_src_components_receipt_aud_7f30b602("receipt_audit_sheet.dart")
     packages_wasel_ui_lib_src_components_status_pill_f50f3214("status_pill.dart")
     packages_wasel_ui_lib_src_components_wasel_butto_452492fc("wasel_button.dart")
     wasel_admin_mcp_index_getadminheaders_dc07c33d -->|calls| wasel_admin_mcp_index_getadmintoken_1959f807
@@ -207,31 +207,32 @@ flowchart LR
     flutter_admin_app_lib_screens_dashboard_tab_0fbd6b40 -->|imports| widgets_admin_fleet_map_dart_8a02de2d
     flutter_admin_app_lib_screens_orders_tab_a1a0640f -->|imports| package_flutter_material_dart_16a2582d
     flutter_admin_app_lib_screens_orders_tab_a1a0640f -->|imports| services_admin_socket_service_dart_a8740271
-    flutter_driver_app_lib_services_driver_gps_servi_8c373d77 -->|imports| package_geolocator_geolocator_dart_733be2b4
-    flutter_driver_app_lib_services_driver_gps_servi_8c373d77 -->|imports| driver_supabase_service_dart_7afd69df
     backend_package_9f875cb0 -->|imports| ref_compression_de97cb75
+    backend_package_9f875cb0 -->|imports| ref_cors_c3ba69b0
+    backend_package_9f875cb0 -->|imports| ref_socket_io_aa1f2c0c
+    backend_package_9f875cb0 -->|imports| ref_types_node_4b20becf
+    driver_app_active_delivery_flow_screen_eca0dcdc -->|imports| package_flutter_material_dart_16a2582d
     flutter_driver_app_lib_active_delivery_flow_scre_5f930ebe -->|imports| package_flutter_material_dart_16a2582d
-    packages_wasel_ui_lib_src_components_receipt_aud_7f30b602 -->|imports| package_flutter_material_dart_16a2582d
     packages_wasel_ui_lib_src_components_od_filter_p_b86f2d72 -->|imports| package_flutter_material_dart_16a2582d
     packages_wasel_ui_lib_src_components_status_pill_f50f3214 -->|imports| package_flutter_material_dart_16a2582d
     packages_wasel_ui_lib_src_components_wasel_butto_452492fc -->|imports| package_flutter_material_dart_16a2582d
-    %% Omitted for readability: 1217 nodes, 0 edges
+    %% Omitted for readability: 1170 nodes, 0 edges
+    class backend_package_9f875cb0 function;
+    class ref_compression_de97cb75 function;
+    class ref_cors_c3ba69b0 function;
+    class ref_socket_io_aa1f2c0c function;
+    class ref_types_node_4b20becf function;
     class package_flutter_material_dart_16a2582d function;
     class services_admin_socket_service_dart_a8740271 function;
     class widgets_admin_motion_widgets_dart_d9487789 function;
     class widgets_admin_fleet_map_dart_8a02de2d function;
-    class package_geolocator_geolocator_dart_733be2b4 function;
-    class driver_supabase_service_dart_7afd69df function;
-    class backend_package_9f875cb0 function;
-    class ref_compression_de97cb75 function;
     class wasel_admin_mcp_index_getadminheaders_dc07c33d function;
     class wasel_admin_mcp_index_getadmintoken_1959f807 function;
+    class driver_app_active_delivery_flow_screen_eca0dcdc function;
     class flutter_driver_app_lib_active_delivery_flow_scre_5f930ebe function;
     class flutter_admin_app_lib_screens_dashboard_tab_0fbd6b40 function;
     class flutter_admin_app_lib_screens_orders_tab_a1a0640f function;
-    class flutter_driver_app_lib_services_driver_gps_servi_8c373d77 function;
     class packages_wasel_ui_lib_src_components_od_filter_p_b86f2d72 function;
-    class packages_wasel_ui_lib_src_components_receipt_aud_7f30b602 function;
     class packages_wasel_ui_lib_src_components_status_pill_f50f3214 function;
     class packages_wasel_ui_lib_src_components_wasel_butto_452492fc function;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
@@ -257,22 +258,14 @@ flowchart LR
 </tr>
 <tr>
   <td>1</td>
-  <td><code>BorderRadius?</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
+  <td><code>address_management_sheet.dart</code><br><small style="color:var(--muted)"></small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>cart_checkout_screen.dart</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/cart_checkout_screen.dart</small><br><code>profile_screen.dart</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
   <td>No direct outbound edge</td>
-  <td>BorderRadius? node in project.</td>
+  <td>address_management_sheet.dart node in project.</td>
 </tr>
 <tr>
   <td>2</td>
-  <td><code>BoxShape</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>BoxShape node in project.</td>
-</tr>
-<tr>
-  <td>3</td>
   <td><code>Clip</code><br><small style="color:var(--muted)"></small></td>
   <td><span class="tag tag-cmd">Entry</span></td>
   <td>External entry / no inbound edge</td>
@@ -280,55 +273,135 @@ flowchart LR
   <td>Clip node in project.</td>
 </tr>
 <tr>
-  <td>4</td>
-  <td><code>Curve</code><br><small style="color:var(--muted)"></small></td>
+  <td>3</td>
+  <td><code>Color</code><br><small style="color:var(--muted)"></small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Curve node in project.</td>
+  <td>Color node in project.</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td><code>driver_app/driver_wallet_screen.dart</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>driver_models.dart</code><br><code>driver_theme.dart</code><br><code>package:flutter/material.dart</code></td>
+  <td>driver_app/driver_wallet_screen.dart node in driver_app/driver_wallet_screen.dart.</td>
 </tr>
 <tr>
   <td>5</td>
-  <td><code>CustomPainter</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_availableEarningsLyd</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>CustomPainter node in project.</td>
+  <td>_availableEarningsLyd node in driver_app/driver_wallet_screen.dart.</td>
 </tr>
 <tr>
   <td>6</td>
-  <td><code>dart:math</code><br><small style="color:var(--muted)"></small></td>
+  <td><code>build</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>app/simulated driver map.dart</code><br><small style="color:var(--muted)">driver_app/simulated_driver_map.dart</small><br><code>countdown_ring.dart</code><br><small style="color:var(--muted)">src/motion/countdown_ring.dart</small><br><code>delivery flow screen.dart</code><br><small style="color:var(--muted)">flutter_driver_app/lib/active_delivery_flow_screen.dart</small><br>+3 more</td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>dart:math node in project.</td>
+  <td>build node in driver_app/driver_wallet_screen.dart.</td>
 </tr>
 <tr>
   <td>7</td>
-  <td><code>double?</code><br><small style="color:var(--muted)"></small></td>
+  <td><code>_buildFinancialHeroCard</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>double? node in project.</td>
+  <td>_buildFinancialHeroCard node in driver_app/driver_wallet_screen.dart.</td>
 </tr>
 <tr>
   <td>8</td>
-  <td><code>_DriverMapPainter</code><br><small style="color:var(--muted)">driver_app/simulated_driver_map.dart</small></td>
+  <td><code>_buildTransactionTile</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>_DriverMapPainter node in driver_app/simulated_driver_map.dart.</td>
+  <td>_buildTransactionTile node in driver_app/driver_wallet_screen.dart.</td>
 </tr>
 <tr>
   <td>9</td>
-  <td><code>Duration</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
+  <td><code>_cashInHandCodLyd</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>Duration node in project.</td>
+  <td>_cashInHandCodLyd node in driver_app/driver_wallet_screen.dart.</td>
 </tr>
 <tr>
   <td>10</td>
+  <td><code>createState</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>Verifies imports, entry points, or version behavior.</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td><code>DriverWalletScreen</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>DriverWalletScreen node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td><code>_formatTime</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_formatTime node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>13</td>
+  <td><code>initState</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>initState node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>14</td>
+  <td><code>_maxCodLimitLyd</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_maxCodLimitLyd node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>15</td>
+  <td><code>_openDepositSettleModal</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_openDepositSettleModal node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>16</td>
+  <td><code>_openPayoutWithdrawalModal</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_openPayoutWithdrawalModal node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>17</td>
+  <td><code>_selectedFilter</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_selectedFilter node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>18</td>
+  <td><code>_transactions</code><br><small style="color:var(--muted)">driver_app/driver_wallet_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_transactions node in driver_app/driver_wallet_screen.dart.</td>
+</tr>
+<tr>
+  <td>19</td>
   <td><code>EdgeInsetsGeometry</code><br><small style="color:var(--muted)"></small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -336,15 +409,7 @@ flowchart LR
   <td>EdgeInsetsGeometry node in project.</td>
 </tr>
 <tr>
-  <td>11</td>
-  <td><code>_VoucherQrPainter</code><br><small style="color:var(--muted)">lib/widgets/digital_voucher_dialog.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>_VoucherQrPainter node in lib/widgets/digital_voucher_dialog.dart.</td>
-</tr>
-<tr>
-  <td>12</td>
+  <td>20</td>
   <td><code>WaselMerchantApp</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/main.dart</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -352,7 +417,47 @@ flowchart LR
   <td>WaselMerchantApp node in flutter_merchant_app/lib/main.dart.</td>
 </tr>
 <tr>
-  <td>13</td>
+  <td>21</td>
+  <td><code>profile_screen.dart</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>address management sheet.dart</code><br><code>design_system.dart</code><br><code>login_screen.dart</code><br>+3 more</td>
+  <td>profile_screen.dart node in flutter_mobile_app/lib/profile_screen.dart.</td>
+</tr>
+<tr>
+  <td>22</td>
+  <td><code>_buildSettingsTile</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_buildSettingsTile node in flutter_mobile_app/lib/profile_screen.dart.</td>
+</tr>
+<tr>
+  <td>23</td>
+  <td><code>_confirmLogout</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>_confirmLogout node in flutter_mobile_app/lib/profile_screen.dart.</td>
+</tr>
+<tr>
+  <td>24</td>
+  <td><code>isDark</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>isDark node in flutter_mobile_app/lib/profile_screen.dart.</td>
+</tr>
+<tr>
+  <td>25</td>
+  <td><code>onToggleTheme</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>onToggleTheme node in flutter_mobile_app/lib/profile_screen.dart.</td>
+</tr>
+<tr>
+  <td>26</td>
   <td><code>ProfileScreen</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/profile_screen.dart</small></td>
   <td><span class="tag tag-class">Class</span></td>
   <td>External entry / no inbound edge</td>
@@ -360,23 +465,7 @@ flowchart LR
   <td>ProfileScreen node in flutter_mobile_app/lib/profile_screen.dart.</td>
 </tr>
 <tr>
-  <td>14</td>
-  <td><code>GradientTransform</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>GradientTransform node in project.</td>
-</tr>
-<tr>
-  <td>15</td>
-  <td><code>int?</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>int? node in project.</td>
-</tr>
-<tr>
-  <td>16</td>
+  <td>27</td>
   <td><code>../motion/bouncy_pressable.dart</code><br><small style="color:var(--muted)"></small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>od_filter_pill.dart</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small><br><code>receipt_audit_sheet.dart</code><br><small style="color:var(--muted)">src/components/receipt_audit_sheet.dart</small><br><code>status_pill.dart</code><br><small style="color:var(--muted)">src/components/status_pill.dart</small><br>+3 more</td>
@@ -384,7 +473,7 @@ flowchart LR
   <td>../motion/bouncy_pressable.dart node in project.</td>
 </tr>
 <tr>
-  <td>17</td>
+  <td>28</td>
   <td><code>../motion/wasel_motion.dart</code><br><small style="color:var(--muted)"></small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>od_filter_pill.dart</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small><br><code>status_pill.dart</code><br><small style="color:var(--muted)">src/components/status_pill.dart</small><br><code>swipe_slider.dart</code><br><small style="color:var(--muted)">src/components/swipe_slider.dart</small><br>+3 more</td>
@@ -392,15 +481,7 @@ flowchart LR
   <td>../motion/wasel_motion.dart node in project.</td>
 </tr>
 <tr>
-  <td>18</td>
-  <td><code>Offset</code><br><small style="color:var(--muted)"></small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Offset node in project.</td>
-</tr>
-<tr>
-  <td>19</td>
+  <td>29</td>
   <td><code>od_filter_pill.dart</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -408,92 +489,12 @@ flowchart LR
   <td>od_filter_pill.dart node in src/components/od_filter_pill.dart.</td>
 </tr>
 <tr>
-  <td>20</td>
+  <td>30</td>
   <td><code>activeColor</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
   <td>activeColor node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>21</td>
-  <td><code>build</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>build node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>22</td>
-  <td><code>count</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>count node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>23</td>
-  <td><code>isSelected</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-async">Async</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>isSelected node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>24</td>
-  <td><code>label</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>label node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>25</td>
-  <td><code>leading</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>leading node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>26</td>
-  <td><code>OdFilterPill</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>OdFilterPill node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>27</td>
-  <td><code>onTap</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>onTap node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>28</td>
-  <td><code>padding</code><br><small style="color:var(--muted)">src/components/od_filter_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>padding node in src/components/od_filter_pill.dart.</td>
-</tr>
-<tr>
-  <td>29</td>
-  <td><code>status_pill.dart</code><br><small style="color:var(--muted)">src/components/status_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>../motion/bouncy pressable.dart</code><br><code>../motion/wasel_motion.dart</code><br><code>../theme/wasel typography.dart</code><br>+3 more</td>
-  <td>status_pill.dart node in src/components/status_pill.dart.</td>
-</tr>
-<tr>
-  <td>30</td>
-  <td><code>backgroundColor</code><br><small style="color:var(--muted)">src/components/status_pill.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>backgroundColor node in src/components/status_pill.dart.</td>
 </tr>
 </table>
 
@@ -502,35 +503,36 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>flutter_merchant_app/lib/merchant_models.dart</code></td><td>74 nodes</td></tr>
-<tr><td><code>flutter_driver_app/lib/active_delivery_flow_screen.dart</code></td><td>59 nodes</td></tr>
-<tr><td><code>flutter_mobile_app/lib/cart_checkout_screen.dart</code></td><td>43 nodes</td></tr>
-<tr><td><code>flutter_driver_app/lib/simulated_driver_map.dart</code></td><td>39 nodes</td></tr>
+      <tr><td><code>flutter_driver_app/lib/active_delivery_flow_screen.dart</code></td><td>59 nodes</td></tr>
+<tr><td><code>flutter_mobile_app/lib/home_screen.dart</code></td><td>42 nodes</td></tr>
+<tr><td><code>flutter_driver_app/lib/simulated_driver_map.dart</code></td><td>40 nodes</td></tr>
+<tr><td><code>flutter_mobile_app/lib/otp_verification_screen.dart</code></td><td>35 nodes</td></tr>
 <tr><td><code>ui_ux/product_detail_sheet.dart</code></td><td>33 nodes</td></tr>
 <tr><td><code>backend/package.json</code></td><td>32 nodes</td></tr>
-<tr><td><code>lib/services/driver_gps_service.dart</code></td><td>28 nodes</td></tr>
-<tr><td><code>flutter_mobile_app/lib/satellite_location_picker.dart</code></td><td>28 nodes</td></tr>
+<tr><td><code>ui_ux/home_screen.dart</code></td><td>31 nodes</td></tr>
+<tr><td><code>src/motion/bouncy_pressable.dart</code></td><td>30 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: defines x1001, imports x169, references x167, contains x80. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: defines x941, references x205, imports x165, contains x80. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 3. Analysis & Clustering ====== -->
 <h2 id="analysis-clustering">3. Analysis &amp; Clustering</h2>
-<p>Analysis &amp; Clustering groups implementation around backend, serverjs, services, path, mostly in backend/server.js, backend/services/socketService.js, specs/001-captain-settlement/plan.md. This section covers 74 nodes and 94 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Analysis &amp; Clustering groups implementation around backend, serverjs, services, path, mostly in backend/server.js, backend/services/socketService.js, specs/001-captain-settlement/plan.md. This section covers 77 nodes and 100 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Analysis &amp; Clustering (74 nodes, 94 edges)
+    %% Section: Analysis &amp; Clustering (77 nodes, 100 edges)
     subgraph analysis_clustering_backend_server_js_4ad4d9ae["backend/server.js"]
         backend_server_initpgtables_13336399("initPgTables()<br/><small>backend/server.js</small>")
         backend_server_handleorderstatusupdate_ab18dd86("handleOrderStatusUpdate()<br/><small>backend/server.js</small>")
         backend_server_handledrivertelemetry_d62d1aea("handleDriverTelemetry()<br/><small>backend/server.js</small>")
+        backend_server_issueauthsessionforverifiedphone_8f8b5e6a("issueAuthSessionForVerifiedPhone()<br/><small>backend/server.js</small>")
         backend_server_0a3f8905("server.js")
         backend_server_saveordertopg_5dd1a1e9("saveOrderToPg()<br/><small>backend/server.js</small>")
         backend_server_calculatehaversinedistance_ae6e2429("calculateHaversineDistance()<br/><small>backend/server.js</small>")
@@ -544,7 +546,6 @@ flowchart LR
         backend_server_savewallettopg_0b639af7("saveWalletToPg()<br/><small>backend/server.js</small>")
         backend_server_savedeliveryzonetopg_0ae34729("saveDeliveryZoneToPg()<br/><small>backend/server.js</small>")
         backend_server_savesystemconfigtopg_ed4c75e4("saveSystemConfigToPg()<br/><small>backend/server.js</small>")
-        backend_server_saveorderitemstopg_9d869e2b("saveOrderItemsToPg()<br/><small>backend/server.js</small>")
     end
     backend_services_socketservice_socketservice_bro_5645c767("broadcastOrderStatusTransition()<br/><small>backend/services/socketService.js</small>")
     backend_server_handledrivertelemetry_d62d1aea -->|calls| backend_server_calculatehaversinedistance_ae6e2429
@@ -562,12 +563,14 @@ flowchart LR
     backend_server_initpgtables_13336399 -->|calls| backend_server_savewallettopg_0b639af7
     backend_server_initpgtables_13336399 -->|calls| backend_server_savedeliveryzonetopg_0ae34729
     backend_server_initpgtables_13336399 -->|calls| backend_server_savesystemconfigtopg_ed4c75e4
-    backend_server_saveordertopg_5dd1a1e9 -->|calls| backend_server_saveorderitemstopg_9d869e2b
+    backend_server_issueauthsessionforverifiedphone_8f8b5e6a -->|calls| backend_server_saveusertopg_e0315b61
+    backend_server_issueauthsessionforverifiedphone_8f8b5e6a -->|calls| backend_server_savewallettopg_0b639af7
     backend_server_0a3f8905 -->|calls| backend_services_socketservice_socketservice_bro_5645c767
-    %% Omitted for readability: 56 nodes, 0 edges
+    %% Omitted for readability: 59 nodes, 0 edges
     class backend_server_initpgtables_13336399 function;
     class backend_server_handleorderstatusupdate_ab18dd86 function;
     class backend_server_handledrivertelemetry_d62d1aea function;
+    class backend_server_issueauthsessionforverifiedphone_8f8b5e6a function;
     class backend_server_0a3f8905 module;
     class backend_server_saveordertopg_5dd1a1e9 function;
     class backend_server_calculatehaversinedistance_ae6e2429 function;
@@ -581,7 +584,6 @@ flowchart LR
     class backend_server_savewallettopg_0b639af7 function;
     class backend_server_savedeliveryzonetopg_0ae34729 function;
     class backend_server_savesystemconfigtopg_ed4c75e4 function;
-    class backend_server_saveorderitemstopg_9d869e2b function;
     class backend_services_socketservice_socketservice_bro_5645c767 function;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
@@ -672,7 +674,7 @@ flowchart LR
   <td>9</td>
   <td><code>generateToken()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
+  <td><code>issueAuthSessionForVerifiedPhone()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td>No direct outbound edge</td>
   <td>generateToken() node in backend/server.js.</td>
 </tr>
@@ -742,6 +744,14 @@ flowchart LR
 </tr>
 <tr>
   <td>18</td>
+  <td><code>issueAuthSessionForVerifiedPhone()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>generateToken()</code><br><small style="color:var(--muted)">backend/server.js</small><br><code>saveUserToPg()</code><br><small style="color:var(--muted)">backend/server.js</small><br><code>saveWalletToPg()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
+  <td>issueAuthSessionForVerifiedPhone() node in backend/server.js.</td>
+</tr>
+<tr>
+  <td>19</td>
   <td><code>kapsoAgentAuth()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>server.js</code><br><small style="color:var(--muted)">backend/server.js</small></td>
@@ -749,7 +759,7 @@ flowchart LR
   <td>kapsoAgentAuth() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>19</td>
+  <td>20</td>
   <td><code>loadSeedData()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -757,7 +767,7 @@ flowchart LR
   <td>loadSeedData() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>20</td>
+  <td>21</td>
   <td><code>mapPgDriver()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>initPgTables()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
@@ -765,7 +775,7 @@ flowchart LR
   <td>mapPgDriver() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>21</td>
+  <td>22</td>
   <td><code>mapPgOrder()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>handleOrderStatusUpdate()</code><br><small style="color:var(--muted)">backend/server.js</small><br><code>initPgTables()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
@@ -773,7 +783,7 @@ flowchart LR
   <td>mapPgOrder() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>22</td>
+  <td>23</td>
   <td><code>mapPgProduct()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>initPgTables()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
@@ -781,7 +791,7 @@ flowchart LR
   <td>mapPgProduct() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>23</td>
+  <td>24</td>
   <td><code>mapPgStore()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-hook">UI</span></td>
   <td><code>initPgTables()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
@@ -789,7 +799,7 @@ flowchart LR
   <td>mapPgStore() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>24</td>
+  <td>25</td>
   <td><code>normalizeLibyanPhone()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -797,7 +807,7 @@ flowchart LR
   <td>normalizeLibyanPhone() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>25</td>
+  <td>26</td>
   <td><code>rateLimiter()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -805,7 +815,7 @@ flowchart LR
   <td>rateLimiter() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>26</td>
+  <td>27</td>
   <td><code>sanitizeDriver()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -813,7 +823,7 @@ flowchart LR
   <td>sanitizeDriver() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>27</td>
+  <td>28</td>
   <td><code>sanitizeStore()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-hook">UI</span></td>
   <td><code>server.js</code><br><small style="color:var(--muted)">backend/server.js</small></td>
@@ -821,7 +831,7 @@ flowchart LR
   <td>sanitizeStore() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>29</td>
   <td><code>saveAuditLogToPg()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -829,20 +839,12 @@ flowchart LR
   <td>saveAuditLogToPg() node in backend/server.js.</td>
 </tr>
 <tr>
-  <td>29</td>
+  <td>30</td>
   <td><code>saveCategoryToPg()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>initPgTables()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
   <td>No direct outbound edge</td>
   <td>saveCategoryToPg() node in backend/server.js.</td>
-</tr>
-<tr>
-  <td>30</td>
-  <td><code>saveDeliveryZoneToPg()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>initPgTables()</code><br><small style="color:var(--muted)">backend/server.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>saveDeliveryZoneToPg() node in backend/server.js.</td>
 </tr>
 </table>
 
@@ -851,14 +853,14 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>backend/server.js</code></td><td>72 nodes</td></tr>
+      <tr><td><code>backend/server.js</code></td><td>75 nodes</td></tr>
 <tr><td><code>backend/services/socketService.js</code></td><td>1 nodes</td></tr>
 <tr><td><code>specs/001-captain-settlement/plan.md</code></td><td>1 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x58, calls x17, indirect call x17, references x2. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x61, calls x20, indirect call x17, references x2. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -1161,12 +1163,12 @@ flowchart LR
 
 <!-- ====== 5. CLI & Skill Installers ====== -->
 <h2 id="cli-skills">5. CLI &amp; Skill Installers</h2>
-<p>CLI &amp; Skill Installers groups implementation around app, public, maindartjs, backend, mostly in public/app/main.dart.js, public/app/main.dart.js, flutter_mobile_app/lib/home_screen.dart. This section covers 8320 nodes and 31539 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>CLI &amp; Skill Installers groups implementation around app, public, maindartjs, backend, mostly in public/app/main.dart.js, public/app/main.dart.js, lib/screens/accounting_tab.dart. This section covers 8418 nodes and 31649 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: CLI &amp; Skill Installers (8320 nodes, 31539 edges)
+    %% Section: CLI &amp; Skill Installers (8418 nodes, 31649 edges)
     backend_public_app_main_dart_1_781c3ddb("$1()<br/><small>public/app/main.dart.js</small>")
     public_app_main_dart_1_a21a28f2("$1()<br/><small>public/app/main.dart.js</small>")
     public_app_main_dart_ba_5c00b71f("ba()<br/><small>public/app/main.dart.js</small>")
@@ -1183,20 +1185,20 @@ flowchart LR
     backend_public_app_main_dart_a3e_08312e90("a3E()<br/><small>public/app/main.dart.js</small>")
     backend_public_app_main_dart_a6p_cb85901f("a6p()<br/><small>public/app/main.dart.js</small>")
     backend_public_app_main_dart_gad_5b5de80f("gad()<br/><small>public/app/main.dart.js</small>")
-    backend_public_app_main_dart_a_j_c99edcda("a_j()<br/><small>public/app/main.dart.js</small>")
-    backend_public_app_main_dart_ga55_f74779fb("ga55()<br/><small>public/app/main.dart.js</small>")
+    backend_public_app_main_dart_aaz_5d9b1f8c("aAz()<br/><small>public/app/main.dart.js</small>")
+    backend_public_app_main_dart_a2g_d1e52242("a2g()<br/><small>public/app/main.dart.js</small>")
     backend_public_app_main_dart_0eb00f49 -->|calls| backend_public_app_main_dart_function_0_bd691f8d
     backend_public_app_main_dart_a1u_54fdd9f7 -->|calls| backend_public_app_main_dart_as4_4c8701c4
     backend_public_app_main_dart_a2u_c2f29835 -->|calls| backend_public_app_main_dart_guk_f7724b22
     backend_public_app_main_dart_a31_b09e607a -->|calls| backend_public_app_main_dart_a3e_08312e90
     backend_public_app_main_dart_a6p_cb85901f -->|calls| backend_public_app_main_dart_gad_5b5de80f
-    backend_public_app_main_dart_a_j_c99edcda -->|calls| backend_public_app_main_dart_ga55_f74779fb
+    backend_public_app_main_dart_aaz_5d9b1f8c -->|calls| backend_public_app_main_dart_a2g_d1e52242
     backend_public_app_main_dart_0_8586e932 -->|calls| backend_public_app_main_dart_function_0_bd691f8d
     backend_public_app_main_dart_0_8586e932 -->|calls| backend_public_app_main_dart_gad_5b5de80f
     backend_public_app_main_dart_ba_149ebe40 -->|calls| backend_public_app_main_dart_function_0_bd691f8d
     backend_public_app_main_dart_1_781c3ddb -->|calls| backend_public_app_main_dart_gad_5b5de80f
     backend_public_app_main_dart_1_781c3ddb -->|calls| backend_public_app_main_dart_function_0_bd691f8d
-    %% Omitted for readability: 8302 nodes, 0 edges
+    %% Omitted for readability: 8400 nodes, 0 edges
     class backend_public_app_main_dart_1_781c3ddb function;
     class public_app_main_dart_1_a21a28f2 function;
     class public_app_main_dart_ba_5c00b71f function;
@@ -1213,8 +1215,8 @@ flowchart LR
     class backend_public_app_main_dart_a3e_08312e90 function;
     class backend_public_app_main_dart_a6p_cb85901f function;
     class backend_public_app_main_dart_gad_5b5de80f function;
-    class backend_public_app_main_dart_a_j_c99edcda function;
-    class backend_public_app_main_dart_ga55_f74779fb function;
+    class backend_public_app_main_dart_aaz_5d9b1f8c function;
+    class backend_public_app_main_dart_a2g_d1e52242 function;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -1254,6 +1256,14 @@ flowchart LR
 </tr>
 <tr>
   <td>3</td>
+  <td><code>a0s()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>ln()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><code>a()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td>a0s() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>4</td>
   <td><code>a19()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1261,7 +1271,7 @@ flowchart LR
   <td>a19() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>4</td>
+  <td>5</td>
   <td><code>a1s()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>av3()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1269,7 +1279,7 @@ flowchart LR
   <td>a1s() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>5</td>
+  <td>6</td>
   <td><code>a1U()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1277,7 +1287,7 @@ flowchart LR
   <td>a1U() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>6</td>
+  <td>7</td>
   <td><code>a1w()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>ai1()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1285,7 +1295,15 @@ flowchart LR
   <td>a1w() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>7</td>
+  <td>8</td>
+  <td><code>a1y()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>$2()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small><br><code>gkW()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td>a1y() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>9</td>
   <td><code>a2h()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>aAC()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1293,7 +1311,7 @@ flowchart LR
   <td>a2h() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>8</td>
+  <td>10</td>
   <td><code>a2v()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>iQ()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1301,31 +1319,23 @@ flowchart LR
   <td>a2v() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>9</td>
-  <td><code>a3F()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>oG()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>a3F() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
-  <td>10</td>
-  <td><code>a3J()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>a3S()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small><br><code>r6()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>a3J() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
   <td>11</td>
-  <td><code>a3S()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><code>a3Z()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>PL()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><code>a3J()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>a3S() node in public/app/main.dart.js.</td>
+  <td><code>b3()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small><br><code>Br()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><code>ga_1()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td>a3Z() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
   <td>12</td>
+  <td><code>a4K()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>akr()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small><br><code>ni()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td>No direct outbound edge</td>
+  <td>a4K() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>13</td>
   <td><code>a4n()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>qV()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1333,39 +1343,15 @@ flowchart LR
   <td>a4n() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>13</td>
-  <td><code>a4U()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>d4()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>a4U() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
   <td>14</td>
-  <td><code>a5p()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><code>a5e()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>op()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><code>atV()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td>No direct outbound edge</td>
-  <td>a5p() node in public/app/main.dart.js.</td>
+  <td>a5e() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
   <td>15</td>
-  <td><code>a6j()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>z5()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><code>gSa()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>a6j() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
-  <td>16</td>
-  <td><code>a9g()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>oF()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>a9g() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
-  <td>17</td>
   <td><code>aA7()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1373,15 +1359,7 @@ flowchart LR
   <td>aA7() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>18</td>
-  <td><code>aA8()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>l()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>aA8() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
-  <td>19</td>
+  <td>16</td>
   <td><code>aAC()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1389,7 +1367,7 @@ flowchart LR
   <td>aAC() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>20</td>
+  <td>17</td>
   <td><code>aAO()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1397,15 +1375,7 @@ flowchart LR
   <td>aAO() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>21</td>
-  <td><code>aAy()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>a6h()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>aAy() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
-  <td>22</td>
+  <td>18</td>
   <td><code>aB3()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>gaBV()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1413,7 +1383,7 @@ flowchart LR
   <td>aB3() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>23</td>
+  <td>19</td>
   <td><code>aB9()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1421,7 +1391,7 @@ flowchart LR
   <td>aB9() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>24</td>
+  <td>20</td>
   <td><code>abs()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1429,7 +1399,7 @@ flowchart LR
   <td>abs() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>25</td>
+  <td>21</td>
   <td><code>abV()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>bhg()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1437,15 +1407,7 @@ flowchart LR
   <td>abV() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>26</td>
-  <td><code>ac2()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td><code>aQS()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
-  <td>No direct outbound edge</td>
-  <td>ac2() node in public/app/main.dart.js.</td>
-</tr>
-<tr>
-  <td>27</td>
+  <td>22</td>
   <td><code>ac9()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>bd1()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1453,7 +1415,7 @@ flowchart LR
   <td>ac9() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>28</td>
+  <td>23</td>
   <td><code>ad2()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td>External entry / no inbound edge</td>
@@ -1461,7 +1423,7 @@ flowchart LR
   <td>ad2() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>29</td>
+  <td>24</td>
   <td><code>adH()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
   <td><code>i()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
@@ -1469,12 +1431,52 @@ flowchart LR
   <td>adH() node in public/app/main.dart.js.</td>
 </tr>
 <tr>
-  <td>30</td>
-  <td><code>ae4()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td>25</td>
+  <td><code>afI()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
   <td><span class="tag tag-func">Function</span></td>
-  <td><code>aRr()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td>External entry / no inbound edge</td>
   <td>No direct outbound edge</td>
-  <td>ae4() node in public/app/main.dart.js.</td>
+  <td>afI() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>26</td>
+  <td><code>afj()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>afj() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>27</td>
+  <td><code>afK()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>afK() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>afy()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>afy() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>afZ()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>afZ() node in public/app/main.dart.js.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>ag1()</code><br><small style="color:var(--muted)">public/app/main.dart.js</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>ag1() node in public/app/main.dart.js.</td>
 </tr>
 </table>
 
@@ -1485,17 +1487,17 @@ flowchart LR
       <tr><th>File</th><th>Coverage</th></tr>
       <tr><td><code>public/app/main.dart.js</code></td><td>3828 nodes</td></tr>
 <tr><td><code>public/app/main.dart.js</code></td><td>3825 nodes</td></tr>
-<tr><td><code>flutter_mobile_app/lib/home_screen.dart</code></td><td>43 nodes</td></tr>
+<tr><td><code>lib/screens/accounting_tab.dart</code></td><td>43 nodes</td></tr>
 <tr><td><code>flutter_merchant_app/lib/main.dart</code></td><td>39 nodes</td></tr>
-<tr><td><code>flutter_driver_app/lib/driver_home_screen.dart</code></td><td>32 nodes</td></tr>
-<tr><td><code>flutter_mobile_app/lib/store_menu_screen.dart</code></td><td>27 nodes</td></tr>
+<tr><td><code>ui_ux/order_tracking_screen.dart</code></td><td>35 nodes</td></tr>
+<tr><td><code>flutter_driver_app/lib/driver_home_screen.dart</code></td><td>31 nodes</td></tr>
+<tr><td><code>flutter_mobile_app/lib/store_menu_screen.dart</code></td><td>26 nodes</td></tr>
 <tr><td><code>flutter_driver_app/lib/main.dart</code></td><td>24 nodes</td></tr>
-<tr><td><code>driver_app/driver_home_screen.dart</code></td><td>21 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: calls x18365, contains x7674, indirect call x4726, defines x345. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: calls x18365, contains x7674, indirect call x4726, defines x436. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -1841,12 +1843,12 @@ flowchart LR
 
 <!-- ====== 7. Serving API ====== -->
 <h2 id="serve-api">7. Serving API</h2>
-<p>Serving API groups implementation around backend, services, api, app, mostly in lib/services/api_service.dart, ORIGINAL_REQUEST.md, backend/services/socketService.js. This section covers 180 nodes and 195 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Serving API groups implementation around backend, services, api, app, mostly in lib/services/api_service.dart, ORIGINAL_REQUEST.md, backend/services/socketService.js. This section covers 192 nodes and 215 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Serving API (180 nodes, 195 edges)
+    %% Section: Serving API (192 nodes, 215 edges)
     subgraph serve_api_backend_services_socketService_js_7271c3f5["backend/services/socketService.js"]
         backend_services_socketservice_socketservice_4ef379b9("SocketService<br/><small>backend/services/socketService.js</small>")
         backend_services_socketservice_socketservice_ini_277a380d("init()<br/><small>backend/services/socketService.js</small>")
@@ -1863,14 +1865,12 @@ flowchart LR
     subgraph serve_api_backend_services_reviewService_js_c8a3ad99["backend/services/reviewService.js"]
         backend_services_reviewservice_reviewservice_9177b784("ReviewService<br/><small>backend/services/reviewService.js</small>")
         backend_services_reviewservice_reviewservice_sub_a0d2cd88("submitReview()<br/><small>backend/services/reviewService.js</small>")
-        backend_services_reviewservice_reviewservice_get_6118235f("getStoreReviews()<br/><small>backend/services/reviewService.js</small>")
-    end
-    subgraph serve_api_backend_controllers_authController_js_02e29d3a["backend/controllers/authController.js"]
-        backend_controllers_authcontroller_a8850cb3("authController.js")
-        backend_controllers_authcontroller_loginuser_2bc0240c("loginUser()<br/><small>backend/controllers/authController.js</small>")
     end
     backend_routes_auth_routes_693a87a1("auth.routes.js")
     backend_routes_reviews_routes_0a1a4dec("reviews.routes.js")
+    backend_routes_vouchers_routes_c41b4408("vouchers.routes.js")
+    backend_services_orderservice_orderservice_e17890b4("OrderService<br/><small>backend/services/orderService.js</small>")
+    backend_services_voucherservice_voucherservice_3509374c("VoucherService<br/><small>backend/services/voucherService.js</small>")
     backend_services_socketservice_socketservice_4ef379b9 -->|method| backend_services_socketservice_socketservice_ini_277a380d
     backend_services_socketservice_socketservice_4ef379b9 -->|method| backend_services_socketservice_socketservice_sen_31588515
     backend_services_socketservice_socketservice_4ef379b9 -->|method| backend_services_socketservice_socketservice_set_0e0848bf
@@ -1882,14 +1882,11 @@ flowchart LR
     backend_services_socketservice_socketservice_4ef379b9 -->|method| backend_services_socketservice_socketservice_get_436b0697
     backend_services_socketservice_socketservice_4ef379b9 -->|method| backend_services_socketservice_socketservice_con_af10369f
     backend_services_reviewservice_reviewservice_9177b784 -->|method| backend_services_reviewservice_reviewservice_sub_a0d2cd88
-    backend_services_reviewservice_reviewservice_9177b784 -->|method| backend_services_reviewservice_reviewservice_get_6118235f
     backend_services_socketservice_socketservice_bro_8cb8fb15 -->|calls| backend_services_socketservice_socketservice_sen_aaba777b
     backend_services_socketservice_socketservice_ini_277a380d -->|calls| backend_services_socketservice_socketservice_set_0e0848bf
     backend_services_socketservice_socketservice_sen_31588515 -->|calls| backend_services_socketservice_socketservice_sen_1461d41f
     backend_routes_reviews_routes_0a1a4dec -->|calls| backend_services_reviewservice_reviewservice_sub_a0d2cd88
-    backend_routes_reviews_routes_0a1a4dec -->|calls| backend_services_reviewservice_reviewservice_get_6118235f
-    backend_routes_auth_routes_693a87a1 -->|imports| backend_controllers_authcontroller_a8850cb3
-    %% Omitted for readability: 162 nodes, 0 edges
+    %% Omitted for readability: 174 nodes, 0 edges
     class backend_services_socketservice_socketservice_4ef379b9 klass;
     class backend_services_socketservice_socketservice_ini_277a380d function;
     class backend_services_socketservice_socketservice_sen_31588515 function;
@@ -1903,11 +1900,11 @@ flowchart LR
     class backend_services_socketservice_socketservice_con_af10369f function;
     class backend_services_reviewservice_reviewservice_9177b784 klass;
     class backend_services_reviewservice_reviewservice_sub_a0d2cd88 function;
-    class backend_services_reviewservice_reviewservice_get_6118235f ui;
-    class backend_controllers_authcontroller_a8850cb3 module;
-    class backend_controllers_authcontroller_loginuser_2bc0240c function;
     class backend_routes_auth_routes_693a87a1 api;
     class backend_routes_reviews_routes_0a1a4dec api;
+    class backend_routes_vouchers_routes_c41b4408 api;
+    class backend_services_orderservice_orderservice_e17890b4 klass;
+    class backend_services_voucherservice_voucherservice_3509374c klass;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -2188,19 +2185,19 @@ flowchart LR
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x96, defines x50, method x13, imports x13. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x97, defines x50, method x22, calls x17. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
 
 <!-- ====== 8. Tests & Fixtures ====== -->
 <h2 id="tests-fixtures">8. Tests &amp; Fixtures</h2>
-<p>Tests &amp; Fixtures groups implementation around test, app, backend, flutter, mostly in test/e2e/test_harness.dart, flutter_merchant_app/test/merchant_isolation_test.dart, flutter_admin_app/test/admin_orders_adversarial_test.dart. This section covers 1029 nodes and 1380 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<p>Tests &amp; Fixtures groups implementation around test, backend, app, flutter, mostly in test/e2e/test_harness.dart, flutter_merchant_app/test/merchant_isolation_test.dart, flutter_admin_app/test/admin_orders_adversarial_test.dart. This section covers 957 nodes and 1303 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: Tests &amp; Fixtures (1029 nodes, 1380 edges)
+    %% Section: Tests &amp; Fixtures (957 nodes, 1303 edges)
     subgraph tests_fixtures_backend_services_walletService_js_8980474e["backend/services/walletService.js"]
         backend_services_walletservice_walletservice_07713293("WalletService<br/><small>backend/services/walletService.js</small>")
         backend_services_walletservice_walletservice_ens_14cfec00("ensureWallet()<br/><small>backend/services/walletService.js</small>")
@@ -2209,51 +2206,53 @@ flowchart LR
         backend_services_walletservice_walletservice_set_068e9cc2("settleEscrow()<br/><small>backend/services/walletService.js</small>")
         backend_services_walletservice_walletservice_ref_7be7ec97("refundEscrow()<br/><small>backend/services/walletService.js</small>")
     end
-    subgraph tests_fixtures_backend_services_accountingEngine_8838af47["backend/services/accountingEngine.js"]
-        backend_services_accountingengine_accountingengi_c4785d4f("AccountingEngine<br/><small>backend/services/accountingEngine.js</small>")
-        backend_services_accountingengine_accountingengi_301dde1d("getTrialBalance()<br/><small>backend/services/accountingEngine.js</small>")
-        backend_services_accountingengine_accountingengi_7831a439("getGeneralLedger()<br/><small>backend/services/accountingEngine.js</small>")
-        backend_services_accountingengine_accountingengi_c3c22ae5("getDailyZReport()<br/><small>backend/services/accountingEngine.js</small>")
-        backend_services_accountingengine_accountingengi_ba6de9a7("getPartnerStatement()<br/><small>backend/services/accountingEngine.js</small>")
+    subgraph tests_fixtures_backend_services_kapsoService_js_2c00e88c["backend/services/kapsoService.js"]
+        backend_services_kapsoservice_kapsoservice_99238706("KapsoService<br/><small>backend/services/kapsoService.js</small>")
+        backend_services_kapsoservice_kapsoservice_reque_5806ad19("requestOtp()<br/><small>backend/services/kapsoService.js</small>")
+        backend_services_kapsoservice_kapsoservice_const_ef77a3ff("constructor()<br/><small>backend/services/kapsoService.js</small>")
+        backend_services_kapsoservice_kapsoservice_verif_d93e8815("verifyOtp()<br/><small>backend/services/kapsoService.js</small>")
+        backend_services_kapsoservice_kapsoservice_norma_eaee86b9("normalizePhone()<br/><small>backend/services/kapsoService.js</small>")
     end
     subgraph tests_fixtures_backend_services_hfService_js_99ed22d3["backend/services/hfService.js"]
         backend_services_hfservice_hfservice_cebeca23("HfService<br/><small>backend/services/hfService.js</small>")
         backend_services_hfservice_hfservice_enhancedesc_9a8978a2("enhanceDescription()<br/><small>backend/services/hfService.js</small>")
     end
+    backend_services_accountingengine_accountingengi_c4785d4f("AccountingEngine<br/><small>backend/services/accountingEngine.js</small>")
     backend_services_ledgerservice_ledgerservice_9be06e65("LedgerService<br/><small>backend/services/ledgerService.js</small>")
     flutter_admin_app_test_admin_orders_adversarial_772b35b5("orders adversarial test.dart<br/><small>flutter_admin_app/test/admin_orders_adversarial_test.dart</small>")
     flutter_merchant_app_test_merchant_isolation_tes_402a80c3("merchant_isolation_test.dart")
     logistics_simulation_test_1f2bf93a("simulation_test.py")
-    flutter_mobile_app_test_e2e_tier1_feature_test_ff84f9bb("tier1_feature_test.dart")
     backend_services_hfservice_hfservice_cebeca23 -->|method| backend_services_hfservice_hfservice_enhancedesc_9a8978a2
     backend_services_walletservice_walletservice_07713293 -->|method| backend_services_walletservice_walletservice_ens_14cfec00
     backend_services_walletservice_walletservice_07713293 -->|method| backend_services_walletservice_walletservice_upd_4c85348d
     backend_services_walletservice_walletservice_07713293 -->|method| backend_services_walletservice_walletservice_hol_db8afb67
     backend_services_walletservice_walletservice_07713293 -->|method| backend_services_walletservice_walletservice_set_068e9cc2
     backend_services_walletservice_walletservice_07713293 -->|method| backend_services_walletservice_walletservice_ref_7be7ec97
-    backend_services_accountingengine_accountingengi_c4785d4f -->|method| backend_services_accountingengine_accountingengi_301dde1d
-    backend_services_accountingengine_accountingengi_c4785d4f -->|method| backend_services_accountingengine_accountingengi_7831a439
-    backend_services_accountingengine_accountingengi_c4785d4f -->|method| backend_services_accountingengine_accountingengi_c3c22ae5
-    backend_services_accountingengine_accountingengi_c4785d4f -->|method| backend_services_accountingengine_accountingengi_ba6de9a7
-    %% Omitted for readability: 1011 nodes, 0 edges
+    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_reque_5806ad19
+    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_const_ef77a3ff
+    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_verif_d93e8815
+    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
+    backend_services_kapsoservice_kapsoservice_reque_5806ad19 -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
+    backend_services_kapsoservice_kapsoservice_verif_d93e8815 -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
+    %% Omitted for readability: 939 nodes, 0 edges
     class backend_services_walletservice_walletservice_07713293 klass;
     class backend_services_walletservice_walletservice_ens_14cfec00 function;
     class backend_services_walletservice_walletservice_upd_4c85348d function;
     class backend_services_walletservice_walletservice_hol_db8afb67 function;
     class backend_services_walletservice_walletservice_set_068e9cc2 function;
     class backend_services_walletservice_walletservice_ref_7be7ec97 function;
-    class backend_services_accountingengine_accountingengi_c4785d4f klass;
-    class backend_services_accountingengine_accountingengi_301dde1d function;
-    class backend_services_accountingengine_accountingengi_7831a439 function;
-    class backend_services_accountingengine_accountingengi_c3c22ae5 function;
-    class backend_services_accountingengine_accountingengi_ba6de9a7 function;
+    class backend_services_kapsoservice_kapsoservice_99238706 klass;
+    class backend_services_kapsoservice_kapsoservice_reque_5806ad19 function;
+    class backend_services_kapsoservice_kapsoservice_const_ef77a3ff function;
+    class backend_services_kapsoservice_kapsoservice_verif_d93e8815 function;
+    class backend_services_kapsoservice_kapsoservice_norma_eaee86b9 function;
     class backend_services_hfservice_hfservice_cebeca23 klass;
     class backend_services_hfservice_hfservice_enhancedesc_9a8978a2 function;
+    class backend_services_accountingengine_accountingengi_c4785d4f klass;
     class backend_services_ledgerservice_ledgerservice_9be06e65 klass;
     class flutter_admin_app_test_admin_orders_adversarial_772b35b5 test;
     class flutter_merchant_app_test_merchant_isolation_tes_402a80c3 test;
     class logistics_simulation_test_1f2bf93a test;
-    class flutter_mobile_app_test_e2e_tier1_feature_test_ff84f9bb test;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -2522,19 +2521,19 @@ flowchart LR
     <h4>Key Files</h4>
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>test/e2e/test_harness.dart</code></td><td>86 nodes</td></tr>
-<tr><td><code>flutter_merchant_app/test/merchant_isolation_test.dart</code></td><td>83 nodes</td></tr>
-<tr><td><code>flutter_admin_app/test/admin_orders_adversarial_test.dart</code></td><td>42 nodes</td></tr>
+      <tr><td><code>test/e2e/test_harness.dart</code></td><td>85 nodes</td></tr>
+<tr><td><code>flutter_merchant_app/test/merchant_isolation_test.dart</code></td><td>82 nodes</td></tr>
+<tr><td><code>flutter_admin_app/test/admin_orders_adversarial_test.dart</code></td><td>41 nodes</td></tr>
 <tr><td><code>.specify/templates/tasks-template.md</code></td><td>27 nodes</td></tr>
-<tr><td><code>flutter_merchant_app/lib/retail_picking_screen.dart</code></td><td>23 nodes</td></tr>
 <tr><td><code>backend/test_e2e_order_lifecycle.js</code></td><td>22 nodes</td></tr>
-<tr><td><code>flutter_driver_app/lib/driver_wallet_screen.dart</code></td><td>20 nodes</td></tr>
+<tr><td><code>backend/services/kapsoService.js</code></td><td>18 nodes</td></tr>
 <tr><td><code>backend/test_server.js</code></td><td>17 nodes</td></tr>
+<tr><td><code>scripts/powershell/common.ps1</code></td><td>16 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x390, defines x360, imports x182, imports x147. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x400, defines x288, imports x170, calls x161. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -3225,8 +3224,337 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 11. lib/driver_models.dart ====== -->
-<h2 id="lib-driver-models-dart">11. lib/driver_models.dart</h2>
+<!-- ====== 11. merchant_models.dart ====== -->
+<h2 id="merchant-models-dart">11. merchant_models.dart</h2>
+<p>merchant_models.dart groups implementation around merchant, flutter, app, modelsdart, mostly in flutter_merchant_app/lib/merchant_models.dart, lib/widgets/fly_to_cart_overlay.dart. This section covers 92 nodes and 92 internal edges; the diagram shows only representative relationships to stay readable.</p>
+
+<div class="mermaid">
+%%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
+flowchart LR
+    %% Section: merchant_models.dart (92 nodes, 92 edges)
+    subgraph merchant_models_dart_flutter_merchant_app_lib_me_bcf785a2["flutter_merchant_app/lib/merchant_models.dart"]
+        flutter_merchant_app_lib_merchant_models_catalog_a3852d58("CatalogProduct<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_kdsorde_22468109("KdsOrderItem<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_kdstick_270f5bbb("KdsTicketStatus<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_merchan_7aebaed5("MerchantMockData<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_merchan_3f7c69f5("MerchantReceipt<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_partner_2c46cf62("PartnerAppMode<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_allitem_e94744e5("allItemsCollected<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_categor_a3474afc("category<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_collect_2e8c69ec("collectedItemsCount<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_copywit_9cbffa3f("copyWith<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+        flutter_merchant_app_lib_merchant_models_courier_161d4510("courierName<br/><small>flutter_merchant_app/lib/merchant_models.dart</small>")
+    end
+    subgraph merchant_models_dart_External_generated_d7fa001d["External / generated"]
+        dart_ui_a5a666cc("dart:ui")
+        icondata_abcb82ed("IconData?")
+        offset_53a610e9("Offset")
+        static_storestatus_a785237a("static StoreStatus")
+        static_const_df77b6de("static const")
+        static_const_list_5a5eef3e("static const List")
+    end
+    flutter_mobile_app_lib_widgets_fly_to_cart_overl_cd8a1952("fly_to_cart_overlay.dart")
+    flutter_mobile_app_lib_widgets_fly_to_cart_overl_cd8a1952 -->|imports| dart_ui_a5a666cc
+    %% Omitted for readability: 74 nodes, 0 edges
+    class flutter_merchant_app_lib_merchant_models_catalog_a3852d58 klass;
+    class flutter_merchant_app_lib_merchant_models_kdsorde_22468109 klass;
+    class flutter_merchant_app_lib_merchant_models_kdstick_270f5bbb klass;
+    class flutter_merchant_app_lib_merchant_models_merchan_7aebaed5 klass;
+    class flutter_merchant_app_lib_merchant_models_merchan_3f7c69f5 klass;
+    class flutter_merchant_app_lib_merchant_models_partner_2c46cf62 klass;
+    class flutter_merchant_app_lib_merchant_models_allitem_e94744e5 function;
+    class flutter_merchant_app_lib_merchant_models_categor_a3474afc function;
+    class flutter_merchant_app_lib_merchant_models_collect_2e8c69ec function;
+    class flutter_merchant_app_lib_merchant_models_copywit_9cbffa3f function;
+    class flutter_merchant_app_lib_merchant_models_courier_161d4510 function;
+    class dart_ui_a5a666cc function;
+    class icondata_abcb82ed klass;
+    class offset_53a610e9 klass;
+    class static_storestatus_a785237a ui;
+    class static_const_df77b6de function;
+    class static_const_list_5a5eef3e function;
+    class flutter_mobile_app_lib_widgets_fly_to_cart_overl_cd8a1952 function;
+    classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
+    classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
+    classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
+    classDef klass fill:#064e3b,stroke:#34d399,color:#d1fae5,stroke-width:1px;
+    classDef ui fill:#831843,stroke:#f472b6,color:#fce7f3,stroke-width:1px;
+    classDef module fill:#172554,stroke:#60a5fa,color:#dbeafe,stroke-width:1px;
+    classDef test fill:#3f3f46,stroke:#a1a1aa,color:#f4f4f5,stroke-width:1px;
+    classDef concept fill:#292524,stroke:#a8a29e,color:#fafaf9,stroke-dasharray:4 3;
+    classDef function fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:1px;
+</div>
+
+<h3>Call Details</h3>
+<table class="call-table">
+<tr>
+  <th style="width:5%">#</th>
+  <th style="width:28%">Node</th>
+  <th style="width:10%">Type</th>
+  <th style="width:17%">Caller</th>
+  <th style="width:20%">Callees</th>
+  <th style="width:20%">Description</th>
+</tr>
+<tr>
+  <td>1</td>
+  <td><code>dart:ui</code><br><small style="color:var(--muted)"></small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td><code>flutter mobile app/lib/main.dart</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/main.dart</small><br><code>fly_to_cart_overlay.dart</code><br><small style="color:var(--muted)">lib/widgets/fly_to_cart_overlay.dart</small><br><code>lib/order tracking screen.dart</code><br><small style="color:var(--muted)">flutter_mobile_app/lib/order_tracking_screen.dart</small></td>
+  <td>No direct outbound edge</td>
+  <td>dart:ui node in project.</td>
+</tr>
+<tr>
+  <td>2</td>
+  <td><code>merchant_models.dart</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td><code>package:flutter/material.dart</code></td>
+  <td>merchant_models.dart node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>3</td>
+  <td><code>allItemsCollected</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>allItemsCollected node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>4</td>
+  <td><code>CatalogProduct</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-class">Class</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>CatalogProduct node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>5</td>
+  <td><code>category</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>category node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>6</td>
+  <td><code>collectedItemsCount</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>collectedItemsCount node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>7</td>
+  <td><code>copyWith</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>copyWith node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>8</td>
+  <td><code>courierName</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>courierName node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>9</td>
+  <td><code>courierPhone</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>courierPhone node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>10</td>
+  <td><code>courierVehicle</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>courierVehicle node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>11</td>
+  <td><code>currentStoreStatus</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>currentStoreStatus node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>12</td>
+  <td><code>customerName</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>customerName node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>13</td>
+  <td><code>customerNotes</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>customerNotes node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>14</td>
+  <td><code>customerPhone</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>customerPhone node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>15</td>
+  <td><code>defaultStore</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-hook">UI</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>defaultStore node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>16</td>
+  <td><code>deliveryAddress</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>deliveryAddress node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>17</td>
+  <td><code>deliveryFeeLyd</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>deliveryFeeLyd node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>18</td>
+  <td><code>descAr</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>descAr node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>19</td>
+  <td><code>district</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>district node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>20</td>
+  <td><code>driverArrived</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>driverArrived node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>21</td>
+  <td><code>driverStatus</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>driverStatus node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>22</td>
+  <td><code>elapsedMinutes</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>elapsedMinutes node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>23</td>
+  <td><code>fromJson</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>fromJson node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>24</td>
+  <td><code>fromMap</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>fromMap node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>25</td>
+  <td><code>getSampleCatalog</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>getSampleCatalog node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>26</td>
+  <td><code>getSampleOrders</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>getSampleOrders node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>27</td>
+  <td><code>getSampleReceipts</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>getSampleReceipts node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>28</td>
+  <td><code>getSampleRetailOrders</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>getSampleRetailOrders node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>29</td>
+  <td><code>handoverCode</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>handoverCode node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+<tr>
+  <td>30</td>
+  <td><code>icon</code><br><small style="color:var(--muted)">flutter_merchant_app/lib/merchant_models.dart</small></td>
+  <td><span class="tag tag-func">Function</span></td>
+  <td>External entry / no inbound edge</td>
+  <td>No direct outbound edge</td>
+  <td>icon node in flutter_merchant_app/lib/merchant_models.dart.</td>
+</tr>
+</table>
+
+<div class="grid">
+  <div class="card">
+    <h4>Key Files</h4>
+    <table style="width:100%;font-size:0.85rem;">
+      <tr><th>File</th><th>Coverage</th></tr>
+      <tr><td><code>flutter_merchant_app/lib/merchant_models.dart</code></td><td>72 nodes</td></tr>
+<tr><td><code>lib/widgets/fly_to_cart_overlay.dart</code></td><td>14 nodes</td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h4>Design Notes</h4>
+    <p>This section comes from graphify community clustering. Relationship summary: defines x84, references x7, imports x1. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+  </div>
+</div>
+<hr>
+
+<!-- ====== 12. lib/driver_models.dart ====== -->
+<h2 id="lib-driver-models-dart">12. lib/driver_models.dart</h2>
 <p>lib/driver_models.dart groups implementation around driver, modelsdart, flutter, app, mostly in flutter_driver_app/lib/driver_models.dart. This section covers 89 nodes and 88 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -3567,8 +3895,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 12. driver_app/driver_models.dart ====== -->
-<h2 id="driver-app-driver-models-dart">12. driver_app/driver_models.dart</h2>
+<!-- ====== 13. driver_app/driver_models.dart ====== -->
+<h2 id="driver-app-driver-models-dart">13. driver_app/driver_models.dart</h2>
 <p>driver_app/driver_models.dart groups implementation around driver, app, modelsdart, driverstats, mostly in driver_app/driver_models.dart. This section covers 89 nodes and 88 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -3911,8 +4239,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 13. lib/driver_theme.dart ====== -->
-<h2 id="lib-driver-theme-dart">13. lib/driver_theme.dart</h2>
+<!-- ====== 14. lib/driver_theme.dart ====== -->
+<h2 id="lib-driver-theme-dart">14. lib/driver_theme.dart</h2>
 <p>lib/driver_theme.dart groups implementation around driver, themedart, flutter, app, mostly in flutter_driver_app/lib/driver_theme.dart. This section covers 82 nodes and 81 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -4251,8 +4579,8 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 14. merchant_theme.dart ====== -->
-<h2 id="merchant-theme-dart">14. merchant_theme.dart</h2>
+<!-- ====== 15. merchant_theme.dart ====== -->
+<h2 id="merchant-theme-dart">15. merchant_theme.dart</h2>
 <p>merchant_theme.dart groups implementation around merchant, themedart, flutter, app, mostly in flutter_merchant_app/lib/merchant_theme.dart. This section covers 78 nodes and 77 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
@@ -4591,70 +4919,72 @@ flowchart LR
 </div>
 <hr>
 
-<!-- ====== 15. driver_app/driver_theme.dart ====== -->
-<h2 id="driver-app-driver-theme-dart">15. driver_app/driver_theme.dart</h2>
-<p>driver_app/driver_theme.dart groups implementation around driver, app, themedart, accentcyan, mostly in driver_app/driver_theme.dart. This section covers 71 nodes and 70 internal edges; the diagram shows only representative relationships to stay readable.</p>
+<!-- ====== 16. Other ====== -->
+<h2 id="other">16. Other</h2>
+<p>Other groups implementation around app, flutter, public, canvaskit, mostly in driver_app/driver_theme.dart, lib/services/admin_supabase_service.dart, app/canvaskit/canvaskit.js. This section covers 2559 nodes and 3292 internal edges; the diagram shows only representative relationships to stay readable.</p>
 
 <div class="mermaid">
 %%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
 flowchart LR
-    %% Section: driver_app/driver_theme.dart (71 nodes, 70 edges)
-    subgraph driver_app_driver_theme_dart_driver_app_driver_t_be89e235["driver_app/driver_theme.dart"]
-        driver_app_driver_theme_74be4af9("driver_app/driver_theme.dart")
-        driver_app_driver_theme_drivercolors_df4fc9ec("DriverColors<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_radiuslg_39889b17("radiusLg<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_radiusxl_f9215dcf("radiusXl<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_radiusfull_9eedb193("radiusFull<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_topsheet_0586cd89("topSheet<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_drivertypography_e302abdb("DriverTypography<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_fontfamily_8ff57dd5("fontFamily<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_displaylarge_c46ebdb2("displayLarge<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_displaymedium_4c82e5c9("displayMedium<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_primary_c02eae88("primary<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_headlinelarge_2a7f5abc("headlineLarge<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_primarydark_f629eed9("primaryDark<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_headlinemedium_fc305636("headlineMedium<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_titlelarge_ca095bf4("titleLarge<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_primarylight_3ef0567c("primaryLight<br/><small>driver_app/driver_theme.dart</small>")
-        driver_app_driver_theme_titlemedium_a365008a("titleMedium<br/><small>driver_app/driver_theme.dart</small>")
+    %% Section: Other (2559 nodes, 3292 edges)
+    subgraph other_backend_services_telegramService_js_14dcfea2["backend/services/telegramService.js"]
+        backend_services_telegramservice_telegramservice_ea6e022c("TelegramService<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_f65924f7("sendTextMessage()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_a34c031b("sendAdminAlert()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_4bdad0d6("getOtpMessage()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_02d93c6c("constructor()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_7c6f278b("getOrderStatusArabic()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_1844fed4("requestOtp()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_3512b1f8("getSessionStatus()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_19b383e6("consumeSession()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_ea7292fe("verifyOtp()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_0e66a7f2("notifyMerchantNewOrder()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_1d254cd6("hydrateLinks()<br/><small>backend/services/telegramService.js</small>")
+        backend_services_telegramservice_telegramservice_08a5d4b4("sendCaptainArrivalAlert()<br/><small>backend/services/telegramService.js</small>")
     end
-    static_const_textstyle_9f939d03("static const TextStyle")
-    driver_app_driver_theme_74be4af9 -->|references| static_const_textstyle_9f939d03
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_drivercolors_df4fc9ec
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_radiuslg_39889b17
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_radiusxl_f9215dcf
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_radiusfull_9eedb193
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_topsheet_0586cd89
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_drivertypography_e302abdb
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_fontfamily_8ff57dd5
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_displaylarge_c46ebdb2
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_displaymedium_4c82e5c9
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_primary_c02eae88
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_headlinelarge_2a7f5abc
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_primarydark_f629eed9
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_headlinemedium_fc305636
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_titlelarge_ca095bf4
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_primarylight_3ef0567c
-    driver_app_driver_theme_74be4af9 -->|defines| driver_app_driver_theme_titlemedium_a365008a
-    %% Omitted for readability: 53 nodes, 0 edges
-    class driver_app_driver_theme_74be4af9 function;
-    class driver_app_driver_theme_drivercolors_df4fc9ec klass;
-    class driver_app_driver_theme_radiuslg_39889b17 function;
-    class driver_app_driver_theme_radiusxl_f9215dcf function;
-    class driver_app_driver_theme_radiusfull_9eedb193 function;
-    class driver_app_driver_theme_topsheet_0586cd89 function;
-    class driver_app_driver_theme_drivertypography_e302abdb klass;
-    class driver_app_driver_theme_fontfamily_8ff57dd5 function;
-    class driver_app_driver_theme_displaylarge_c46ebdb2 function;
-    class driver_app_driver_theme_displaymedium_4c82e5c9 function;
-    class driver_app_driver_theme_primary_c02eae88 function;
-    class driver_app_driver_theme_headlinelarge_2a7f5abc function;
-    class driver_app_driver_theme_primarydark_f629eed9 function;
-    class driver_app_driver_theme_headlinemedium_fc305636 function;
-    class driver_app_driver_theme_titlelarge_ca095bf4 function;
-    class driver_app_driver_theme_primarylight_3ef0567c function;
-    class driver_app_driver_theme_titlemedium_a365008a function;
-    class static_const_textstyle_9f939d03 function;
+    subgraph other_windows_runner_win32_window_h_6c02bd05["windows/runner/win32_window.h"]
+        flutter_admin_app_windows_runner_win32_window_wi_5755e95b("Win32Window<br/><small>windows/runner/win32_window.h</small>")
+        flutter_driver_app_windows_runner_win32_window_w_96dca28c("Win32Window<br/><small>windows/runner/win32_window.h</small>")
+        flutter_merchant_app_windows_runner_win32_window_ae8b9829("Win32Window<br/><small>windows/runner/win32_window.h</small>")
+        flutter_mobile_app_windows_runner_win32_window_w_54abd11c("Win32Window<br/><small>windows/runner/win32_window.h</small>")
+    end
+    logistics_init_9633c2ed("__init__.py")
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_f65924f7
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_a34c031b
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_4bdad0d6
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_02d93c6c
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_7c6f278b
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_1844fed4
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_3512b1f8
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_19b383e6
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_ea7292fe
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_0e66a7f2
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_1d254cd6
+    backend_services_telegramservice_telegramservice_ea6e022c -->|method| backend_services_telegramservice_telegramservice_08a5d4b4
+    backend_services_telegramservice_telegramservice_0e66a7f2 -->|calls| backend_services_telegramservice_telegramservice_f65924f7
+    backend_services_telegramservice_telegramservice_1844fed4 -->|calls| backend_services_telegramservice_telegramservice_4bdad0d6
+    backend_services_telegramservice_telegramservice_1844fed4 -->|calls| backend_services_telegramservice_telegramservice_f65924f7
+    backend_services_telegramservice_telegramservice_a34c031b -->|calls| backend_services_telegramservice_telegramservice_f65924f7
+    backend_services_telegramservice_telegramservice_08a5d4b4 -->|calls| backend_services_telegramservice_telegramservice_f65924f7
+    %% Omitted for readability: 2541 nodes, 0 edges
+    class backend_services_telegramservice_telegramservice_ea6e022c klass;
+    class backend_services_telegramservice_telegramservice_f65924f7 function;
+    class backend_services_telegramservice_telegramservice_a34c031b function;
+    class backend_services_telegramservice_telegramservice_4bdad0d6 function;
+    class backend_services_telegramservice_telegramservice_02d93c6c function;
+    class backend_services_telegramservice_telegramservice_7c6f278b function;
+    class backend_services_telegramservice_telegramservice_1844fed4 function;
+    class backend_services_telegramservice_telegramservice_3512b1f8 function;
+    class backend_services_telegramservice_telegramservice_19b383e6 function;
+    class backend_services_telegramservice_telegramservice_ea7292fe function;
+    class backend_services_telegramservice_telegramservice_0e66a7f2 function;
+    class backend_services_telegramservice_telegramservice_1d254cd6 function;
+    class backend_services_telegramservice_telegramservice_08a5d4b4 function;
+    class flutter_admin_app_windows_runner_win32_window_wi_5755e95b klass;
+    class flutter_driver_app_windows_runner_win32_window_w_96dca28c klass;
+    class flutter_merchant_app_windows_runner_win32_window_ae8b9829 klass;
+    class flutter_mobile_app_windows_runner_win32_window_w_54abd11c klass;
+    class logistics_init_9633c2ed module;
     classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
     classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
     classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
@@ -4924,369 +5254,18 @@ flowchart LR
     <table style="width:100%;font-size:0.85rem;">
       <tr><th>File</th><th>Coverage</th></tr>
       <tr><td><code>driver_app/driver_theme.dart</code></td><td>70 nodes</td></tr>
-    </table>
-  </div>
-  <div class="card">
-    <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: defines x69, references x1. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
-  </div>
-</div>
-<hr>
-
-<!-- ====== 16. Other ====== -->
-<h2 id="other">16. Other</h2>
-<p>Other groups implementation around app, flutter, public, canvaskit, mostly in lib/services/admin_supabase_service.dart, app/canvaskit/canvaskit.js, app/canvaskit/canvaskit.js. This section covers 2490 nodes and 3224 internal edges; the diagram shows only representative relationships to stay readable.</p>
-
-<div class="mermaid">
-%%{init: {"theme": "dark", "themeVariables": {"fontSize": "15.0px", "fontFamily": "Segoe UI, system-ui, sans-serif", "primaryColor": "#1e293b", "primaryTextColor": "#e2e8f0", "primaryBorderColor": "#38bdf8", "secondaryColor": "#0f172a", "tertiaryColor": "#334155", "lineColor": "#64748b", "textColor": "#e2e8f0"}, "flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 48, "rankSpacing": 64, "padding": 14, "diagramPadding": 10, "useMaxWidth": true}}}%%
-flowchart LR
-    %% Section: Other (2490 nodes, 3224 edges)
-    subgraph other_backend_services_kapsoService_js_3ca01903["backend/services/kapsoService.js"]
-        backend_services_kapsoservice_kapsoservice_99238706("KapsoService<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_reque_5806ad19("requestOtp()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_const_ef77a3ff("constructor()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_verif_d93e8815("verifyOtp()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_norma_eaee86b9("normalizePhone()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd("sendTextMessage()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_sendi_d9bcbf38("sendInteractiveButtons()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_notif_64fa1939("notifyMerchantNewOrder()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_sendc_9a4e18b9("sendCaptainArrivalAlert()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_gener_c96309ce("generateOtp()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_sendo_9e3facb3("sendOrderStatusUpdate()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_getor_f02d576c("getOrderStatusArabic()<br/><small>backend/services/kapsoService.js</small>")
-        backend_services_kapsoservice_kapsoservice_proce_ded91e0b("processWebhookMessage()<br/><small>backend/services/kapsoService.js</small>")
-    end
-    subgraph other_windows_runner_win32_window_h_6c02bd05["windows/runner/win32_window.h"]
-        flutter_admin_app_windows_runner_win32_window_wi_5755e95b("Win32Window<br/><small>windows/runner/win32_window.h</small>")
-        flutter_driver_app_windows_runner_win32_window_w_96dca28c("Win32Window<br/><small>windows/runner/win32_window.h</small>")
-        flutter_merchant_app_windows_runner_win32_window_ae8b9829("Win32Window<br/><small>windows/runner/win32_window.h</small>")
-        flutter_mobile_app_windows_runner_win32_window_w_54abd11c("Win32Window<br/><small>windows/runner/win32_window.h</small>")
-    end
-    logistics_init_9633c2ed("__init__.py")
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_reque_5806ad19
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_const_ef77a3ff
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_verif_d93e8815
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_sendi_d9bcbf38
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_notif_64fa1939
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_sendc_9a4e18b9
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_gener_c96309ce
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_sendo_9e3facb3
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_getor_f02d576c
-    backend_services_kapsoservice_kapsoservice_99238706 -->|method| backend_services_kapsoservice_kapsoservice_proce_ded91e0b
-    backend_services_kapsoservice_kapsoservice_notif_64fa1939 -->|calls| backend_services_kapsoservice_kapsoservice_sendi_d9bcbf38
-    backend_services_kapsoservice_kapsoservice_proce_ded91e0b -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
-    backend_services_kapsoservice_kapsoservice_proce_ded91e0b -->|calls| backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd
-    backend_services_kapsoservice_kapsoservice_proce_ded91e0b -->|calls| backend_services_kapsoservice_kapsoservice_sendo_9e3facb3
-    backend_services_kapsoservice_kapsoservice_proce_ded91e0b -->|calls| backend_services_kapsoservice_kapsoservice_getor_f02d576c
-    backend_services_kapsoservice_kapsoservice_reque_5806ad19 -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
-    backend_services_kapsoservice_kapsoservice_reque_5806ad19 -->|calls| backend_services_kapsoservice_kapsoservice_gener_c96309ce
-    backend_services_kapsoservice_kapsoservice_sendc_9a4e18b9 -->|calls| backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd
-    backend_services_kapsoservice_kapsoservice_sendi_d9bcbf38 -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
-    backend_services_kapsoservice_kapsoservice_sendo_9e3facb3 -->|calls| backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd
-    backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
-    backend_services_kapsoservice_kapsoservice_verif_d93e8815 -->|calls| backend_services_kapsoservice_kapsoservice_norma_eaee86b9
-    %% Omitted for readability: 2472 nodes, 0 edges
-    class backend_services_kapsoservice_kapsoservice_99238706 klass;
-    class backend_services_kapsoservice_kapsoservice_reque_5806ad19 function;
-    class backend_services_kapsoservice_kapsoservice_const_ef77a3ff function;
-    class backend_services_kapsoservice_kapsoservice_verif_d93e8815 function;
-    class backend_services_kapsoservice_kapsoservice_norma_eaee86b9 function;
-    class backend_services_kapsoservice_kapsoservice_sendt_ba39dcfd function;
-    class backend_services_kapsoservice_kapsoservice_sendi_d9bcbf38 function;
-    class backend_services_kapsoservice_kapsoservice_notif_64fa1939 function;
-    class backend_services_kapsoservice_kapsoservice_sendc_9a4e18b9 function;
-    class backend_services_kapsoservice_kapsoservice_gener_c96309ce function;
-    class backend_services_kapsoservice_kapsoservice_sendo_9e3facb3 function;
-    class backend_services_kapsoservice_kapsoservice_getor_f02d576c function;
-    class backend_services_kapsoservice_kapsoservice_proce_ded91e0b ui;
-    class flutter_admin_app_windows_runner_win32_window_wi_5755e95b klass;
-    class flutter_driver_app_windows_runner_win32_window_w_96dca28c klass;
-    class flutter_merchant_app_windows_runner_win32_window_ae8b9829 klass;
-    class flutter_mobile_app_windows_runner_win32_window_w_54abd11c klass;
-    class logistics_init_9633c2ed module;
-    classDef entry fill:#422006,stroke:#fbbf24,color:#fde68a,stroke-width:1px;
-    classDef api fill:#450a0a,stroke:#f87171,color:#fee2e2,stroke-width:1px;
-    classDef async fill:#2e1065,stroke:#a78bfa,color:#ede9fe,stroke-width:1px;
-    classDef klass fill:#064e3b,stroke:#34d399,color:#d1fae5,stroke-width:1px;
-    classDef ui fill:#831843,stroke:#f472b6,color:#fce7f3,stroke-width:1px;
-    classDef module fill:#172554,stroke:#60a5fa,color:#dbeafe,stroke-width:1px;
-    classDef test fill:#3f3f46,stroke:#a1a1aa,color:#f4f4f5,stroke-width:1px;
-    classDef concept fill:#292524,stroke:#a8a29e,color:#fafaf9,stroke-dasharray:4 3;
-    classDef function fill:#0f172a,stroke:#38bdf8,color:#e0f2fe,stroke-width:1px;
-</div>
-
-<h3>Call Details</h3>
-<table class="call-table">
-<tr>
-  <th style="width:5%">#</th>
-  <th style="width:28%">Node</th>
-  <th style="width:10%">Type</th>
-  <th style="width:17%">Caller</th>
-  <th style="width:20%">Callees</th>
-  <th style="width:20%">Description</th>
-</tr>
-<tr>
-  <td>1</td>
-  <td><code>admin_supabase_service.dart</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td><code>dart:convert</code><br><code>package:http/http.dart</code><br><code>package:shared preferences/shared prefe...</code></td>
-  <td>admin_supabase_service.dart node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>2</td>
-  <td><code>addDriver</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>addDriver node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>3</td>
-  <td><code>addProduct</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>addProduct node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>4</td>
-  <td><code>addStarterProductsForStore</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>addStarterProductsForStore node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>5</td>
-  <td><code>addStore</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>addStore node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>6</td>
-  <td><code>AdminSupabaseService</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-class">Class</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>AdminSupabaseService node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>7</td>
-  <td><code>apiKey</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-endpoint">API</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>apiKey node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>8</td>
-  <td><code>applyModifierGroupsToCategory</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>applyModifierGroupsToCategory node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>9</td>
-  <td><code>approvePayoutRequest</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>approvePayoutRequest node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>10</td>
-  <td><code>authenticateAdmin</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>authenticateAdmin node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>11</td>
-  <td><code>backendBaseUrl</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>backendBaseUrl node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>12</td>
-  <td><code>backendHeaders</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>backendHeaders node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>13</td>
-  <td><code>calculateLiveAudit</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>calculateLiveAudit node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>14</td>
-  <td><code>cancelOrder</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>cancelOrder node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>15</td>
-  <td><code>closeDailyAudit</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>closeDailyAudit node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>16</td>
-  <td><code>createVoucher</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>createVoucher node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>17</td>
-  <td><code>_currentAdmin</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>_currentAdmin node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>18</td>
-  <td><code>defaultConfigurations</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Reads, resolves, or persists project configuration.</td>
-</tr>
-<tr>
-  <td>19</td>
-  <td><code>deleteDriver</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>deleteDriver node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>20</td>
-  <td><code>deleteOrder</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>deleteOrder node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>21</td>
-  <td><code>deleteProduct</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>deleteProduct node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>22</td>
-  <td><code>deleteStore</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>Verifies imports, entry points, or version behavior.</td>
-</tr>
-<tr>
-  <td>23</td>
-  <td><code>disbursePayout</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>disbursePayout node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>24</td>
-  <td><code>_dynamicDrivers</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>_dynamicDrivers node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>25</td>
-  <td><code>_dynamicStores</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-hook">UI</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>_dynamicStores node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>26</td>
-  <td><code>_dynamicVouchers</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>_dynamicVouchers node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>27</td>
-  <td><code>fetchChartOfAccounts</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>fetchChartOfAccounts node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>28</td>
-  <td><code>fetchDailyAudits</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>fetchDailyAudits node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>29</td>
-  <td><code>fetchDeliveryZones</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>fetchDeliveryZones node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-<tr>
-  <td>30</td>
-  <td><code>fetchDrivers</code><br><small style="color:var(--muted)">lib/services/admin_supabase_service.dart</small></td>
-  <td><span class="tag tag-func">Function</span></td>
-  <td>External entry / no inbound edge</td>
-  <td>No direct outbound edge</td>
-  <td>fetchDrivers node in lib/services/admin_supabase_service.dart.</td>
-</tr>
-</table>
-
-<div class="grid">
-  <div class="card">
-    <h4>Key Files</h4>
-    <table style="width:100%;font-size:0.85rem;">
-      <tr><th>File</th><th>Coverage</th></tr>
-      <tr><td><code>lib/services/admin_supabase_service.dart</code></td><td>67 nodes</td></tr>
+<tr><td><code>lib/services/admin_supabase_service.dart</code></td><td>67 nodes</td></tr>
 <tr><td><code>app/canvaskit/canvaskit.js</code></td><td>59 nodes</td></tr>
 <tr><td><code>app/canvaskit/canvaskit.js</code></td><td>59 nodes</td></tr>
 <tr><td><code>canvaskit/chromium/canvaskit.js</code></td><td>56 nodes</td></tr>
 <tr><td><code>canvaskit/chromium/canvaskit.js</code></td><td>56 nodes</td></tr>
 <tr><td><code>canvaskit/webparagraph/canvaskit.js</code></td><td>47 nodes</td></tr>
 <tr><td><code>canvaskit/webparagraph/canvaskit.js</code></td><td>47 nodes</td></tr>
-<tr><td><code>app/canvaskit/skwasm.js</code></td><td>45 nodes</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Design Notes</h4>
-    <p>This section comes from graphify community clustering. Relationship summary: contains x1154, defines x730, calls x418, references x286. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
+    <p>This section comes from graphify community clustering. Relationship summary: contains x1149, defines x809, calls x429, references x285. The diagram prioritizes high-confidence calls or usage relationships; the table keeps the broader node inventory.</p>
   </div>
 </div>
 <hr>
@@ -5297,17 +5276,17 @@ flowchart LR
   <div class="card">
     <h4>Graph</h4>
     <table style="width:100%;font-size:0.85rem;">
-      <tr><td>Nodes</td><td>14183</td></tr>
-      <tr><td>Edges</td><td>39547</td></tr>
+      <tr><td>Nodes</td><td>14267</td></tr>
+      <tr><td>Edges</td><td>39684</td></tr>
       <tr><td>Hyperedges</td><td>0</td></tr>
-      <tr><td>Communities</td><td>578</td></tr>
+      <tr><td>Communities</td><td>563</td></tr>
       <tr><td>Documented Sections</td><td>15</td></tr>
     </table>
   </div>
   <div class="card">
     <h4>Edge Confidence</h4>
     <table style="width:100%;font-size:0.85rem;">
-      <tr><td>EXTRACTED</td><td>34490</td></tr>
+      <tr><td>EXTRACTED</td><td>34627</td></tr>
       <tr><td>INFERRED</td><td>5057</td></tr>
       <tr><td>AMBIGUOUS</td><td>0</td></tr>
     </table>
@@ -5316,7 +5295,7 @@ flowchart LR
 
 <div style="text-align:center; padding:40px 0; color: var(--muted); font-size:0.9rem;">
   <p>wasel-app — Architecture Documentation</p>
-  <p>Generated: 2026-11-25 12:53 UTC · graphify callflow-html</p>
+  <p>Generated: 2026-11-25 15:05 UTC · graphify callflow-html</p>
 </div>
 
 </div><!-- .container -->

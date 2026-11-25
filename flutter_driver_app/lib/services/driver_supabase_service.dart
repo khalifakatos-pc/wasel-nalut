@@ -116,6 +116,24 @@ class DriverSupabaseService {
     return false;
   }
 
+  static Future<void> persistExternalCaptainSession({
+    required String id,
+    required String name,
+    required String phone,
+    required String vehicle,
+    required String plate,
+    String? token,
+  }) {
+    return _persistCaptainSession(
+      id: id,
+      name: name,
+      phone: phone,
+      vehicle: vehicle,
+      plate: plate,
+      token: token,
+    );
+  }
+
   static Future<void> _persistCaptainSession({
     required String id,
     required String name,

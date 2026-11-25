@@ -791,7 +791,7 @@ class _ActiveDeliveryFlowScreenState extends State<ActiveDeliveryFlowScreen> {
                   const SizedBox(width: 8),
                   IconButton.filledTonal(
                     icon: const Icon(Icons.chat_rounded, color: DriverColors.primary),
-                    tooltip: 'محادثة فورية / واتساب',
+                    tooltip: 'محادثة فورية / تيليجرام',
                     onPressed: () {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
@@ -1696,7 +1696,7 @@ class _AntiFraudNoShowSheetState extends State<AntiFraudNoShowSheet> {
                       ),
                     ),
 
-                    // WhatsApp / SMS Alert
+                    // Telegram / Instant Arrival Alert
                     ListTile(
                       contentPadding: EdgeInsets.zero,
                       visualDensity: VisualDensity.compact,
@@ -1705,7 +1705,7 @@ class _AntiFraudNoShowSheetState extends State<AntiFraudNoShowSheet> {
                         color: _whatsappSent ? DriverColors.onlineGreen : Colors.white38,
                       ),
                       title: const Text(
-                        'إرسال تنبيه واتساب فوري للزبون',
+                        'إرسال تنبيه وصول عبر تيليجرام ✈️',
                         style: TextStyle(fontSize: 12, color: Colors.white),
                       ),
                       subtitle: _whatsappSent
@@ -1713,7 +1713,8 @@ class _AntiFraudNoShowSheetState extends State<AntiFraudNoShowSheet> {
                           : null,
                       trailing: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: _whatsappSent ? Colors.grey[800] : Colors.green[700],
+                          backgroundColor: _whatsappSent ? Colors.grey[800] : const Color(0xFF0088CC),
+                          foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         ),
                         onPressed: () {
@@ -1723,12 +1724,12 @@ class _AntiFraudNoShowSheetState extends State<AntiFraudNoShowSheet> {
                           });
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              backgroundColor: Colors.green,
-                              content: Text('💬 تم إرسال تنبيه واتساب للزبون مع إشعار بالانتظار أمام بابه'),
+                              backgroundColor: Color(0xFF0088CC),
+                              content: Text('✈️ تم إرسال تنبيه الوصول للزبون عبر تيليجرام مع إشعار بالانتظار أمام بابه'),
                             ),
                           );
                         },
-                        child: Text(_whatsappSent ? 'تم ✓' : 'واتساب', style: const TextStyle(fontSize: 11)),
+                        child: Text(_whatsappSent ? 'تم ✓' : 'تيليجرام ✈️', style: const TextStyle(fontSize: 11)),
                       ),
                     ),
                   ],

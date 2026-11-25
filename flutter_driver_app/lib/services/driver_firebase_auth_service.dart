@@ -70,7 +70,7 @@ class DriverFirebaseAuthService {
 
           String message = 'تعذر إرسال رمز التحقق SMS للكابتن.';
           if (isQuota) {
-            message = 'تم الوصول للحد الشهري لرسائل SMS. يمكنك المتابعة برمز PIN الخاص بك أو عبر واتساب.';
+            message = 'تم الوصول للحد الشهري لرسائل SMS. يمكنك المتابعة برمز PIN الخاص بك أو عبر تيليجرام.';
           }
           onError(message, isQuota);
         },
