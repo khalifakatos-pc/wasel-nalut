@@ -50,6 +50,7 @@ if (fs.existsSync(envPath)) {
 // ----------------------------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 const kapsoService = require('./services/kapsoService');
+const telegramService = require('./services/telegramService');
 const JWT_SECRET = process.env.JWT_SECRET || 'wasel-nalut-secure-jwt-key-2026-prod';
 const SEED_DATA_PATH = path.join(__dirname, 'seed_data.json');
 const PROXIMITY_THRESHOLD_METERS = 200; // Trigger alert within 200m
@@ -205,6 +206,29 @@ function saveSeedData() {
 }
 
 // PostgreSQL Async Helper Functions
+async function saveTelegramLinkToPg(l, dbClient = null) {
+  const executor = dbClient || pgPool;
+  if (!executor || !l || !l.phone || !l.chat_id) return;
+  try {
+    await executor.query(`
+      INSERT INTO telegram_links (phone, chat_id, telegram_user_id, username, first_name, role, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+      ON CONFLICT (phone) DO UPDATE SET
+        chat_id = EXCLUDED.chat_id,
+        telegram_user_id = COALESCE(EXCLUDED.telegram_user_id, telegram_links.telegram_user_id),
+        username = COALESCE(EXCLUDED.username, telegram_links.username),
+        first_name = COALESCE(EXCLUDED.first_name, telegram_links.first_name),
+        role = COALESCE(EXCLUDED.role, telegram_links.role),
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      l.phone, String(l.chat_id), l.telegram_user_id ? String(l.telegram_user_id) : null,
+      l.username || null, l.first_name || null, l.role || 'customer'
+    ]);
+  } catch (err) {
+    console.error('[PostgreSQL saveTelegramLink error]:', err.message);
+  }
+}
+
 async function saveUserToPg(u, dbClient = null) {
   const executor = dbClient || pgPool;
   if (!executor || !u) return;
@@ -1071,6 +1095,18 @@ async function initPgTables(forceSeed = false) {
       CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
       CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON audit_logs(created_at DESC);
 
+      -- 14b. Telegram Verified Links Table
+      CREATE TABLE IF NOT EXISTS telegram_links (
+        phone VARCHAR(50) PRIMARY KEY,
+        chat_id VARCHAR(100) NOT NULL,
+        telegram_user_id VARCHAR(100),
+        username VARCHAR(255),
+        first_name VARCHAR(255),
+        role VARCHAR(50) DEFAULT 'customer',
+        updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_telegram_links_chat_id ON telegram_links(chat_id);
+
       -- 15. Loyalty Points & Transactions
       CREATE TABLE IF NOT EXISTS loyalty_points (
         user_phone VARCHAR(50) PRIMARY KEY,
@@ -1382,7 +1418,14 @@ async function initPgTables(forceSeed = false) {
       const loyaltyRes = await pgPool.query('SELECT * FROM loyalty_points');
       db.loyalty_points = loyaltyRes.rows;
 
-      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders, ${db.users.length} users, ${db.wallets.length} wallets, ${db.delivery_zones.length} delivery zones.`);
+      try {
+        const tgRes = await pgPool.query('SELECT * FROM telegram_links');
+        telegramService.hydrateLinks(tgRes.rows || []);
+      } catch (tgHydrateErr) {
+        console.warn('[PostgreSQL] Telegram links hydration warning:', tgHydrateErr.message);
+      }
+
+      console.log(`[PostgreSQL] Hydration complete: ${db.stores.length} stores, ${db.products.length} products, ${db.drivers.length} drivers, ${db.orders.length} orders, ${db.users.length} users, ${db.wallets.length} wallets, ${db.delivery_zones.length} delivery zones, ${telegramService.links.size} telegram links.`);
     }
   } catch (err) {
     console.error('[PostgreSQL] Table initialization/hydration error:', err.message);
@@ -2063,6 +2106,261 @@ app.post('/api/v1/auth/whatsapp/verify-otp', rateLimiter(20, 60000), async (req,
   } catch (err) {
     console.error('WhatsApp verify-otp error:', err);
     return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================================
+// SHARED VERIFIED-PHONE SESSION HELPER & TELEGRAM BOT API ENDPOINTS
+// ============================================================================
+async function issueAuthSessionForVerifiedPhone({ phone, role = 'customer', full_name = null, auth_method = 'telegram_otp' }) {
+  const cleanPhone = String(phone || '').trim();
+  const rawDigits = cleanPhone.replace(/[^0-9]/g, '');
+  const standardLibyan = rawDigits.startsWith('218') ? ('+' + rawDigits) : ('+218' + rawDigits.replace(/^0+/, ''));
+  const localLibyan = rawDigits.startsWith('218') ? ('0' + rawDigits.substring(3)) : ('0' + rawDigits.replace(/^0+/, ''));
+
+  let user = db.users.find(u =>
+    u.phone === cleanPhone || u.phone === standardLibyan || u.phone === localLibyan
+  );
+
+  if (!user && pgPool) {
+    const uRes = await pgPool.query(
+      'SELECT * FROM users WHERE phone = $1 OR phone = $2 OR phone = $3 LIMIT 1',
+      [cleanPhone, standardLibyan, localLibyan]
+    );
+    if (uRes.rows.length > 0) {
+      user = uRes.rows[0];
+      db.users.push(user);
+    }
+  }
+
+  let isNewUser = false;
+  if (!user) {
+    isNewUser = true;
+    const userId = 'user_' + uuidv4().substring(0, 8);
+    user = {
+      id: userId,
+      full_name: full_name || (role === 'captain' ? 'كابتن واصل نالوت' : role === 'merchant' ? 'تاجر واصل نالوت' : 'زبون واصل نالوت'),
+      phone: standardLibyan,
+      email: rawDigits + '@wasel-nalut.ly',
+      role: role,
+      status: 'active',
+      city: 'nalut',
+      auth_method,
+      created_at: new Date().toISOString()
+    };
+    db.users.push(user);
+    await saveUserToPg(user);
+
+    const walletId = 'wallet_' + userId;
+    const newWallet = {
+      id: walletId,
+      user_id: userId,
+      wallet_type: role === 'captain' ? 'driver_wallet' : 'customer_wallet',
+      currency: 'LYD',
+      balance: 50.00,
+      locked_balance: 0.00,
+      status: 'active'
+    };
+    db.wallets.push(newWallet);
+    await saveWalletToPg(newWallet);
+  }
+
+  const token = generateToken(user);
+  const wallet = db.wallets.find(w => w.user_id === user.id) || null;
+  const normInput = telegramService.normalizePhone(cleanPhone);
+  const matchedDriver = (role === 'captain' || role === 'driver' || user.role === 'driver')
+    ? db.drivers.find(d => d.user_id === user.id || telegramService.normalizePhone(d.phone) === normInput)
+    : null;
+  const matchedStore = (role === 'merchant' || role === 'store')
+    ? db.stores.find(s => telegramService.normalizePhone(s.phone) === normInput)
+    : null;
+
+  return {
+    isNewUser,
+    token,
+    user: {
+      id: user.id,
+      full_name: matchedDriver?.full_name || matchedStore?.name || user.full_name,
+      phone: user.phone,
+      role: user.role,
+      city: user.city || 'nalut'
+    },
+    driver: matchedDriver ? {
+      id: matchedDriver.id,
+      full_name: matchedDriver.full_name,
+      phone: matchedDriver.phone,
+      vehicle_type: matchedDriver.vehicle_type,
+      vehicle_plate: matchedDriver.vehicle_plate || matchedDriver.plate_number
+    } : null,
+    store: matchedStore ? {
+      id: matchedStore.id,
+      name: matchedStore.name,
+      phone: matchedStore.phone
+    } : null,
+    wallet
+  };
+}
+
+app.get('/api/v1/telegram/status', (req, res) => {
+  res.json({
+    success: true,
+    enabled: telegramService.enabled,
+    configured: Boolean(telegramService.botToken),
+    bot_username: telegramService.botUsername,
+    linked_accounts: telegramService.links.size
+  });
+});
+
+app.post('/api/v1/auth/telegram/send-otp', rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const { phone, role = 'customer' } = req.body || {};
+    if (!phone) {
+      return res.status(400).json({ success: false, error: 'رقم الهاتف مطلوب لإرسال رمز تيليجرام.' });
+    }
+    const result = await telegramService.requestOtp(phone, role);
+    if (!result.success) {
+      return res.status(503).json(result);
+    }
+    return res.json({
+      success: true,
+      message: result.mode === 'direct_delivery'
+        ? 'تم إرسال رمز التحقق مباشرة إلى حسابك في تيليجرام ✈️'
+        : 'افتح بوت واصل في تيليجرام واضغط مشاركة رقم الهاتف لتأكيد دخولك فوراً ✈️',
+      ...result
+    });
+  } catch (err) {
+    return res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/v1/auth/telegram/session-status', rateLimiter(60, 60000), async (req, res) => {
+  try {
+    const sessionId = req.query.session_id;
+    const status = telegramService.getSessionStatus(sessionId);
+    if (!status.exists) {
+      return res.json({ success: true, verified: false, expired: true });
+    }
+    if (!status.verified) {
+      return res.json({ success: true, verified: false, expired: false });
+    }
+
+    const consumed = telegramService.consumeSession(sessionId);
+    if (!consumed) {
+      return res.json({ success: true, verified: false, expired: false });
+    }
+
+    const sessionData = await issueAuthSessionForVerifiedPhone({
+      phone: consumed.normalizedPhone,
+      role: consumed.role,
+      full_name: consumed.firstName,
+      auth_method: 'telegram_bot_contact'
+    });
+
+    return res.json({
+      success: true,
+      verified: true,
+      message: 'تم توثيق الدخول عبر تيليجرام بنجاح ✈️',
+      data: sessionData
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/auth/telegram/verify-otp', rateLimiter(20, 60000), async (req, res) => {
+  try {
+    const { phone, otp, role = 'customer', full_name } = req.body || {};
+    if (!phone || !otp) {
+      return res.status(400).json({ success: false, error: 'رقم الهاتف ورمز التحقق مطلوبان.' });
+    }
+
+    const verification = telegramService.verifyOtp(phone, otp);
+    if (!verification.success) {
+      return res.status(400).json(verification);
+    }
+
+    const sessionData = await issueAuthSessionForVerifiedPhone({
+      phone,
+      role,
+      full_name: full_name || verification.firstName,
+      auth_method: 'telegram_otp'
+    });
+
+    return res.json({
+      success: true,
+      verified: true,
+      message: sessionData.isNewUser
+        ? 'تم تسجيل وتأكيد الحساب بنجاح عبر تيليجرام ✈️'
+        : 'تم تسجيل الدخول بنجاح عبر تيليجرام ✈️',
+      data: sessionData
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/integrations/telegram/captain-application', rateLimiter(10, 60000), async (req, res) => {
+  try {
+    const { full_name, phone, vehicle_type = 'سيارة', notes = '' } = req.body || {};
+    if (!full_name || !phone) {
+      return res.status(400).json({ success: false, error: 'الاسم الثلاثي ورقم الهاتف مطلوبان.' });
+    }
+
+    const appEntry = {
+      id: 'cap_app_' + uuidv4().substring(0, 8),
+      action: 'captain_registration_application',
+      actor_role: 'captain_applicant',
+      target_type: 'driver',
+      details: { full_name, phone, vehicle_type, notes },
+      created_at: new Date().toISOString()
+    };
+    if (!db.audit_logs) db.audit_logs = [];
+    db.audit_logs.unshift(appEntry);
+    saveAuditLogToPg(appEntry).catch(() => {});
+
+    await telegramService.sendAdminAlert(
+      `🛵 *طلب انضمام كابتن جديد (من التطبيق)*
+` +
+      `• الاسم: *${full_name}*
+` +
+      `• الهاتف: \`${phone}\`
+` +
+      `• المركبة: *${vehicle_type}*
+` +
+      (notes ? `• المنطقة/ملاحظات: ${notes}` : '')
+    );
+
+    const botLink = `https://t.me/${telegramService.botUsername}?start=captain_register`;
+    return res.json({
+      success: true,
+      message: 'تم استلام طلب الانضمام وإرساله لغرفة العمليات بنجاح.',
+      bot_url: botLink
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/v1/telegram/webhook', async (req, res) => {
+  try {
+    const expectedSecret = telegramService.webhookSecret;
+    const headerSecret = req.get('X-Telegram-Bot-Api-Secret-Token');
+    if (expectedSecret && headerSecret !== expectedSecret) {
+      return res.status(401).json({ success: false, error: 'Unauthorized Telegram webhook secret' });
+    }
+
+    res.status(200).json({ ok: true });
+
+    await telegramService.processWebhookUpdate(req.body, db, req.io, {
+      onSaveLink: (link) => saveTelegramLinkToPg(link),
+      onOrderSave: (o) => saveOrderToPg(o),
+      onProductSave: (p) => saveProductToPg(p),
+    });
+  } catch (err) {
+    console.error('[Telegram Webhook] Exception processing update:', err);
+    if (!res.headersSent) {
+      res.status(500).json({ ok: false, error: err.message });
+    }
   }
 });
 
@@ -3870,13 +4168,22 @@ app.post(['/api/v1/orders/checkout', '/api/v1/orders'], authMiddleware, async (r
       console.error('[FCM] Failed to initialize dispatcher:', fcmErr);
     }
 
-    // KAPSO WHATSAPP AI AGENT: Interactive Order Notification to Merchant / Kitchen
+    // KAPSO WHATSAPP AI AGENT: Interactive Order Notification to Merchant / Kitchen (if enabled)
     try {
       kapsoService.notifyMerchantNewOrder(newOrder, store).catch(kErr => {
         console.warn('[Kapso WhatsApp] Non-blocking merchant order dispatch notice:', kErr.message);
       });
     } catch (kapsoErr) {
       console.warn('[Kapso WhatsApp] Merchant order dispatch exception:', kapsoErr.message);
+    }
+
+    // TELEGRAM BOT API: Interactive Order Notification to Merchant / Kitchen (if linked)
+    try {
+      telegramService.notifyMerchantNewOrder(newOrder, store).catch(tgErr => {
+        console.warn('[Telegram Bot] Non-blocking merchant order dispatch notice:', tgErr.message);
+      });
+    } catch (tgErr) {
+      console.warn('[Telegram Bot] Merchant order dispatch exception:', tgErr.message);
     }
 
     res.status(201).json({
@@ -4468,6 +4775,28 @@ const handleOrderStatusUpdate = async (req, res) => {
       }
     } catch (kapsoNotifyErr) {
       console.warn('[Kapso WhatsApp] Status notification exception:', kapsoNotifyErr.message);
+    }
+
+    // 8b. Telegram Real-Time Notifications (Merchant Captain Arrival & Customer Status)
+    try {
+      if (status === 'driver_arrived') {
+        const storeObj = (db.stores || []).find(s => s.id === order.store_id);
+        const drvObj = (db.drivers || []).find(d => d.id === order.driver_id);
+        if (storeObj && storeObj.phone) {
+          telegramService.sendCaptainArrivalAlert(storeObj.phone, order, drvObj).catch(e => {
+            console.warn('[Telegram Bot] Non-blocking arrival alert notice:', e.message);
+          });
+        }
+      }
+      const custPhone = order.customer_phone || ((db.users || []).find(u => u.id === order.customer_id)?.phone);
+      if (custPhone) {
+        const arabicStatus = telegramService.getOrderStatusArabic(status);
+        telegramService.sendOrderStatusUpdate(custPhone, order, arabicStatus).catch(e => {
+          console.warn('[Telegram Bot] Non-blocking customer status update notice:', e.message);
+        });
+      }
+    } catch (tgNotifyErr) {
+      console.warn('[Telegram Bot] Status notification exception:', tgNotifyErr.message);
     }
 
     res.json({
